@@ -1,0 +1,285 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.exerciseRow {
+  padding: var(--space-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.exerciseHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.orderButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orderBtn {
+  width: 24px;
+  height: 20px;
+  padding: 0;
+  font-size: var(--text-xs);
+  font-family: inherit;
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+}
+
+.orderBtn:hover:not(:disabled) {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.orderBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.exerciseName {
+  flex: 1;
+  font-weight: 500;
+}
+
+/* Exercise settings row */
+.exerciseSettings {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  flex-wrap: wrap;
+}
+
+.settingField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.settingLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.repsInput {
+  width: 80px;
+}
+
+.weightInput {
+  width: 100px;
+}
+
+/* Sets section */
+.setsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+  padding: var(--space-sm);
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.setsHeader {
+  display: flex;
+  align-items: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  padding-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.setsLabel {
+  font-weight: 500;
+}
+
+/* Set row */
+.setRow {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-xs) 0;
+}
+
+.setNumber {
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.setFields {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.repsInput {
+  width: 80px;
+}
+
+.setTypeSelect {
+  min-width: 100px;
+}
+
+.techniqueSelect {
+  min-width: 120px;
+}
+
+.removeSetBtn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: var(--text-lg);
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast);
+  line-height: 1;
+}
+
+.removeSetBtn:hover {
+  color: var(--color-error);
+}
+
+.addSetBtn {
+  align-self: flex-start;
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: var(--space-xs);
+}
+
+.addSetBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
+}
+
+/* Notes */
+.notesToggle {
+  margin-top: var(--space-xs);
+}
+
+.notesBtn {
+  padding: 0;
+  font-size: var(--text-sm);
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.notesBtn:hover {
+  color: var(--color-text);
+}
+
+.notesField {
+  margin-top: var(--space-xs);
+}
+
+.groupBadge {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-xs);
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  align-self: flex-start;
+}
+
+/* Empty state */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+}
+
+.emptyText {
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.addExerciseBtn {
+  width: 48px;
+  height: 48px;
+  padding: 3;
+  font-size: var(--text-2xl);
+  font-family: inherit;
+  background-color: var(--color-bg-tertiary);
+  border: 2px dashed var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.addExerciseBtn:hover {
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-text-secondary);
+  color: var(--color-text);
+}
+
+.addExerciseBtnBottom {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: var(--text-xl);
+  font-family: inherit;
+  background-color: var(--color-bg-tertiary);
+  border: 2px dashed var(--color-border);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin: var(--space-sm) auto 0;
+}
+
+.addExerciseBtnBottom:hover {
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-text-secondary);
+  color: var(--color-text);
+}
+
+@media (max-width: 600px) {
+  .setFields {
+    flex-wrap: wrap;
+  }
+  
+  .techniqueSelect {
+    width: 100%;
+    min-width: auto;
+  }
+}

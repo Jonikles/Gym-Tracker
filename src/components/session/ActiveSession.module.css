@@ -1,0 +1,120 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-2xl);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+.meta {
+  display: flex;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.timer {
+  color: var(--color-success);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  letter-spacing: 0.02em;
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.exercises {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.addExercise {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.addButton {
+  width: 100%;
+  max-width: 300px;
+}
+
+.templateList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.templateItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.templateItem:hover {
+  border-color: var(--color-accent);
+}
+
+.templateName {
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--color-text);
+}
+
+.templateMeta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.emptyTemplates {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-lg);
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

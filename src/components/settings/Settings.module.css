@@ -1,0 +1,152 @@
+html {
+  scrollbar-gutter: stable;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.sectionTitle {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settingRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settingRow:first-child {
+  padding-top: 0;
+}
+
+.settingInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.settingLabel {
+  font-weight: 500;
+}
+
+.settingDesc {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Toggle switch */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-bg-tertiary);
+  transition: var(--transition-fast);
+  border-radius: 26px;
+}
+
+.toggleSlider::before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--color-text);
+  transition: var(--transition-fast);
+  border-radius: 50%;
+}
+
+.toggle input:checked + .toggleSlider {
+  background-color: var(--color-accent);
+}
+
+.toggle input:checked + .toggleSlider::before {
+  transform: translateX(22px);
+}
+
+.dataRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dataRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.dataRow:first-child {
+  padding-top: 0;
+}
+
+.message {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.message.success {
+  background-color: rgba(52, 211, 153, 0.15);
+  color: var(--color-success);
+}
+
+.message.error {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--color-error);
+}
+
+.dangerZone {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+@media (max-width: 600px) {
+  .settingRow,
+  .dataRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+}

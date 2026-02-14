@@ -1,0 +1,27 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  padding: var(--space-xs) 0;
+}
+
+.label {
+  color: var(--color-text-muted);
+}
+
+.sets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.set {
+  color: var(--color-text-secondary);
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}

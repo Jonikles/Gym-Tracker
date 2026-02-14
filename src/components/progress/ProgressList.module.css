@@ -1,0 +1,97 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.count {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+    align-items: center;
+}
+
+.filters>*:first-child {
+    width: 300px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+    .filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filters>*:first-child {
+        width: 100%;
+    }
+}
+
+.clearFilters {
+  align-self: flex-start;
+  padding: var(--space-xs) var(--space-sm);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.clearFilters:hover {
+  color: var(--color-text);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.exerciseItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.exerciseInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.exerciseName {
+  font-weight: 500;
+}
+
+.exerciseMeta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.sessionCount {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-xl);
+}

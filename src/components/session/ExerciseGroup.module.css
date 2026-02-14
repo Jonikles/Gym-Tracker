@@ -1,0 +1,21 @@
+.container {
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  background-color: var(--color-bg);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-sm);
+}
+
+.exercises {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}

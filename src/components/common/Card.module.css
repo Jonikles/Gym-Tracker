@@ -1,0 +1,25 @@
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  width: 100%;
+  text-align: left;
+}
+
+.interactive {
+  cursor: pointer;
+  transition: border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.interactive:hover {
+  border-color: var(--color-border-focus);
+  background-color: var(--color-bg-tertiary);
+}
+
+button.card {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}

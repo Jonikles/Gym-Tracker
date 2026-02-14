@@ -1,0 +1,11 @@
+export { Home } from './Home';
+export { Exercises } from './Exercises';
+export { ExerciseDetailPage } from './ExerciseDetail';
+export { Templates } from './Templates';
+export { TemplateDetailPage } from './TemplateDetail';
+export { Routines } from './Routines';
+export { Workout } from './Workout';
+export { History } from './History';
+export { Progress } from './Progress';
+export { Analytics } from './Analytics';
+export { Settings } from './Settings';

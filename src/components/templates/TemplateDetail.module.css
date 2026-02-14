@@ -1,0 +1,144 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.header {
+    display: flex;
+    align-items: center; /* This should vertically center everything */
+    justify-content: space-between;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.headerContent {
+  flex: 1;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+.meta {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.archived {
+  padding: 2px 8px;
+  background-color: rgba(239, 68, 68, 0.15);
+  color: var(--color-error);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.exercises {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.exercises h2 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.exerciseList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.exerciseRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.exerciseNumber {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background-color: var(--color-bg-tertiary);
+  border-radius: 50%;
+  color: var(--color-text-muted);
+}
+
+.exerciseSummary {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.exerciseName {
+  font-weight: 500;
+}
+
+.exerciseDetail {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.technique {
+  margin-left: var(--space-sm);
+  padding: 2px 6px;
+  font-size: var(--text-xs);
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-lg);
+}
+
+.dangerZone {
+  margin-top: var(--space-xl);
+  padding: var(--space-md);
+  background-color: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.dangerZone h3 {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-error);
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .header {
+    flex-direction: column;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+}

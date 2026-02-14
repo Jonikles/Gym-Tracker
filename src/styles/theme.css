@@ -1,0 +1,42 @@
+/**
+ * Theme tokens
+ * 
+ * This file contains semantic color tokens that can be used across components.
+ * All tokens reference CSS variables defined in global.css.
+ */
+
+/* Component-specific tokens */
+:root {
+  /* Cards */
+  --card-bg: var(--color-bg-secondary);
+  --card-border: var(--color-border);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  
+  /* Buttons */
+  --btn-primary-bg: var(--color-accent);
+  --btn-primary-text: var(--color-bg);
+  --btn-secondary-bg: var(--color-bg-tertiary);
+  --btn-secondary-text: var(--color-text);
+  --btn-ghost-bg: transparent;
+  --btn-ghost-text: var(--color-text);
+  
+  /* Inputs */
+  --input-bg: var(--color-bg-secondary);
+  --input-border: var(--color-border);
+  --input-border-focus: var(--color-accent);
+  --input-text: var(--color-text);
+  --input-placeholder: var(--color-text-muted);
+  
+  /* PR indicators */
+  --pr-weight: #fbbf24;
+  --pr-reps: #34d399;
+  --pr-e1rm: #60a5fa;
+  
+  /* Intensity techniques (v1.1: standard, failure, myoreps, dropset, forcedreps, partials, cluster) */
+  --tag-failure: #ef4444;
+  --tag-dropset: #f87171;
+  --tag-myoreps: #a78bfa;
+  --tag-forcedreps: #fb923c;
+  --tag-partials: #4ade80;
+  --tag-cluster: #38bdf8;
+}

@@ -1,0 +1,41 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.name {
+  font-size: var(--text-base);
+  font-weight: 500;
+  margin: 0;
+  flex: 1;
+}
+
+.badge {
+  font-size: var(--text-xs);
+  padding: 2px 6px;
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+}
+
+.archivedBadge {
+  background-color: var(--color-warning);
+  color: var(--color-bg);
+}
+
+.details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.tag {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
