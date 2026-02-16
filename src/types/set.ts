@@ -49,6 +49,7 @@ export type TechniqueData =
  * Set entity - a single set logged during a workout
  * v1.1: Removed RIR, restTime, tempo, notes
  * v1.2: Added targetReps for template-based sets
+ * v1.5: Added time and distance as first-class fields
  */
 export interface Set {
   id: string;
@@ -56,6 +57,8 @@ export interface Set {
   order: number;
   weight?: number;
   reps?: number;
+  time?: number; // Duration in seconds (for planks, holds, AMRAP, etc.)
+  distance?: number; // Distance in meters (for carries, runs, etc.)
   targetReps?: string; // Target from template, e.g. "8-12"
   isWarmup: boolean;
   intensityTechnique: IntensityTechnique;

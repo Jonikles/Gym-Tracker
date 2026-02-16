@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import type { Set, IntensityTechnique, TechniqueData, TemplateExercise } from '../types';
+import type { Set, IntensityTechnique, TechniqueData } from '../types';
 
 /**
  * Input for creating a new set
@@ -9,6 +9,8 @@ export interface CreateSetInput {
   sessionExerciseId: string;
   weight?: number;
   reps?: number;
+  time?: number;
+  distance?: number;
   isWarmup?: boolean;
   intensityTechnique?: IntensityTechnique;
   techniqueData?: TechniqueData;
@@ -20,6 +22,8 @@ export interface CreateSetInput {
 export interface UpdateSetInput {
   weight?: number;
   reps?: number;
+  time?: number;
+  distance?: number;
   isWarmup?: boolean;
   intensityTechnique?: IntensityTechnique;
   techniqueData?: TechniqueData;
@@ -132,6 +136,8 @@ export async function createSet(input: CreateSetInput): Promise<string> {
     order: maxOrder + 1,
     weight: input.weight,
     reps: input.reps,
+    time: input.time,
+    distance: input.distance,
     isWarmup: input.isWarmup ?? false,
     intensityTechnique: input.intensityTechnique ?? 'standard',
     techniqueData: input.techniqueData,
@@ -153,6 +159,8 @@ export async function updateSet(
 
   if (input.weight !== undefined) updates.weight = input.weight;
   if (input.reps !== undefined) updates.reps = input.reps;
+  if (input.time !== undefined) updates.time = input.time;
+  if (input.distance !== undefined) updates.distance = input.distance;
   if (input.isWarmup !== undefined) updates.isWarmup = input.isWarmup;
   if (input.intensityTechnique !== undefined) updates.intensityTechnique = input.intensityTechnique;
   if (input.techniqueData !== undefined) updates.techniqueData = input.techniqueData;
@@ -173,10 +181,10 @@ export async function deleteSet(setId: string): Promise<void> {
 export async function quickFillFromPrevious(
   sessionExerciseId: string,
   exerciseId: string
-): Promise<void> {
+): Promise<boolean> {
   const previousSets = await getPreviousSets(exerciseId);
-  
-  if (previousSets.length === 0) return;
+
+  if (previousSets.length === 0) return false;
 
   // Delete any existing sets
   const existingSets = await db.sets
@@ -192,6 +200,8 @@ export async function quickFillFromPrevious(
     order: index + 1,
     weight: prev.weight,
     reps: prev.reps,
+    time: prev.time,
+    distance: prev.distance,
     isWarmup: prev.isWarmup,
     intensityTechnique: prev.intensityTechnique,
     techniqueData: prev.techniqueData,
@@ -199,30 +209,6 @@ export async function quickFillFromPrevious(
   }));
 
   await db.sets.bulkAdd(newSets);
+  return true;
 }
 
-/**
- * Create sets based on template exercise config
- * Note: This is now handled in useSessions.ts startSessionFromTemplate()
- * which pre-creates sets with the proper structure
- */
-export async function createSetsFromTemplate(
-  sessionExerciseId: string,
-  templateExercise: TemplateExercise
-): Promise<void> {
-  const now = Date.now();
-
-  const sets: Set[] = templateExercise.sets.map((ts, index) => ({
-    id: crypto.randomUUID(),
-    sessionExerciseId,
-    order: index,
-    weight: templateExercise.weight,
-    reps: undefined,
-    targetReps: templateExercise.targetReps,
-    isWarmup: ts.isWarmup,
-    intensityTechnique: ts.intensityTechnique,
-    createdAt: now,
-  }));
-
-  await db.sets.bulkAdd(sets);
-}

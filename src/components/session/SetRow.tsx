@@ -48,6 +48,8 @@ function isPartialsData(data: TechniqueData | undefined): data is PartialsTechni
 export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, showValidation }: SetRowProps) {
   const [weight, setWeight] = useState(set.weight?.toString() ?? '');
   const [reps, setReps] = useState(set.reps?.toString() ?? '');
+  const [time, setTime] = useState(set.time?.toString() ?? '');
+  const [distance, setDistance] = useState(set.distance?.toString() ?? '');
   // Warmup and technique come from template, not editable during logging
   const isWarmup = set.isWarmup;
   const technique = set.intensityTechnique ?? 'standard';
@@ -137,10 +139,12 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
   // Debounced save and PR detection
   useEffect(() => {
+    let cancelled = false;
+
     const timeout = setTimeout(async () => {
       const parsedWeight = weight ? parseFloat(weight) : undefined;
       let parsedReps = reps ? parseInt(reps, 10) : undefined;
-      
+
       // For techniques, use primary reps from technique data
       if (technique === 'myoreps' && myoActivationReps) {
         parsedReps = parseInt(myoActivationReps, 10);
@@ -152,13 +156,20 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         parsedReps = parseInt(mainReps, 10);
       }
 
+      const parsedTime = time ? parseInt(time, 10) : undefined;
+      const parsedDistance = distance ? parseFloat(distance) : undefined;
       const techniqueData = buildTechniqueData();
 
       await updateSet(set.id, {
         weight: parsedWeight,
         reps: parsedReps,
+        time: parsedTime,
+        distance: parsedDistance,
         techniqueData,
       });
+
+      // Bail if a newer debounce has started (values changed while saving)
+      if (cancelled) return;
 
       // Check for PRs only if not warmup and values have changed
       // Only for standard/failure/forcedreps (e1RM calculation)
@@ -166,8 +177,8 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
       const canCalculatePR = ['standard', 'failure', 'forcedreps'].includes(technique);
       if (!isWarmup && parsedWeight && parsedReps && canCalculatePR && checkKey !== lastCheckedRef.current) {
         lastCheckedRef.current = checkKey;
-        
-        // Create a temporary set object for PR detection
+
+        // Use the exact values that were just saved to DB for PR detection
         const tempSet: Set = {
           ...set,
           weight: parsedWeight,
@@ -178,14 +189,20 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         };
 
         const prs = await detectAndSavePRs(tempSet, exerciseId);
-        if (prs.length > 0) {
+        if (!cancelled && prs.length > 0) {
           setDetectedPRs(prs);
         }
       }
     }, 500);
 
-    return () => clearTimeout(timeout);
-  }, [set.id, set, weight, reps, isWarmup, technique, exerciseId, myoActivationReps, myoMiniSets, drops, clusters, mainReps, partialReps, partialWeight]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  // Note: `set` object excluded from deps — Dexie's useLiveQuery returns new references
+  // on every render which would cause infinite re-render loops. Individual fields are tracked instead.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [set.id, weight, reps, time, distance, isWarmup, technique, exerciseId, myoActivationReps, myoMiniSets, drops, clusters, mainReps, partialReps, partialWeight]);
 
   const handleDelete = async () => {
     await deleteSet(set.id);
@@ -290,10 +307,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         <Input
           type="number"
           min="0"
-          value={reps}
-          onChange={(e) => setReps(e.target.value)}
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
           placeholder="time (s)"
-          className={getInputClass(!reps)}
+          className={getInputClass(!time)}
         />
       )}
 
@@ -301,10 +318,11 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         <Input
           type="number"
           min="0"
-          value={reps}
-          onChange={(e) => setReps(e.target.value)}
+          step="0.1"
+          value={distance}
+          onChange={(e) => setDistance(e.target.value)}
           placeholder="dist (m)"
-          className={getInputClass(!reps)}
+          className={getInputClass(!distance)}
         />
       )}
     </div>

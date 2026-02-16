@@ -39,12 +39,25 @@ export function SetHistory({ exerciseId }: SetHistoryProps) {
     <div className={styles.container}>
       <span className={styles.label}>Previous:</span>
       <div className={styles.sets}>
-        {workingSets.map((set, index) => (
-          <span key={set.id} className={styles.set}>
-            {set.weight ?? '?'}×{set.reps ?? '?'}
-            {index < workingSets.length - 1 && ', '}
-          </span>
-        ))}
+        {workingSets.map((set, index) => {
+          // Build display parts based on what data exists
+          const parts: string[] = [];
+          if (set.weight !== undefined) parts.push(`${set.weight}kg`);
+          if (set.reps !== undefined) parts.push(`${set.reps}`);
+          if (set.time !== undefined) parts.push(`${set.time}s`);
+          if (set.distance !== undefined) parts.push(`${set.distance}m`);
+          const display = parts.length > 0 ? parts.join('×') : '?';
+
+          return (
+            <span key={set.id} className={styles.set}>
+              {display}
+              {set.intensityTechnique && set.intensityTechnique !== 'standard' && (
+                <span className={styles.technique}> ({set.intensityTechnique})</span>
+              )}
+              {index < workingSets.length - 1 && ', '}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

@@ -1,14 +1,15 @@
 import { useProgressiveOverload } from '../../hooks/useProgressiveOverload';
-import type { TemplateExercise } from '../../types';
+import type { TemplateExercise, ExerciseField } from '../../types';
 import styles from './OverloadHint.module.css';
 
 interface OverloadHintProps {
   exerciseId: string;
   templateExercise?: TemplateExercise;
+  defaultFields?: ExerciseField[];
 }
 
-export function OverloadHint({ exerciseId, templateExercise }: OverloadHintProps) {
-  const { suggestion, isLoading } = useProgressiveOverload(exerciseId, templateExercise);
+export function OverloadHint({ exerciseId, templateExercise, defaultFields }: OverloadHintProps) {
+  const { suggestion, isLoading } = useProgressiveOverload(exerciseId, templateExercise, defaultFields);
 
   if (isLoading) {
     return null;
@@ -18,23 +19,19 @@ export function OverloadHint({ exerciseId, templateExercise }: OverloadHintProps
     return null;
   }
 
+  const isIncrease = ['increase_weight', 'increase_reps', 'increase_time', 'increase_distance'].includes(suggestion.type);
+
   const getClassName = () => {
-    switch (suggestion.type) {
-      case 'increase_weight':
-        return styles.increase;
-      case 'same_weight':
-        return styles.maintain;
-      case 'deload':
-        return styles.deload;
-      default:
-        return '';
-    }
+    if (isIncrease) return styles.increase;
+    if (suggestion.type === 'same_weight') return styles.maintain;
+    if (suggestion.type === 'deload') return styles.deload;
+    return '';
   };
 
   return (
     <div className={`${styles.hint} ${getClassName()}`}>
       <span className={styles.icon}>
-        {suggestion.type === 'increase_weight' && '↑'}
+        {isIncrease && '↑'}
         {suggestion.type === 'same_weight' && '→'}
         {suggestion.type === 'deload' && '↓'}
       </span>

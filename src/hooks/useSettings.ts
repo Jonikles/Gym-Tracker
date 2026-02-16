@@ -20,7 +20,15 @@ export function useSetting<K extends keyof SettingsMap>(key: K): SettingsMap[K] 
   const value = useLiveQuery(
     async () => {
       const setting = await db.settings.get(key);
-      return setting?.value as SettingsMap[K] | undefined;
+      if (setting === undefined) return undefined;
+
+      // Runtime type validation — if DB value doesn't match expected type, discard it
+      const defaultValue = defaultSettings[key];
+      if (defaultValue !== null && typeof setting.value !== typeof defaultValue) {
+        console.warn(`Setting "${key}" has wrong type in DB (expected ${typeof defaultValue}, got ${typeof setting.value}). Using default.`);
+        return undefined;
+      }
+      return setting.value as SettingsMap[K];
     },
     [key]
   );
@@ -108,7 +116,48 @@ export async function importData(json: string): Promise<{ success: boolean; mess
       return { success: false, message: 'Invalid or unsupported data format' };
     }
 
-    // Clear existing data
+    // Validate data structure before clearing anything
+    const errors: string[] = [];
+
+    const validateArray = (name: string, arr: unknown) => {
+      if (arr !== undefined && !Array.isArray(arr)) {
+        errors.push(`${name} must be an array`);
+      }
+    };
+
+    validateArray('exercises', data.exercises);
+    validateArray('templates', data.templates);
+    validateArray('routines', data.routines);
+    validateArray('sessions', data.sessions);
+    validateArray('sessionExercises', data.sessionExercises);
+    validateArray('sets', data.sets);
+    validateArray('prs', data.prs);
+    validateArray('settings', data.settings);
+
+    // Validate required fields on key entities
+    if (Array.isArray(data.exercises)) {
+      for (const e of data.exercises) {
+        if (!e.id || !e.name) {
+          errors.push('Exercise missing required fields (id, name)');
+          break;
+        }
+      }
+    }
+
+    if (Array.isArray(data.sessions)) {
+      for (const s of data.sessions) {
+        if (!s.id || typeof s.startedAt !== 'number') {
+          errors.push('Session missing required fields (id, startedAt)');
+          break;
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      return { success: false, message: `Invalid data: ${errors.join('; ')}` };
+    }
+
+    // Validation passed — now clear and import
     await Promise.all([
       db.exercises.clear(),
       db.templates.clear(),
@@ -120,7 +169,6 @@ export async function importData(json: string): Promise<{ success: boolean; mess
       db.settings.clear(),
     ]);
 
-    // Import new data
     await Promise.all([
       data.exercises?.length > 0 && db.exercises.bulkAdd(data.exercises),
       data.templates?.length > 0 && db.templates.bulkAdd(data.templates),

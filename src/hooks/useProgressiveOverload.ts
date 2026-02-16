@@ -6,17 +6,19 @@ import {
   DEFAULT_WEIGHT_INCREMENT,
   type OverloadSuggestion,
 } from '../utils/overload';
-import type { TemplateExercise } from '../types';
+import type { TemplateExercise, ExerciseField } from '../types';
 
 /**
  * Hook to get progressive overload suggestion for an exercise
- * 
+ *
  * @param exerciseId - The exercise to get suggestion for
  * @param templateExercise - Optional template exercise with targets (if started from template)
+ * @param defaultFields - The exercise's field configuration (weight, reps, time, distance)
  */
 export function useProgressiveOverload(
   exerciseId: string,
-  templateExercise?: TemplateExercise
+  templateExercise?: TemplateExercise,
+  defaultFields: ExerciseField[] = ['weight', 'reps']
 ): {
   suggestion: OverloadSuggestion | null;
   isLoading: boolean;
@@ -56,7 +58,8 @@ export function useProgressiveOverload(
           previousSets,
           targetReps,
           templateExercise?.weight,
-          weightIncrement
+          weightIncrement,
+          defaultFields
         );
 
         setSuggestion(result);
@@ -69,7 +72,7 @@ export function useProgressiveOverload(
     }
 
     loadSuggestion();
-  }, [exerciseId, templateExercise?.sets, templateExercise?.weight]);
+  }, [exerciseId, templateExercise?.sets, templateExercise?.weight, defaultFields]);
 
   return { suggestion, isLoading };
 }

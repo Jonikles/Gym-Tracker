@@ -8,7 +8,8 @@ import { ExerciseGroup } from './ExerciseGroup';
 import { useSessionContext } from '../../context/SessionContext';
 import { useRoutine } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
-import type { TemplateExercise } from '../../types';
+import { useSessionSets } from '../../hooks/useSets';
+import type { TemplateExercise, ExerciseField } from '../../types';
 import styles from './ActiveSession.module.css';
 
 // Helper to format elapsed time
@@ -53,6 +54,34 @@ export function ActiveSession() {
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [showValidation, setShowValidation] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+
+  // Get all sets for validation
+  const allSets = useSessionSets(activeSession?.id) ?? [];
+
+  // Build exerciseId -> defaultFields map for validation
+  const exerciseFieldsMap = useLiveQuery(
+    async () => {
+      const exerciseIds = [...new Set(sessionExercises.map((se) => se.exerciseId))];
+      const exercises = await db.exercises.bulkGet(exerciseIds);
+      const map = new Map<string, ExerciseField[]>();
+      for (const ex of exercises) {
+        if (ex) map.set(ex.id, ex.defaultFields ?? ['weight', 'reps']);
+      }
+      return map;
+    },
+    [sessionExercises.map((se) => se.exerciseId).join(',')]
+  );
+
+  // Clear validation message when sets change (user is filling fields)
+  useEffect(() => {
+    if (showValidation) {
+      setShowValidation(false);
+      setValidationMessage(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSets.length, allSets.map(s => `${s.weight}-${s.reps}-${s.time}-${s.distance}`).join(',')]);
 
   // Running timer
   useEffect(() => {
@@ -145,10 +174,39 @@ export function ActiveSession() {
     [draggedId, sessionExercises, reorderExercises]
   );
 
-  // Handle complete button click - always allow completion
+  // Handle complete button click — validate all sets have required fields filled
   const handleCompleteClick = useCallback(() => {
+    if (!exerciseFieldsMap || sessionExercises.length === 0) {
+      setShowCompleteConfirm(true);
+      return;
+    }
+
+    // Check every set against its exercise's required fields
+    let hasEmpty = false;
+    for (const se of sessionExercises) {
+      const fields = exerciseFieldsMap.get(se.exerciseId) ?? ['weight', 'reps'];
+      const setsForExercise = allSets.filter((s) => s.sessionExerciseId === se.id);
+
+      for (const set of setsForExercise) {
+        for (const field of fields) {
+          if (field === 'weight' && (set.weight === undefined || set.weight === null)) hasEmpty = true;
+          if (field === 'reps' && (set.reps === undefined || set.reps === null)) hasEmpty = true;
+          if (field === 'time' && (set.time === undefined || set.time === null)) hasEmpty = true;
+          if (field === 'distance' && (set.distance === undefined || set.distance === null)) hasEmpty = true;
+        }
+      }
+    }
+
+    if (hasEmpty) {
+      setShowValidation(true);
+      setValidationMessage('Fill in all set fields before completing');
+      return;
+    }
+
+    setShowValidation(false);
+    setValidationMessage(null);
     setShowCompleteConfirm(true);
-  }, []);
+  }, [exerciseFieldsMap, sessionExercises, allSets]);
 
   if (!activeSession) {
     return (
@@ -190,6 +248,10 @@ export function ActiveSession() {
         </div>
       </header>
 
+      {validationMessage && (
+        <div className={styles.validationMessage}>{validationMessage}</div>
+      )}
+
       <div className={styles.exercises}>
         {groupedExercises.map((group) => {
           if (group.type === 'group' && group.groupType) {
@@ -200,6 +262,7 @@ export function ActiveSession() {
                 exercises={group.exercises}
                 templateExerciseMap={templateExerciseMap}
                 onRemoveExercise={removeExercise}
+                showValidation={showValidation}
               />
             );
           }
@@ -217,6 +280,7 @@ export function ActiveSession() {
               onDragStart={() => handleDragStart(exercise.id)}
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(exercise.id)}
+              showValidation={showValidation}
             />
           );
         })}

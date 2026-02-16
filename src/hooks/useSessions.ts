@@ -188,7 +188,7 @@ export async function startSessionFromTemplate(
       setsToCreate.push({
         id: crypto.randomUUID(),
         sessionExerciseId,
-        order: j,
+        order: j + 1,
         weight: te.weight, // Use template exercise target weight if defined
         reps: undefined, // User fills this in
         targetReps: te.targetReps, // From template exercise (same for all sets)
@@ -464,6 +464,16 @@ export async function updateSessionNotes(
 }
 
 /**
+ * Update notes on a session exercise
+ */
+export async function updateSessionExerciseNotes(
+  sessionExerciseId: string,
+  notes: string
+): Promise<void> {
+  await db.sessionExercises.update(sessionExerciseId, { notes: notes || undefined });
+}
+
+/**
  * Get template exercise details for a session
  */
 export async function getTemplateForSession(
@@ -543,7 +553,7 @@ export async function importTemplateIntoSession(
       setsToCreate.push({
         id: crypto.randomUUID(),
         sessionExerciseId,
-        order: j,
+        order: j + 1,
         weight: te.weight,
         reps: undefined,
         targetReps: te.targetReps,

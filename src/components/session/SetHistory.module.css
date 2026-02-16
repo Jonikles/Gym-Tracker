@@ -21,6 +21,11 @@
   color: var(--color-text-secondary);
 }
 
+.technique {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 .empty {
   color: var(--color-text-muted);
   font-style: italic;

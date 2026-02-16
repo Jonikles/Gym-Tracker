@@ -87,7 +87,8 @@ export async function getFixedRoutineCalendar(
     if (!templateId) {
       status = 'rest';
     } else if (session) {
-      status = session.status ?? 'completed';
+      // Only treat as completed if status is explicitly set or session has completedAt
+      status = session.status ?? (session.completedAt ? 'completed' : 'pending');
     } else if (date < getStartOfDay(new Date())) {
       // Past day with no session - mark as pending (missed)
       status = 'pending';
@@ -172,7 +173,7 @@ export async function getRollingRoutineCalendar(
     if (!templateId) {
       status = 'rest';
     } else if (session) {
-      status = session.status ?? 'completed';
+      status = session.status ?? (session.completedAt ? 'completed' : 'pending');
     } else if (date < getStartOfDay(new Date())) {
       status = 'pending';
     } else {

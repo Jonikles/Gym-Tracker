@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button, Card } from '../common';
 import { SetRow } from './SetRow';
 import { SetHistory } from './SetHistory';
 import { OverloadHint } from './OverloadHint';
 import { useSets, createSet, quickFillFromPrevious } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
+import { updateSessionExerciseNotes } from '../../hooks/useSessions';
 import type { SessionExercise as SessionExerciseType, ExerciseField, TemplateExercise } from '../../types';
 import styles from './SessionExercise.module.css';
 
@@ -32,6 +33,22 @@ export function SessionExercise({
   const exercise = useExercise(sessionExercise.exerciseId);
   const sets = useSets(sessionExercise.id) ?? [];
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [quickFillMessage, setQuickFillMessage] = useState<string | null>(null);
+  const [showNotes, setShowNotes] = useState(!!sessionExercise.notes);
+  const [notes, setNotes] = useState(sessionExercise.notes ?? '');
+  const notesRef = useRef(notes);
+
+  // Save notes on blur
+  const handleNotesSave = useCallback(() => {
+    if (notesRef.current !== (sessionExercise.notes ?? '')) {
+      updateSessionExerciseNotes(sessionExercise.id, notesRef.current);
+    }
+  }, [sessionExercise.id, sessionExercise.notes]);
+
+  // Keep ref in sync for blur handler
+  useEffect(() => {
+    notesRef.current = notes;
+  }, [notes]);
 
   const defaultFields: ExerciseField[] = exercise?.defaultFields ?? ['weight', 'reps'];
 
@@ -50,7 +67,11 @@ export function SessionExercise({
   }, [sessionExercise.id, sets, templateExercise]);
 
   const handleQuickFill = useCallback(async () => {
-    await quickFillFromPrevious(sessionExercise.id, sessionExercise.exerciseId);
+    const filled = await quickFillFromPrevious(sessionExercise.id, sessionExercise.exerciseId);
+    if (!filled) {
+      setQuickFillMessage('No previous data found');
+      setTimeout(() => setQuickFillMessage(null), 3000);
+    }
   }, [sessionExercise.id, sessionExercise.exerciseId]);
 
   if (!exercise) {
@@ -94,6 +115,15 @@ export function SessionExercise({
             <span className={styles.groupBadge}>{sessionExercise.groupType}</span>
           )}
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowNotes(!showNotes)}
+          title={showNotes ? 'Hide notes' : 'Add notes'}
+          className={notes ? styles.noteButtonActive : undefined}
+        >
+          {showNotes ? '📝' : '📋'}
+        </Button>
         <Button variant="ghost" size="sm" onClick={onRemove} title="Remove exercise">
           ×
         </Button>
@@ -103,11 +133,23 @@ export function SessionExercise({
         <div className={styles.target}>Target: {targetInfo}</div>
       )}
 
+      {showNotes && (
+        <textarea
+          className={styles.notes}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          onBlur={handleNotesSave}
+          placeholder="Exercise notes..."
+          rows={2}
+        />
+      )}
+
       {!isCollapsed && (
         <>
           <OverloadHint
             exerciseId={sessionExercise.exerciseId}
             templateExercise={templateExercise}
+            defaultFields={defaultFields}
           />
 
           <SetHistory exerciseId={sessionExercise.exerciseId} />
@@ -137,6 +179,9 @@ export function SessionExercise({
               <Button variant="ghost" size="sm" onClick={handleQuickFill}>
                 Quick Fill
               </Button>
+            )}
+            {quickFillMessage && (
+              <span className={styles.quickFillMessage}>{quickFillMessage}</span>
             )}
           </div>
         </>

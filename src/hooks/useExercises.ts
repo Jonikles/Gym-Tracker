@@ -206,6 +206,14 @@ export function useUniqueMovementPatterns() {
  * Create a new exercise
  */
 export async function createExercise(input: CreateExerciseInput): Promise<string> {
+  // Check for duplicate name (case-insensitive, excluding archived)
+  const existing = await db.exercises
+    .filter((e) => e.name.toLowerCase() === input.name.trim().toLowerCase() && !e.isArchived)
+    .first();
+  if (existing) {
+    throw new Error('An exercise with this name already exists');
+  }
+
   const now = Date.now();
   const exercise: Exercise = {
     id: crypto.randomUUID(),
@@ -236,7 +244,16 @@ export async function updateExercise(
     updatedAt: Date.now(),
   };
 
-  if (input.name !== undefined) updates.name = input.name;
+  if (input.name !== undefined) {
+    // Check for duplicate name (case-insensitive, excluding self and archived)
+    const existing = await db.exercises
+      .filter((e) => e.id !== id && e.name.toLowerCase() === input.name!.trim().toLowerCase() && !e.isArchived)
+      .first();
+    if (existing) {
+      throw new Error('An exercise with this name already exists');
+    }
+    updates.name = input.name;
+  }
   if (input.muscleGroups !== undefined) updates.muscleGroups = input.muscleGroups;
   if (input.movementPattern !== undefined) updates.movementPattern = input.movementPattern;
   if (input.equipment !== undefined) updates.equipment = input.equipment;
@@ -303,7 +320,27 @@ export async function deleteExercise(id: string): Promise<void> {
   const exercise = await db.exercises.get(id);
   if (!exercise) throw new Error('Exercise not found');
   if (exercise.isPreset) throw new Error('Cannot delete preset exercises');
-  
+
+  // Check if exercise is referenced in any session history
+  const sessionRefs = await db.sessionExercises
+    .where('exerciseId')
+    .equals(id)
+    .count();
+
+  // Check if exercise is referenced in any templates
+  const templates = await db.templates.toArray();
+  const templateRefs = templates.filter((t) =>
+    t.exercises.some((e) => e.exerciseId === id)
+  ).length;
+
+  if (sessionRefs > 0 || templateRefs > 0) {
+    throw new Error(
+      `Cannot delete "${exercise.name}" — it is used in ${sessionRefs} session(s) and ${templateRefs} template(s). Archive it instead.`
+    );
+  }
+
+  // Safe to delete — also clean up any orphaned PRs
+  await db.prs.where('exerciseId').equals(id).delete();
   await db.exercises.delete(id);
 }
 

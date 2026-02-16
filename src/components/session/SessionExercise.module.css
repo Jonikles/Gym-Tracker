@@ -84,6 +84,38 @@
   font-style: italic;
 }
 
+.quickFillMessage {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 .card {
   padding: var(--space-md);
+}
+
+.notes {
+  width: 100%;
+  padding: var(--space-sm);
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
+.notes::placeholder {
+  color: var(--color-text-muted);
+}
+
+.notes:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.noteButtonActive {
+  color: var(--color-accent) !important;
 }
