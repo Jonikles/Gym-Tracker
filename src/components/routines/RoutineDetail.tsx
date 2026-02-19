@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Modal, ConfirmDialog, Select } from '../common';
 import { RoutineForm, type RoutineFormData } from './RoutineForm';
@@ -20,6 +20,11 @@ interface RoutineDetailProps {
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Reorder dayIndices so the week starts on the given day */
+function getWeekOrder(weekStartDay: number): number[] {
+  return Array.from({ length: 7 }, (_, i) => (weekStartDay + i) % 7);
+}
 
 function ScheduleDayRow({
   day,
@@ -81,28 +86,48 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const routine = useRoutine(routineId);
   const templates = useTemplates() ?? [];
   const activeRoutineId = useSetting('activeRoutineId');
+  const weekStartDay = useSetting('weekStartDay') as number;
   const isActive = activeRoutineId === routineId;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showSetActiveConfirm, setShowSetActiveConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<'schedule' | 'calendar'>('schedule');
-  
+
   // Local schedule state for editing
   const [localSchedule, setLocalSchedule] = useState<RoutineDay[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   // Initialize local schedule when routine loads
   useEffect(() => {
     if (routine) {
       setLocalSchedule(routine.schedule);
       setHasChanges(false);
+      isInitialLoadRef.current = true;
     }
-  }, [routine?.id, routine?.schedule]);
+  }, [routine?.id]);
+
+  // Auto-save schedule changes to DB (debounced) so navigating away doesn't lose data
+  useEffect(() => {
+    // Skip the initial load (when localSchedule is set from routine.schedule)
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+    if (!hasChanges) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      await updateRoutine(routineId, { schedule: localSchedule });
+    }, 500);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [localSchedule, hasChanges, routineId]);
 
   if (!routine) {
     return (
@@ -123,11 +148,13 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   };
 
   const handleArchive = async () => {
+    sessionStorage.removeItem('draftRoutineId');
     await archiveRoutine(routineId);
     navigate('/routines');
   };
 
   const handleDelete = async () => {
+    sessionStorage.removeItem('draftRoutineId');
     await deleteRoutine(routineId);
     navigate('/routines');
   };
@@ -164,43 +191,22 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
     setHasChanges(true);
   };
 
-  // Auto-dismiss validation when a template is assigned
-  const hasAnyTemplate = localSchedule.some((d) => d.templateId);
-  if (validationMessage && hasAnyTemplate) {
-    setValidationMessage(null);
-  }
-
-  const handleSave = async () => {
-    if (!hasAnyTemplate) {
-      setValidationMessage('Assign at least one template to your routine');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await updateRoutine(routineId, { schedule: localSchedule });
-      setHasChanges(false);
-      navigate('/routines');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDiscard = () => {
-    setLocalSchedule(routine.schedule);
-    setHasChanges(false);
-    setShowDiscardConfirm(false);
-  };
-
   const handleBack = () => {
-    if (hasChanges) {
-      setShowDiscardConfirm(true);
-    } else {
-      navigate('/routines');
+    // Clear draft marker when leaving
+    sessionStorage.removeItem('draftRoutineId');
+    // Auto-save already persists changes, so just navigate
+    // Flush any pending auto-save immediately
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      updateRoutine(routineId, { schedule: localSchedule });
     }
+    navigate('/routines');
   };
 
-  const sortedSchedule = [...localSchedule].sort((a, b) => a.dayIndex - b.dayIndex);
+  // For fixed routines, sort days starting from weekStartDay
+  const sortedSchedule = routine.type === 'fixed'
+    ? getWeekOrder(weekStartDay).map((di) => localSchedule.find((d) => d.dayIndex === di)).filter((d): d is RoutineDay => d !== undefined)
+    : [...localSchedule].sort((a, b) => a.dayIndex - b.dayIndex);
   const activeDays = localSchedule.filter((d) => d.templateId);
 
   return (
@@ -298,30 +304,6 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
         </section>
       )}
 
-      {/* Validation message */}
-      {validationMessage && (
-        <div className={styles.validationMessage}>
-          <span>{validationMessage}</span>
-          <button className={styles.validationDismiss} onClick={() => setValidationMessage(null)} title="Dismiss">×</button>
-        </div>
-      )}
-
-      {/* Save/Cancel buttons - only show when there are changes */}
-      {hasChanges && (
-        <div className={styles.saveActions}>
-          <Button
-            variant="ghost"
-            onClick={() => setShowDiscardConfirm(true)}
-            disabled={isSaving}
-          >
-            Discard Changes
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? 'Saving...' : 'Save Routine'}
-          </Button>
-        </div>
-      )}
-
       {/* Edit Details Modal */}
       <Modal
         isOpen={isEditModalOpen}
@@ -347,17 +329,6 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
         title="Archive Routine"
         message={`Archive "${routine.name}"? It will no longer appear in the routine list.`}
         confirmLabel="Archive"
-        variant="danger"
-      />
-
-      {/* Discard Changes Confirmation */}
-      <ConfirmDialog
-        isOpen={showDiscardConfirm}
-        onClose={() => setShowDiscardConfirm(false)}
-        onConfirm={handleDiscard}
-        title="Discard Changes"
-        message="Discard unsaved changes to this routine?"
-        confirmLabel="Discard"
         variant="danger"
       />
 

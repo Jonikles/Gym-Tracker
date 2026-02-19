@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Select, Button, Modal } from '../common';
 import { RoutineCard } from './RoutineCard';
@@ -13,6 +13,8 @@ import type { RoutineType } from '../../types';
 import styles from './RoutineList.module.css';
 
 type SortOrder = 'recent' | 'name-asc' | 'name-desc';
+
+const DRAFT_ROUTINE_KEY = 'draftRoutineId';
 
 export function RoutineList() {
   const navigate = useNavigate();
@@ -32,6 +34,14 @@ export function RoutineList() {
   };
 
   const routines = useRoutines(filters);
+
+  // If there's a draft routine in progress, redirect to it
+  useEffect(() => {
+    const draftId = sessionStorage.getItem(DRAFT_ROUTINE_KEY);
+    if (draftId && routines.some((r) => r.id === draftId)) {
+      navigate(`/routines/${draftId}`, { replace: true });
+    }
+  }, [routines, navigate]);
 
     const sortedRoutines = useMemo(() => {
         const list = [...routines];
@@ -58,7 +68,8 @@ export function RoutineList() {
     try {
       const id = await createRoutine(data);
       setIsCreateModalOpen(false);
-      // Navigate to edit the new routine
+      // Mark as draft so navigating away and back returns here
+      sessionStorage.setItem(DRAFT_ROUTINE_KEY, id);
       navigate(`/routines/${id}`);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create routine');

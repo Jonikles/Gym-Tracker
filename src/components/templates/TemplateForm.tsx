@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button, ConfirmDialog } from '../common';
+import { Input, Button } from '../common';
 import { ExercisePicker } from '../exercises';
 import { TemplateExerciseList } from './TemplateExerciseList';
 import { createTemplate, updateTemplate } from '../../hooks/useTemplates';
@@ -19,32 +19,91 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
     template?.exercises ?? []
   );
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // v1.4.1: Track if form has unsaved changes
-  const [hasChanges, setHasChanges] = useState(false);
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
-
+  // Track the DB id for this template (set immediately for edits, after first save for creates)
+  const [templateId, setTemplateId] = useState<string | undefined>(template?.id);
   const isEditing = !!template;
+
+  // Auto-save refs
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialLoadRef = useRef(true);
+  const nameRef = useRef(name);
+  const exercisesRef = useRef(exercises);
+
+  // Keep refs in sync
+  nameRef.current = name;
+  exercisesRef.current = exercises;
 
   // Update state if template changes (e.g., navigating between templates)
   useEffect(() => {
     if (template) {
       setName(template.name);
       setExercises(template.exercises);
-      setHasChanges(false);
+      setTemplateId(template.id);
+      isInitialLoadRef.current = true;
     }
   }, [template?.id]);
 
-  // v1.4.1: Mark as changed when name changes
+  // Auto-save to DB (debounced)
+  const flushSave = useCallback(async () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
+    const currentName = nameRef.current.trim();
+    const currentExercises = exercisesRef.current;
+
+    // Can't save without a name
+    if (!currentName) return;
+
+    try {
+      if (templateId) {
+        // Update existing
+        await updateTemplate(templateId, {
+          name: currentName,
+          exercises: currentExercises,
+        });
+      } else {
+        // Create new
+        const id = await createTemplate({
+          name: currentName,
+          exercises: currentExercises,
+        });
+        setTemplateId(id);
+        // Update URL to the new template's edit page (replace so back goes to list)
+        navigate(`/templates/${id}/edit`, { replace: true });
+      }
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    }
+  }, [templateId, navigate]);
+
+  const scheduleAutoSave = useCallback(() => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(flushSave, 600);
+  }, [flushSave]);
+
+  // Trigger auto-save when name or exercises change
+  useEffect(() => {
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+    scheduleAutoSave();
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [name, exercises, scheduleAutoSave]);
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
-    setHasChanges(true);
+    if (error) setError(null);
   };
 
   const handleAddExercise = (exercise: Exercise) => {
-    // Create default sets for the new exercise
     const defaultSets: TemplateSet[] = [
       { order: 0, isWarmup: false, intensityTechnique: 'standard' },
       { order: 1, isWarmup: false, intensityTechnique: 'standard' },
@@ -55,11 +114,10 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
       exerciseId: exercise.id,
       order: exercises.length,
       sets: defaultSets,
-      targetReps: '8-12', // Single target reps for all sets
+      targetReps: '8-12',
     };
     setExercises([...exercises, newExercise]);
     setIsPickerOpen(false);
-    setHasChanges(true);
   };
 
   const handleUpdateExercise = (
@@ -71,7 +129,6 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         e.exerciseId === exerciseId ? { ...e, ...updates } : e
       )
     );
-    setHasChanges(true);
   };
 
   const handleRemoveExercise = (exerciseId: string) => {
@@ -80,7 +137,6 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         .filter((e) => e.exerciseId !== exerciseId)
         .map((e, index) => ({ ...e, order: index }))
     );
-    setHasChanges(true);
   };
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
@@ -88,68 +144,41 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
     const [moved] = sorted.splice(fromIndex, 1);
     sorted.splice(toIndex, 0, moved);
     setExercises(sorted.map((e, index) => ({ ...e, order: index })));
-    setHasChanges(true);
   };
 
-  // v1.4.1: Handle cancel with confirmation
-  const handleCancel = () => {
-    if (hasChanges) {
-      setShowDiscardConfirm(true);
+  const handleBack = () => {
+    // Flush any pending save before navigating
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      // Fire-and-forget the final save
+      const currentName = nameRef.current.trim();
+      if (currentName && templateId) {
+        updateTemplate(templateId, {
+          name: currentName,
+          exercises: exercisesRef.current,
+        });
+      }
+    }
+    if (isEditing && onSave) {
+      onSave();
+    } else if (templateId) {
+      navigate(`/templates/${templateId}`);
     } else {
       navigate('/templates');
-    }
-  };
-
-  const handleDiscard = () => {
-    setShowDiscardConfirm(false);
-    navigate('/templates');
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!name.trim()) {
-      setError('Template name is required');
-      return;
-    }
-
-    if (exercises.length === 0) {
-      setError('Add at least one exercise');
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      if (isEditing) {
-        await updateTemplate(template.id, { name: name.trim(), exercises });
-        setHasChanges(false);
-      } else {
-        const id = await createTemplate({ name: name.trim(), exercises });
-        setHasChanges(false);
-        navigate(`/templates/${id}`);
-        return;
-      }
-
-      onSave?.();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save template');
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const existingExerciseIds = exercises.map((e) => e.exerciseId);
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <div className={styles.form}>
       <div className={styles.field}>
         <Input
           label="Template Name"
           placeholder="e.g., Push Day, Upper Body A"
           value={name}
           onChange={handleNameChange}
+          onBlur={flushSave}
           autoFocus={!isEditing}
         />
       </div>
@@ -174,12 +203,9 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         <Button
           type="button"
           variant="ghost"
-          onClick={handleCancel}
+          onClick={handleBack}
         >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isSaving}>
-          {isSaving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Template'}
+          ← Back
         </Button>
       </div>
 
@@ -190,17 +216,6 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         excludeIds={existingExerciseIds}
         title="Add Exercise"
       />
-
-      {/* v1.4.1: Discard Confirmation */}
-      <ConfirmDialog
-        isOpen={showDiscardConfirm}
-        onClose={() => setShowDiscardConfirm(false)}
-        onConfirm={handleDiscard}
-        title="Discard Changes"
-        message="You have unsaved changes. Discard them?"
-        confirmLabel="Discard"
-        variant="danger"
-      />
-    </form>
+    </div>
   );
 }

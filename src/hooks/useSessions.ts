@@ -2,6 +2,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Session, SessionExercise, Set, Template, TemplateExercise } from '../types';
 import { advanceRollingPosition } from './useRoutines';
+import { detectAndSavePRs } from '../utils/pr';
+import { detectAndSaveProgressionAdvancements } from '../utils/progression';
 
 /**
  * Filter options for session queries
@@ -266,10 +268,43 @@ export async function startBlankSession(): Promise<string> {
 /**
  * Complete a session
  * v1.4: Added status field
+ * v1.5: PRs are now detected and saved on completion (not during logging)
  */
 export async function completeSession(sessionId: string): Promise<void> {
   const session = await db.sessions.get(sessionId);
   if (!session) throw new Error('Session not found');
+
+  // Detect and save all PRs for this session's sets
+  const sessionExercises = await db.sessionExercises
+    .where('sessionId')
+    .equals(sessionId)
+    .toArray();
+
+  for (const se of sessionExercises) {
+    const sets = await db.sets
+      .where('sessionExerciseId')
+      .equals(se.id)
+      .toArray();
+
+    for (const set of sets) {
+      if (set.isWarmup) continue;
+
+      // Detect and save weight/reps/e1rm PRs
+      if (set.weight && set.reps) {
+        const canCalculatePR = ['standard', 'failure', 'forcedreps'].includes(
+          set.intensityTechnique ?? 'standard'
+        );
+        if (canCalculatePR) {
+          await detectAndSavePRs(set, se.exerciseId);
+        }
+      }
+
+      // Detect and save progression level-ups
+      if (set.weight || set.reps || set.time || set.distance) {
+        await detectAndSaveProgressionAdvancements(se.exerciseId, set.id);
+      }
+    }
+  }
 
   await db.sessions.update(sessionId, {
     status: 'completed',

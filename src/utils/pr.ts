@@ -139,6 +139,30 @@ export async function detectAndSavePRs(
 }
 
 /**
+ * Detect PRs and return them as PR objects WITHOUT saving to DB.
+ * Used during active workout to show live PR badges.
+ */
+export async function detectPRsPreview(
+  set: Set,
+  exerciseId: string
+): Promise<PR[]> {
+  const results = await detectPRs(set, exerciseId);
+  if (results.length === 0) return [];
+
+  const now = Date.now();
+  return results.map((result) => ({
+    id: `preview-${set.id}-${result.type}`,
+    exerciseId,
+    setId: set.id,
+    type: result.type,
+    value: result.value,
+    previousValue: result.previousValue,
+    achievedAt: now,
+    createdAt: now,
+  }));
+}
+
+/**
  * Format PR type for display
  */
 export function formatPRType(type: PRType): string {

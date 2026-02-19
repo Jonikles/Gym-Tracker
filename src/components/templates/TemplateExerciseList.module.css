@@ -20,34 +20,23 @@
   gap: var(--space-sm);
 }
 
-.orderButtons {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.orderBtn {
-  width: 24px;
-  height: 20px;
-  padding: 0;
-  font-size: var(--text-xs);
-  font-family: inherit;
-  background-color: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+.dragHandle {
+  cursor: grab;
+  font-size: var(--text-lg);
   color: var(--color-text-muted);
-  transition: all var(--transition-fast);
+  user-select: none;
+  padding: 0 var(--space-xs);
+  line-height: 1;
+  letter-spacing: 2px;
 }
 
-.orderBtn:hover:not(:disabled) {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+.dragHandle:active {
+  cursor: grabbing;
 }
 
-.orderBtn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
+.dragging {
+  opacity: 0.5;
+  border-style: dashed;
 }
 
 .exerciseName {

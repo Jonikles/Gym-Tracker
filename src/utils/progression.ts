@@ -132,3 +132,28 @@ export async function detectAndSaveProgressionAdvancements(
   if (advancements.length === 0) return [];
   return saveProgressionAdvancements(advancements, exerciseId, setId);
 }
+
+/**
+ * Detect progression advancements and return as PR objects WITHOUT saving.
+ * Used during active workout to show live level-up badges.
+ */
+export async function detectProgressionAdvancementsPreview(
+  exerciseId: string,
+  setId: string
+): Promise<PR[]> {
+  const advancements = await detectProgressionAdvancements(exerciseId);
+  if (advancements.length === 0) return [];
+
+  const now = Date.now();
+  return advancements.map((advancement) => ({
+    id: `preview-prog-${setId}-${advancement.progressionId}`,
+    exerciseId,
+    setId,
+    type: 'progression' as const,
+    value: advancement.newLevel,
+    previousValue: advancement.previousLevel > 0 ? advancement.previousLevel : undefined,
+    progressionId: advancement.progressionId,
+    achievedAt: now,
+    createdAt: now,
+  }));
+}

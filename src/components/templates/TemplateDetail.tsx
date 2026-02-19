@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button, ConfirmDialog, Modal } from '../common';
-import { TemplateForm } from './TemplateForm';
 import { useExercise } from '../../hooks/useExercises';
 import {
   useTemplate,
@@ -47,7 +46,6 @@ interface TemplateDetailProps {
 export function TemplateDetail({ templateId }: TemplateDetailProps) {
   const navigate = useNavigate();
   const template = useTemplate(templateId);
-  const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showRoutineWarning, setShowRoutineWarning] = useState(false);
@@ -93,19 +91,6 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
 
   const sortedExercises = [...template.exercises].sort((a, b) => a.order - b.order);
   const totalSets = template.exercises.reduce((sum, e) => sum + e.sets.length, 0);
-
-  if (isEditing) {
-    return (
-      <div className={styles.container}>
-        <header className={styles.header}>
-          <Button variant="ghost" onClick={() => setIsEditing(false)}>
-            ← Cancel Edit
-          </Button>
-        </header>
-        <TemplateForm template={template} onSave={() => setIsEditing(false)} />
-      </div>
-    );
-  }
 
   return (
     <div className={styles.container}>

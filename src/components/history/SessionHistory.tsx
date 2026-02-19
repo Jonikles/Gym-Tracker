@@ -42,7 +42,6 @@ function SessionCard({ session, routineName, onClick }: SessionCardProps) {
       <div className={styles.cardHeader}>
         <span className={styles.date}>{formatDate(session.startedAt)}</span>
         <span className={styles.time}>{formatTime(session.startedAt)}</span>
-        {!session.completedAt && <span className={styles.incomplete}>Incomplete</span>}
       </div>
       <div className={styles.cardBody}>
         <span className={styles.routineName}>{routineName ?? 'Blank Workout'}</span>
@@ -61,7 +60,7 @@ export function SessionHistory() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const routines = useRoutines();
-  const allSessions = useSessions();
+  const allSessions = useSessions({ completed: true });
 
   // Create routine name map
   const routineMap = useMemo(() => {

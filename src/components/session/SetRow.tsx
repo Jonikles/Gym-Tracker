@@ -3,8 +3,8 @@ import { Input, Button } from '../common';
 import { PRNotification } from './PRNotification';
 import type { Set, IntensityTechnique, ExerciseField, PR, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, ClusterTechniqueData, PartialsTechniqueData } from '../../types';
 import { updateSet, deleteSet } from '../../hooks/useSets';
-import { detectAndSavePRs } from '../../utils/pr';
-import { detectAndSaveProgressionAdvancements } from '../../utils/progression';
+import { detectPRsPreview } from '../../utils/pr';
+import { detectProgressionAdvancementsPreview } from '../../utils/progression';
 import styles from './SetRow.module.css';
 
 interface SetRowProps {
@@ -215,6 +215,7 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
       // Check for PRs only if not warmup and values have changed
       // Only for standard/failure/forcedreps (e1RM calculation)
+      // NOTE: PRs are only previewed here — actual saves happen on session completion
       const checkKey = `${parsedWeight}-${parsedReps}-${isWarmup}-${technique}`;
       const canCalculatePR = ['standard', 'failure', 'forcedreps'].includes(technique);
       const allPRs: PR[] = [];
@@ -232,13 +233,13 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
           techniqueData,
         };
 
-        const prs = await detectAndSavePRs(tempSet, exerciseId);
+        const prs = await detectPRsPreview(tempSet, exerciseId);
         if (!cancelled) allPRs.push(...prs);
       }
 
       // Check for progression level-ups (any non-warmup set counts)
       if (!isWarmup && (parsedWeight || parsedReps || parsedTime || parsedDistance)) {
-        const progressionPRs = await detectAndSaveProgressionAdvancements(exerciseId, set.id);
+        const progressionPRs = await detectProgressionAdvancementsPreview(exerciseId, set.id);
         if (!cancelled) allPRs.push(...progressionPRs);
       }
 

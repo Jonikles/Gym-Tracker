@@ -139,16 +139,20 @@ interface TemplateExerciseRowProps {
   exercise: TemplateExercise;
   onUpdate: (updates: Partial<TemplateExercise>) => void;
   onRemove: () => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
+  isDragging?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: () => void;
 }
 
 function TemplateExerciseRow({
   exercise,
   onUpdate,
   onRemove,
-  onMoveUp,
-  onMoveDown,
+  isDragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
 }: TemplateExerciseRowProps) {
   const exerciseData = useExercise(exercise.exerciseId);
   const [showNotes, setShowNotes] = useState(!!exercise.notes);
@@ -177,28 +181,15 @@ function TemplateExerciseRow({
   };
 
   return (
-    <div className={styles.exerciseRow}>
+    <div
+      className={`${styles.exerciseRow} ${isDragging ? styles.dragging : ''}`}
+      draggable={!!onDragStart}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <div className={styles.exerciseHeader}>
-        <div className={styles.orderButtons}>
-          <button
-            type="button"
-            className={styles.orderBtn}
-            onClick={onMoveUp}
-            disabled={!onMoveUp}
-            title="Move up"
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            className={styles.orderBtn}
-            onClick={onMoveDown}
-            disabled={!onMoveDown}
-            title="Move down"
-          >
-            ↓
-          </button>
-        </div>
+        {onDragStart && <span className={styles.dragHandle}>⋮⋮</span>}
         <span className={styles.exerciseName}>
           {exerciseData?.name ?? 'Loading...'}
         </span>
@@ -301,10 +292,32 @@ export function TemplateExerciseList({
   onReorder,
   onAddClick,
 }: TemplateExerciseListProps) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const sortedExercises = [...exercises].sort((a, b) => a.order - b.order);
 
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    // Reorder live as user drags
+    if (dragIndex !== null && dragIndex !== index) {
+      onReorder(dragIndex, index);
+      setDragIndex(index);
+    }
+  };
+
+  const handleDrop = () => {
+    setDragIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragIndex(null);
+  };
+
   return (
-    <div className={styles.list}>
+    <div className={styles.list} onDragEnd={handleDragEnd}>
       {sortedExercises.length === 0 ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>No exercises added yet</p>
@@ -320,12 +333,10 @@ export function TemplateExerciseList({
               exercise={exercise}
               onUpdate={(updates) => onUpdate(exercise.exerciseId, updates)}
               onRemove={() => onRemove(exercise.exerciseId)}
-              onMoveUp={index > 0 ? () => onReorder(index, index - 1) : undefined}
-              onMoveDown={
-                index < sortedExercises.length - 1
-                  ? () => onReorder(index, index + 1)
-                  : undefined
-              }
+              isDragging={dragIndex === index}
+              onDragStart={() => handleDragStart(index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDrop={handleDrop}
             />
           ))}
           <Button variant="secondary" onClick={onAddClick} className={styles.addExerciseButton}>
