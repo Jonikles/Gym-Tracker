@@ -66,6 +66,16 @@
   background-color: var(--pr-e1rm);
 }
 
+.progression {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.progression .badge {
+  background-color: #a855f7;
+}
+
 .type {
   font-weight: 600;
 }

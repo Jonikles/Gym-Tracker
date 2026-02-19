@@ -6,7 +6,7 @@ import { matchesAllWords } from '../utils/search';
 /**
  * Sort options for exercises
  */
-export type ExerciseSortOption = 'name-asc' | 'name-desc';
+export type ExerciseSortOption = 'name-asc' | 'name-desc' | 'level-asc' | 'level-desc';
 
 /**
  * Filter mode for multi-select filters
@@ -26,6 +26,7 @@ export interface ExerciseFilters {
   includeArchived?: boolean;
   searchQuery?: string;
   sort?: ExerciseSortOption;
+  progressionId?: string;
 }
 
 /**
@@ -102,12 +103,23 @@ export function useExercises(filters?: ExerciseFilters) {
           results = results.filter((e) => matchesAllWords(e.name, filters.searchQuery!));
       }
 
-    // Sort by name (A-Z or Z-A)
+    // Filter by progression
+    if (filters?.progressionId) {
+      results = results.filter((e) =>
+        e.progressionMemberships?.some((pm) => pm.progressionId === filters.progressionId)
+      );
+    }
+
+    // Sort
     const sortOption = filters?.sort ?? 'name-asc';
     if (sortOption === 'name-asc') {
       results.sort((a, b) => a.name.localeCompare(b.name));
-    } else {
+    } else if (sortOption === 'name-desc') {
       results.sort((a, b) => b.name.localeCompare(a.name));
+    } else if (sortOption === 'level-asc') {
+      results.sort((a, b) => (a.progressionLevel ?? 999) - (b.progressionLevel ?? 999));
+    } else if (sortOption === 'level-desc') {
+      results.sort((a, b) => (b.progressionLevel ?? 0) - (a.progressionLevel ?? 0));
     }
 
     return results;
@@ -119,6 +131,7 @@ export function useExercises(filters?: ExerciseFilters) {
     filters?.includeArchived,
     filters?.searchQuery,
     filters?.sort,
+    filters?.progressionId,
   ]);
 
   return exercises ?? [];

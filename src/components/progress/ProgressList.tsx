@@ -73,9 +73,6 @@ export function ProgressList() {
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Progress</h1>
-        <span className={styles.count}>
-          {filteredExercises.length} exercises with data
-        </span>
       </header>
 
       <div className={styles.filters}>

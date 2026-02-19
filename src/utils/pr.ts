@@ -149,6 +149,8 @@ export function formatPRType(type: PRType): string {
       return 'Reps';
     case 'e1rm':
       return 'e1RM';
+    case 'progression':
+      return 'Level Up';
     default:
       return type;
   }
@@ -165,6 +167,8 @@ export function formatPRValue(type: PRType, value: number): string {
       return `${value} reps`;
     case 'e1rm':
       return `${value.toFixed(1)}kg`;
+    case 'progression':
+      return `Lv.${value}`;
     default:
       return String(value);
   }

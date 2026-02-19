@@ -3,6 +3,8 @@ export { Exercises } from './Exercises';
 export { ExerciseDetailPage } from './ExerciseDetail';
 export { Templates } from './Templates';
 export { TemplateDetailPage } from './TemplateDetail';
+export { TemplateEditPage } from './TemplateEdit';
+export { Progressions } from './Progressions';
 export { Routines } from './Routines';
 export { Workout } from './Workout';
 export { History } from './History';

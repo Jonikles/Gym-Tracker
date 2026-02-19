@@ -94,6 +94,7 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const [localSchedule, setLocalSchedule] = useState<RoutineDay[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
   // Initialize local schedule when routine loads
   useEffect(() => {
@@ -163,11 +164,15 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
     setHasChanges(true);
   };
 
+  // Auto-dismiss validation when a template is assigned
+  const hasAnyTemplate = localSchedule.some((d) => d.templateId);
+  if (validationMessage && hasAnyTemplate) {
+    setValidationMessage(null);
+  }
+
   const handleSave = async () => {
-    // Validate: at least one template must be assigned
-    const hasTemplate = localSchedule.some((d) => d.templateId);
-    if (!hasTemplate) {
-      alert('Assign at least one template to your routine');
+    if (!hasAnyTemplate) {
+      setValidationMessage('Assign at least one template to your routine');
       return;
     }
 
@@ -291,6 +296,14 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
         <section className={styles.calendarSection}>
           <RoutineCalendar routine={routine} />
         </section>
+      )}
+
+      {/* Validation message */}
+      {validationMessage && (
+        <div className={styles.validationMessage}>
+          <span>{validationMessage}</span>
+          <button className={styles.validationDismiss} onClick={() => setValidationMessage(null)} title="Dismiss">×</button>
+        </div>
       )}
 
       {/* Save/Cancel buttons - only show when there are changes */}

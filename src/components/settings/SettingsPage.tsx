@@ -121,12 +121,18 @@ export function SettingsPage() {
               <span className={styles.settingDesc}>Default weight step for progressive overload suggestions</span>
             </div>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={String(settings.weightIncrement)}
-              onChange={(e) =>
-                updateSetting('weightIncrement', parseFloat(e.target.value) || 2.5)
-              }
-              step="0.5"
+              onChange={(e) => {
+                const filtered = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+                const parsed = parseFloat(filtered);
+                if (!isNaN(parsed)) {
+                  updateSetting('weightIncrement', parsed);
+                } else if (filtered === '' || filtered === '.') {
+                  updateSetting('weightIncrement', 0);
+                }
+              }}
               style={{ width: 100 }}
             />
           </div>

@@ -222,8 +222,29 @@ html {
   padding: var(--space-xl);
 }
 
-.progressionFilter {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
+.levelChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.levelChip {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.levelChip:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-text-muted);
 }

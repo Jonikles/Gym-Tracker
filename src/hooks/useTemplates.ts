@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import type { Template, TemplateExercise } from '../types';
+import type { Template, TemplateExercise, Routine } from '../types';
 
 /**
  * Query all templates with optional filters
@@ -151,9 +151,48 @@ export async function duplicateTemplate(id: string): Promise<string> {
 }
 
 /**
- * Delete a template permanently
+ * Find all routines that reference a given template
+ */
+export async function getRoutinesUsingTemplate(templateId: string): Promise<Routine[]> {
+  const allRoutines = await db.routines.toArray();
+  return allRoutines.filter((r) =>
+    r.schedule.some((day) => day.templateId === templateId)
+  );
+}
+
+/**
+ * Remove a template reference from all routines (set those days back to rest days).
+ * If removing the template leaves a routine with ALL rest days (no templates left),
+ * the routine is automatically deleted.
+ */
+export async function removeTemplateFromRoutines(templateId: string): Promise<void> {
+  const affectedRoutines = await getRoutinesUsingTemplate(templateId);
+  for (const routine of affectedRoutines) {
+    const updatedSchedule = routine.schedule.map((day) =>
+      day.templateId === templateId
+        ? { ...day, templateId: undefined, label: undefined }
+        : day
+    );
+
+    // Check if the routine would become all rest days
+    const hasAnyTemplate = updatedSchedule.some((day) => day.templateId);
+    if (!hasAnyTemplate) {
+      // Delete the routine entirely — it has no workout days left
+      await db.routines.delete(routine.id);
+    } else {
+      await db.routines.update(routine.id, {
+        schedule: updatedSchedule,
+        updatedAt: Date.now(),
+      });
+    }
+  }
+}
+
+/**
+ * Delete a template permanently and clean up routine references
  */
 export async function deleteTemplate(id: string): Promise<void> {
+  await removeTemplateFromRoutines(id);
   await db.templates.delete(id);
 }
 

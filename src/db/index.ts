@@ -58,6 +58,20 @@ export class GymTrackerDB extends Dexie {
       // Migration handled in migrations.ts
       console.log('Upgrading database to version 3...');
     });
+
+    // Version 4 - Added progressionMemberships to exercises, progression PR type
+    this.version(4).stores({
+      exercises: 'id, name, parentId, *muscleGroups, equipment, isArchived',
+      templates: 'id, name, isArchived',
+      routines: 'id, name, type, isArchived',
+      sessions: 'id, routineId, templateId, startedAt, completedAt',
+      sessionExercises: 'id, sessionId, exerciseId, groupId',
+      sets: 'id, sessionExerciseId, order',
+      prs: 'id, exerciseId, type, achievedAt',
+      settings: 'key',
+    }).upgrade(async () => {
+      console.log('Upgrading database to version 4 - progression exercises...');
+    });
   }
 }
 

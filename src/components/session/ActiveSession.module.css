@@ -32,6 +32,10 @@
   color: var(--color-text-secondary);
 }
 
+.timerRow {
+  margin-top: var(--space-xs);
+}
+
 .timer {
   color: var(--color-success);
   font-weight: 600;
@@ -109,7 +113,8 @@
 }
 
 .validationMessage {
-  padding: var(--space-sm) var(--space-md);
+  position: relative;
+  padding: var(--space-sm) var(--space-2xl);
   background-color: rgba(239, 68, 68, 0.15);
   border: 1px solid var(--color-danger, #ef4444);
   border-radius: var(--radius-md);
@@ -117,6 +122,26 @@
   font-size: var(--text-sm);
   font-weight: 500;
   text-align: center;
+}
+
+.validationDismiss {
+  position: absolute;
+  right: var(--space-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-danger, #ef4444);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+
+.validationDismiss:hover {
+  opacity: 1;
 }
 
 @media (max-width: 600px) {

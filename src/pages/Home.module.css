@@ -17,14 +17,21 @@
 .title:hover{
     text-decoration: underline;
 }
+.RestDaySubtitle {
+    font-size: 1.75rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
 
-.subtitle {
+
+
+.WorkoutDaySubtitle {
   font-size: 1.75rem;
   color: var(--color-text-secondary);
   margin: 0;
 }
 
-.subtitle:hover{
+.WorkoutDaySubtitle:hover{
     text-decoration: underline;
 }
 

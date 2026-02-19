@@ -4,7 +4,7 @@ import { runMigrations, isFreshInstall } from './db/migrations';
 import { seedDatabase } from './db/seed';
 import { Nav } from './components/common';
 import { SessionProvider } from './context/SessionContext';
-import { Home, Exercises, ExerciseDetailPage, Templates, TemplateDetailPage, Routines, Workout, History, Progress, Analytics, Settings } from './pages';
+import { Home, Exercises, ExerciseDetailPage, Templates, TemplateDetailPage, TemplateEditPage, Progressions, Routines, Workout, History, Progress, Analytics, Settings } from './pages';
 import './styles/global.css';
 import './styles/theme.css';
 
@@ -16,11 +16,13 @@ function App() {
   useEffect(() => {
     async function initializeDatabase() {
       try {
-        // Run migrations
+        // Check fresh install BEFORE migrations (migration adds progression exercises)
+        const fresh = await isFreshInstall();
+
+        // Run migrations (for existing users upgrading)
         await runMigrations();
 
         // Seed if fresh install
-        const fresh = await isFreshInstall();
         if (fresh) {
           await seedDatabase();
         }
@@ -63,6 +65,9 @@ function App() {
           <Route path="/exercises/:id" element={<ExerciseDetailPage />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/templates/:id" element={<TemplateDetailPage />} />
+          <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
+          <Route path="/progressions" element={<Progressions />} />
+          <Route path="/progressions/:progressionId" element={<Progressions />} />
           <Route path="/routines" element={<Routines />} />
           <Route path="/routines/:id" element={<Routines />} />
           <Route path="/workout" element={<Workout />} />

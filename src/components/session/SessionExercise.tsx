@@ -53,18 +53,13 @@ export function SessionExercise({
   const defaultFields: ExerciseField[] = exercise?.defaultFields ?? ['weight', 'reps'];
 
   const handleAddSet = useCallback(async () => {
-    // Pre-fill from last set if exists, or from template defaults
-    const lastSet = sets[sets.length - 1];
-    // Get default technique from template's first working set
-    const firstWorkingTemplateSet = templateExercise?.sets.find(s => !s.isWarmup);
+    // User-added sets are always blank — template only defines initial sets
     await createSet({
       sessionExerciseId: sessionExercise.id,
-      weight: lastSet?.weight ?? templateExercise?.weight,
-      reps: lastSet?.reps,
       isWarmup: false,
-      intensityTechnique: firstWorkingTemplateSet?.intensityTechnique ?? 'standard',
+      intensityTechnique: 'standard',
     });
-  }, [sessionExercise.id, sets, templateExercise]);
+  }, [sessionExercise.id]);
 
   const handleQuickFill = useCallback(async () => {
     const filled = await quickFillFromPrevious(sessionExercise.id, sessionExercise.exerciseId);

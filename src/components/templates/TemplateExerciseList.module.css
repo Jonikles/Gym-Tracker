@@ -82,6 +82,71 @@
   width: 100px;
 }
 
+/* Target reps split input: two fields sharing an edge */
+.targetRepsGroup {
+  display: flex;
+  align-items: center;
+  width: 120px;
+}
+
+.targetRepsMin,
+.targetRepsMax {
+  width: 42px;
+  padding: var(--space-sm);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  text-align: center;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  transition: border-color var(--transition-fast);
+}
+
+.targetRepsMin {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  border-right: none;
+}
+
+.targetRepsMax {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-left: none;
+}
+
+.targetRepsMin:focus,
+.targetRepsMax:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  z-index: 1;
+}
+
+.targetRepsMin:focus {
+  border-right: 1px solid var(--color-accent);
+}
+
+.targetRepsMax:focus {
+  border-left: 1px solid var(--color-accent);
+}
+
+.targetRepsDash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  padding: var(--space-sm) 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-tertiary);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.targetRepsMin::placeholder,
+.targetRepsMax::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
 /* Sets section */
 .setsSection {
   display: flex;
@@ -224,53 +289,10 @@
   color: var(--color-text-muted);
 }
 
-.addExerciseBtn {
-  width: 48px;
-  height: 48px;
-  padding: 3;
-  font-size: var(--text-2xl);
-  font-family: inherit;
-  background-color: var(--color-bg-tertiary);
-  border: 2px dashed var(--color-border);
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.addExerciseBtn:hover {
-  background-color: var(--color-bg-secondary);
-  border-color: var(--color-text-secondary);
-  color: var(--color-text);
-}
-
-.addExerciseBtnBottom {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  font-size: var(--text-xl);
-  font-family: inherit;
-  background-color: var(--color-bg-tertiary);
-  border: 2px dashed var(--color-border);
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+.addExerciseButton {
+  width: 100%;
+  max-width: 300px;
   margin: var(--space-sm) auto 0;
-}
-
-.addExerciseBtnBottom:hover {
-  background-color: var(--color-bg-secondary);
-  border-color: var(--color-text-secondary);
-  color: var(--color-text);
 }
 
 @media (max-width: 600px) {

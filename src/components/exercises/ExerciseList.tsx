@@ -13,6 +13,7 @@ import {
   type ExerciseSortOption,
   type FilterMode,
 } from '../../hooks/useExercises';
+import { PROGRESSION_DEFINITIONS } from '../../data/progressions';
 import type { MuscleGroup } from '../../types';
 import styles from './ExerciseList.module.css';
 
@@ -29,6 +30,9 @@ function formatLabel(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+// Max level across all progressions (covers OG2 ranges)
+const ALL_LEVELS = Array.from({ length: 16 }, (_, i) => i + 1);
+
 export function ExerciseList() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,12 +42,12 @@ export function ExerciseList() {
   const [movementFilter, setMovementFilter] = useState('');
   const [sortOption, setSortOption] = useState<ExerciseSortOption>('name-asc');
   const [showArchived, setShowArchived] = useState(false);
-  const [showProgressionOnly, setShowProgressionOnly] = useState(false);
-  const [minLevel, setMinLevel] = useState<number | ''>('');
-  const [maxLevel, setMaxLevel] = useState<number | ''>('');
+  const [progressionFilter, setProgressionFilter] = useState('');
+  const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isMuscleFilterExpanded, setIsMuscleFilterExpanded] = useState(false);
+  const [isLevelFilterExpanded, setIsLevelFilterExpanded] = useState(false);
 
   const filters: ExerciseFilters = {
     searchQuery,
@@ -53,16 +57,17 @@ export function ExerciseList() {
     movementPattern: movementFilter || undefined,
     includeArchived: showArchived,
     sort: sortOption,
-    
+    progressionId: progressionFilter || undefined,
   };
 
   const exercises = useExercises(filters);
-    const filteredExercises = exercises.filter((e) => {
-        if (showProgressionOnly && !e.progressionLevel) return false;
-        if (minLevel !== '' && (!e.progressionLevel || e.progressionLevel < minLevel)) return false;
-        if (maxLevel !== '' && (!e.progressionLevel || e.progressionLevel > maxLevel)) return false;
-        return true;
-    });
+  const filteredExercises = exercises.filter((e) => {
+    if (selectedLevels.length > 0) {
+      if (!e.progressionLevel) return false;
+      if (!selectedLevels.includes(e.progressionLevel)) return false;
+    }
+    return true;
+  });
   const muscleGroups = useUniqueMuscleGroups() ?? [];
   const equipment = useUniqueEquipment() ?? [];
   const movements = useUniqueMovementPatterns() ?? [];
@@ -81,17 +86,24 @@ export function ExerciseList() {
     );
   };
 
+  const handleLevelToggle = (level: number) => {
+    setSelectedLevels((prev) =>
+      prev.includes(level)
+        ? prev.filter((l) => l !== level)
+        : [...prev, level].sort((a, b) => a - b)
+    );
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
     setMuscleGroupFilters([]);
     setEquipmentFilter('');
     setMovementFilter('');
-    setShowProgressionOnly(false);
-    setMinLevel('');
-    setMaxLevel('');
+    setProgressionFilter('');
+    setSelectedLevels([]);
   };
 
-    const hasFilters = searchQuery || muscleGroupFilters.length > 0 || equipmentFilter || movementFilter || showProgressionOnly || minLevel || maxLevel;
+  const hasFilters = searchQuery || muscleGroupFilters.length > 0 || equipmentFilter || movementFilter || progressionFilter || selectedLevels.length > 0;
 
   return (
     <div className={styles.container}>
@@ -121,11 +133,19 @@ export function ExerciseList() {
           placeholder="All movements"
         />
         <Select
+          value={progressionFilter}
+          onChange={(e) => setProgressionFilter(e.target.value)}
+          options={PROGRESSION_DEFINITIONS.map((p) => ({ value: p.id, label: p.name }))}
+          placeholder="All progressions"
+        />
+        <Select
           value={sortOption}
           onChange={(e) => setSortOption(e.target.value as ExerciseSortOption)}
           options={[
             { value: 'name-asc', label: 'Name A-Z' },
             { value: 'name-desc', label: 'Name Z-A' },
+            { value: 'level-asc', label: 'Level Low\u2192High' },
+            { value: 'level-desc', label: 'Level High\u2192Low' },
           ]}
           placeholder="Sort by"
         />
@@ -145,9 +165,9 @@ export function ExerciseList() {
           <span className={styles.muscleFilterLabel}>
             Muscles: {muscleGroupFilters.length > 0 ? `${muscleGroupFilters.length} selected` : 'All'}
           </span>
-          <span className={styles.chevron}>{isMuscleFilterExpanded ? '▲' : '▼'}</span>
+          <span className={styles.chevron}>{isMuscleFilterExpanded ? '\u25B2' : '\u25BC'}</span>
         </button>
-        
+
         {isMuscleFilterExpanded && (
           <div className={styles.muscleFilterDropdown}>
             {muscleGroupFilters.length > 1 && (
@@ -188,40 +208,43 @@ export function ExerciseList() {
                 Clear muscle filters
               </button>
             )}
-                      {/* Progression Level Filter */}
-                      <div className={styles.progressionFilter}>
-                          <label className={styles.toggle}>
-                              <input
-                                  className={styles.toggleInput}
-                                  type="checkbox"
-                                  checked={showProgressionOnly}
-                                  onChange={(e) => setShowProgressionOnly(e.target.checked)}
-                              />
-                              <span>Progression exercises only</span>
-                          </label>
-                          {showProgressionOnly && (
-                              <Select
-                                  value={minLevel !== '' && maxLevel !== '' ? `${minLevel}-${maxLevel}` : ''}
-                                  onChange={(e) => {
-                                      if (e.target.value === '') {
-                                          setMinLevel('');
-                                          setMaxLevel('');
-                                      } else {
-                                          const [min, max] = e.target.value.split('-').map(Number);
-                                          setMinLevel(min);
-                                          setMaxLevel(max);
-                                      }
-                                  }}
-                                  options={[
-                                      { value: '1-3', label: 'Beginner (1-3)' },
-                                      { value: '4-6', label: 'Intermediate (4-6)' },
-                                      { value: '7-9', label: 'Advanced (7-9)' },
-                                      { value: '10-16', label: 'Elite (10+)' },
-                                  ]}
-                                  placeholder="All levels"
-                              />
-                          )}
-                      </div>
+          </div>
+        )}
+      </div>
+
+      {/* Level Multi-Select - Collapsible */}
+      <div className={styles.muscleFilterSection}>
+        <button
+          className={styles.muscleFilterToggle}
+          onClick={() => setIsLevelFilterExpanded(!isLevelFilterExpanded)}
+        >
+          <span className={styles.muscleFilterLabel}>
+            Level: {selectedLevels.length > 0 ? selectedLevels.join(', ') : 'All'}
+          </span>
+          <span className={styles.chevron}>{isLevelFilterExpanded ? '\u25B2' : '\u25BC'}</span>
+        </button>
+
+        {isLevelFilterExpanded && (
+          <div className={styles.muscleFilterDropdown}>
+            <div className={styles.levelChips}>
+              {ALL_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  className={`${styles.levelChip} ${selectedLevels.includes(level) ? styles.muscleChipActive : ''}`}
+                  onClick={() => handleLevelToggle(level)}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+            {selectedLevels.length > 0 && (
+              <button
+                className={styles.clearMusclesBtn}
+                onClick={() => setSelectedLevels([])}
+              >
+                Clear level filters
+              </button>
+            )}
           </div>
         )}
       </div>

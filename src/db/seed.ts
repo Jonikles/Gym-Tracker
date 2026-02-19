@@ -1,5 +1,6 @@
 import { db } from './index';
-import type { Exercise, Setting, MuscleGroup, ExerciseField } from '../types';
+import type { Exercise, Setting, MuscleGroup, ExerciseField, ProgressionMembership } from '../types';
+import { PROGRESSION_EXERCISES } from '../data/progression-exercises';
 
 /**
  * Helper type for exercise definition
@@ -11,6 +12,7 @@ interface ExerciseDefinition {
   equipment: string;
   defaultFields: ExerciseField[];
   progressionLevel?: number;
+  progressionMemberships?: ProgressionMembership[];
 }
 
 /**
@@ -364,18 +366,52 @@ const defaultSettings: Omit<Setting, 'updatedAt'>[] = [
 export async function seedDatabase(): Promise<void> {
   const now = Date.now();
 
-  // Seed exercises
-  const exercisesToInsert: Exercise[] = presetExercises.map((exercise) => ({
-    ...exercise,
-    id: crypto.randomUUID(),
-    isPreset: true,
-    isArchived: false,
-    createdAt: now,
-    updatedAt: now,
-  }));
+  // Build a name map for deduplication (progression exercises override presets)
+  const progressionNameMap = new Map<string, typeof PROGRESSION_EXERCISES[number]>();
+  for (const pe of PROGRESSION_EXERCISES) {
+    progressionNameMap.set(pe.name.toLowerCase(), pe);
+  }
+
+  // Seed gym exercises, enriching any that match a progression exercise
+  const exercisesToInsert: Exercise[] = presetExercises.map((exercise) => {
+    const match = progressionNameMap.get(exercise.name.toLowerCase());
+    return {
+      ...exercise,
+      id: crypto.randomUUID(),
+      isPreset: true,
+      isArchived: false,
+      createdAt: now,
+      updatedAt: now,
+      ...(match ? {
+        progressionMemberships: match.progressionMemberships,
+        progressionLevel: match.progressionMemberships[0]?.level,
+      } : {}),
+    };
+  });
+
+  // Add progression exercises that aren't already in presets
+  const existingNames = new Set(presetExercises.map((e) => e.name.toLowerCase()));
+  for (const pe of PROGRESSION_EXERCISES) {
+    if (!existingNames.has(pe.name.toLowerCase())) {
+      exercisesToInsert.push({
+        id: crypto.randomUUID(),
+        name: pe.name,
+        muscleGroups: pe.muscleGroups,
+        movementPattern: pe.movementPattern,
+        equipment: pe.equipment,
+        defaultFields: pe.defaultFields,
+        progressionLevel: pe.progressionMemberships[0]?.level,
+        progressionMemberships: pe.progressionMemberships,
+        isPreset: true,
+        isArchived: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
 
   await db.exercises.bulkAdd(exercisesToInsert);
-  console.log(`Seeded ${exercisesToInsert.length} preset exercises`);
+  console.log(`Seeded ${exercisesToInsert.length} exercises (including progressions)`);
 
   // Seed default settings (use bulkPut to upsert - avoids conflict if settings exist)
   const settingsToInsert: Setting[] = defaultSettings.map((setting) => ({

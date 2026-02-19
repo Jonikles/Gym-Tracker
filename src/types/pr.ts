@@ -1,7 +1,7 @@
 /**
  * PR types that can be tracked
  */
-export type PRType = 'weight' | 'reps' | 'e1rm';
+export type PRType = 'weight' | 'reps' | 'e1rm' | 'progression';
 
 /**
  * PR entity - personal record history
@@ -13,6 +13,7 @@ export interface PR {
   type: PRType;
   value: number;
   previousValue?: number;
+  progressionId?: string;
   achievedAt: number;
   createdAt: number;
 }

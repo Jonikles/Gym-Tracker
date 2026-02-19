@@ -1,0 +1,147 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  flex: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.category {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.achievedBadge {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-bg);
+  white-space: nowrap;
+  align-self: center;
+}
+
+/* Chain layout */
+.chain {
+  display: flex;
+  flex-direction: column;
+}
+
+.levelGroup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.connector {
+  width: 2px;
+  height: var(--space-lg);
+  background: var(--color-border);
+  margin-left: 19px; /* center of the 40px level indicator */
+}
+
+.connectorAchieved {
+  background: var(--color-accent);
+}
+
+.levelRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.levelIndicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  flex-shrink: 0;
+}
+
+.levelAchieved {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.exerciseCards {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.exerciseCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .exerciseCard:hover {
+    background: var(--color-bg-tertiary);
+  }
+}
+
+.exerciseAchieved {
+  border-color: var(--color-accent);
+}
+
+.exerciseName {
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.exerciseMeta {
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.tag {
+  font-size: var(--text-xs);
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--space-xl);
+}

@@ -155,7 +155,7 @@ export function Home() {
               Current Routine: {activeRoutine.name}
             </Link>
           </h1>
-          <h2 className={styles.subtitle}>Rest Day 😴</h2>
+          <h2 className={styles.RestDaySubtitle}>Rest Day 😴</h2>
           <p className={styles.caption}>Take it easy today</p>
         </div>
 
@@ -177,15 +177,11 @@ export function Home() {
             Current Routine: {activeRoutine.name}
           </Link>
         </h1>
-        <h2 className={styles.subtitle}>
+        <h2 className={styles.WorkoutDaySubtitle}>
           <Link to={`/templates/${todaysWorkout.template.id}`}>
             Today: {todaysWorkout.template.name}
           </Link>
         </h2>
-        <p className={styles.caption}>
-          {todaysWorkout.template.exercises.length} exercises · {' '}
-          {todaysWorkout.template.exercises.reduce((sum, e) => sum + e.sets.length, 0)} sets
-        </p>
       </div>
 
       <div className={styles.startSection}>

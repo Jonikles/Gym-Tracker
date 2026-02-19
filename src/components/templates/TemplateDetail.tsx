@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button, ConfirmDialog } from '../common';
+import { useNavigate, Link } from 'react-router-dom';
+import { Button, ConfirmDialog, Modal } from '../common';
 import { TemplateForm } from './TemplateForm';
 import { useExercise } from '../../hooks/useExercises';
 import {
@@ -9,8 +9,9 @@ import {
   restoreTemplate,
   duplicateTemplate,
   deleteTemplate,
+  getRoutinesUsingTemplate,
 } from '../../hooks/useTemplates';
-import type { TemplateExercise } from '../../types';
+import type { TemplateExercise, Routine } from '../../types';
 import styles from './TemplateDetail.module.css';
 
 function ExerciseSummary({ exercise }: { exercise: TemplateExercise }) {
@@ -20,7 +21,7 @@ function ExerciseSummary({ exercise }: { exercise: TemplateExercise }) {
   const setCount = exercise.sets.length;
   const warmupCount = exercise.sets.filter(s => s.isWarmup).length;
   const targetReps = exercise.targetReps;
-  
+
   // Check for non-standard techniques
   const techniques = [...new Set(exercise.sets.map(s => s.intensityTechnique).filter(t => t !== 'standard'))];
 
@@ -49,6 +50,8 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showRoutineWarning, setShowRoutineWarning] = useState(false);
+  const [affectedRoutines, setAffectedRoutines] = useState<Routine[]>([]);
 
   if (!template) {
     return (
@@ -72,7 +75,18 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
     await restoreTemplate(templateId);
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = async () => {
+    // Check if any routines use this template
+    const routines = await getRoutinesUsingTemplate(templateId);
+    if (routines.length > 0) {
+      setAffectedRoutines(routines);
+      setShowRoutineWarning(true);
+    } else {
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
     await deleteTemplate(templateId);
     navigate('/templates');
   };
@@ -110,7 +124,7 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
             )}
           </div>
         </div>
-        
+
         <div className={styles.actions}>
             {!template.isArchived && (
                 <>
@@ -123,7 +137,7 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
                 <Button variant="ghost" onClick={() => setShowArchiveConfirm(true)}>
                     Archive
                 </Button>
-                <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+                <Button variant="danger" onClick={handleDeleteClick}>
                     Delete
                 </Button>
                 </>
@@ -133,7 +147,7 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
                 <Button variant="secondary" onClick={handleRestore}>
                     Restore
                 </Button>
-                <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+                <Button variant="danger" onClick={handleDeleteClick}>
                     Delete
                 </Button>
                 </>
@@ -156,10 +170,47 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
         </div>
       </div>
 
+      {/* Routine warning dialog — shows affected routines with clickable links */}
+      <Modal
+        isOpen={showRoutineWarning}
+        onClose={() => setShowRoutineWarning(false)}
+        title="Template Used in Routines"
+      >
+        <div className={styles.routineWarning}>
+          <p className={styles.warningText}>
+            &ldquo;{template.name}&rdquo; is used in the following routines. Deleting it will remove it from these routines and set those days as rest days.
+          </p>
+          <div className={styles.routineList}>
+            {affectedRoutines.map((routine) => (
+              <Link
+                key={routine.id}
+                to={`/routines/${routine.id}`}
+                className={styles.routineLink}
+                onClick={() => setShowRoutineWarning(false)}
+              >
+                {routine.name}
+              </Link>
+            ))}
+          </div>
+          <div className={styles.warningActions}>
+            <Button variant="secondary" onClick={() => setShowRoutineWarning(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => {
+              setShowRoutineWarning(false);
+              handleDeleteConfirm();
+            }}>
+              Delete Anyway
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Simple delete confirm — no routines affected */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleDelete}
+        onConfirm={handleDeleteConfirm}
         title="Delete Template"
         message={`Permanently delete "${template.name}"? This cannot be undone.`}
         confirmLabel="Delete"

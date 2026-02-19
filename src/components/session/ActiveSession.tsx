@@ -56,6 +56,8 @@ export function ActiveSession() {
   const [elapsed, setElapsed] = useState(0);
   const [showValidation, setShowValidation] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  // Track which type of validation error is active: 'no-exercises' | 'no-sets' | 'empty-fields' | null
+  const [validationType, setValidationType] = useState<string | null>(null);
 
   // Get all sets for validation
   const allSets = useSessionSets(activeSession?.id) ?? [];
@@ -74,14 +76,59 @@ export function ActiveSession() {
     [sessionExercises.map((se) => se.exerciseId).join(',')]
   );
 
-  // Clear validation message when sets change (user is filling fields)
+  // Dismiss handler for the X button — always clears regardless of type
+  const dismissValidation = useCallback(() => {
+    setShowValidation(false);
+    setValidationMessage(null);
+    setValidationType(null);
+  }, []);
+
+  // Auto-dismiss "no-exercises" error when an exercise is added
   useEffect(() => {
-    if (showValidation) {
-      setShowValidation(false);
-      setValidationMessage(null);
+    if (validationType === 'no-exercises' && sessionExercises.length > 0) {
+      dismissValidation();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allSets.length, allSets.map(s => `${s.weight}-${s.reps}-${s.time}-${s.distance}`).join(',')]);
+  }, [sessionExercises.length]);
+
+  // Auto-dismiss "no-sets" error when ALL exercises have at least one set
+  useEffect(() => {
+    if (validationType !== 'no-sets' || sessionExercises.length === 0) return;
+
+    const allHaveSets = sessionExercises.every(
+      (se) => allSets.some((s) => s.sessionExerciseId === se.id)
+    );
+    if (allHaveSets) {
+      dismissValidation();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSets.length]);
+
+  // Auto-dismiss "empty-fields" error only when ALL fields are actually filled
+  const setsFieldSignature = allSets.map(s => `${s.weight}-${s.reps}-${s.time}-${s.distance}`).join(',');
+  useEffect(() => {
+    if (validationType !== 'empty-fields' || !exerciseFieldsMap) return;
+
+    // Re-check: are all fields now filled?
+    let stillHasEmpty = false;
+    for (const se of sessionExercises) {
+      const fields = exerciseFieldsMap.get(se.exerciseId) ?? ['weight', 'reps'];
+      const setsForExercise = allSets.filter((s) => s.sessionExerciseId === se.id);
+      for (const set of setsForExercise) {
+        for (const field of fields) {
+          if (field === 'weight' && (set.weight === undefined || set.weight === null)) stillHasEmpty = true;
+          if (field === 'reps' && (set.reps === undefined || set.reps === null)) stillHasEmpty = true;
+          if (field === 'time' && (set.time === undefined || set.time === null)) stillHasEmpty = true;
+          if (field === 'distance' && (set.distance === undefined || set.distance === null)) stillHasEmpty = true;
+        }
+      }
+    }
+
+    if (!stillHasEmpty) {
+      dismissValidation();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setsFieldSignature]);
 
   // Running timer
   useEffect(() => {
@@ -176,16 +223,29 @@ export function ActiveSession() {
 
   // Handle complete button click — validate all sets have required fields filled
   const handleCompleteClick = useCallback(() => {
-    if (!exerciseFieldsMap || sessionExercises.length === 0) {
-      setShowCompleteConfirm(true);
+    // Block completing an empty workout
+    if (sessionExercises.length === 0) {
+      setShowValidation(true);
+      setValidationMessage('Add at least one exercise before completing');
+      setValidationType('no-exercises');
       return;
     }
 
-    // Check every set against its exercise's required fields
+    if (!exerciseFieldsMap) {
+      return; // Fields map still loading, do nothing
+    }
+
+    // Check every exercise has at least one set, and every set has required fields filled
     let hasEmpty = false;
+    let hasExerciseWithNoSets = false;
     for (const se of sessionExercises) {
       const fields = exerciseFieldsMap.get(se.exerciseId) ?? ['weight', 'reps'];
       const setsForExercise = allSets.filter((s) => s.sessionExerciseId === se.id);
+
+      if (setsForExercise.length === 0) {
+        hasExerciseWithNoSets = true;
+        continue;
+      }
 
       for (const set of setsForExercise) {
         for (const field of fields) {
@@ -197,14 +257,23 @@ export function ActiveSession() {
       }
     }
 
+    if (hasExerciseWithNoSets) {
+      setShowValidation(true);
+      setValidationMessage('Every exercise needs at least one set');
+      setValidationType('no-sets');
+      return;
+    }
+
     if (hasEmpty) {
       setShowValidation(true);
       setValidationMessage('Fill in all set fields before completing');
+      setValidationType('empty-fields');
       return;
     }
 
     setShowValidation(false);
     setValidationMessage(null);
+    setValidationType(null);
     setShowCompleteConfirm(true);
   }, [exerciseFieldsMap, sessionExercises, allSets]);
 
@@ -227,7 +296,9 @@ export function ActiveSession() {
         <div>
           <h1 className={styles.title}>{title}</h1>
           <div className={styles.meta}>
-            <span>{new Date(activeSession.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>Started {new Date(activeSession.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <div className={styles.timerRow}>
             <span className={styles.timer}>{formatTime(elapsed)}</span>
           </div>
         </div>
@@ -249,7 +320,10 @@ export function ActiveSession() {
       </header>
 
       {validationMessage && (
-        <div className={styles.validationMessage}>{validationMessage}</div>
+        <div className={styles.validationMessage}>
+          <span>{validationMessage}</span>
+          <button className={styles.validationDismiss} onClick={dismissValidation} title="Dismiss">×</button>
+        </div>
       )}
 
       <div className={styles.exercises}>

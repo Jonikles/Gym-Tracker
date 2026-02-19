@@ -1,13 +1,18 @@
 .modal {
   position: fixed;
   max-width: 90vw;
-  max-height: 90vh;
   width: 500px;
   padding: 0;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background-color: var(--color-bg-secondary);
   color: var(--color-text);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-height: 80vh;
+  margin: 0;
+  overflow: hidden;
 }
 
 .modal::backdrop {
@@ -17,7 +22,7 @@
 .content {
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: 80vh;
 }
 
 .header {
@@ -58,4 +63,8 @@
 .body {
   padding: var(--space-lg);
   overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }

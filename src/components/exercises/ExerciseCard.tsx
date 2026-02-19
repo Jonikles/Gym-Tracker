@@ -1,4 +1,5 @@
 import type { Exercise } from '../../types';
+import { PROGRESSION_MAP } from '../../data/progressions';
 import { Card } from '../common';
 import styles from './ExerciseCard.module.css';
 
@@ -45,7 +46,18 @@ export function ExerciseCard({ exercise, onClick, showDetails = true }: Exercise
           {exercise.muscleGroups && exercise.muscleGroups.length > 2 && (
             <span className={styles.tag}>+{exercise.muscleGroups.length - 2}</span>
           )}
-            {exercise.progressionLevel && (
+            {exercise.progressionMemberships && exercise.progressionMemberships.length > 0 && (
+                <span className={styles.levelBadge}>
+                    Lvl {exercise.progressionMemberships[0].level}
+                    {exercise.progressionMemberships.length === 1 && (
+                        <> &middot; {PROGRESSION_MAP[exercise.progressionMemberships[0].progressionId]?.name ?? exercise.progressionMemberships[0].progressionId}</>
+                    )}
+                    {exercise.progressionMemberships.length > 1 && (
+                        <> &middot; {exercise.progressionMemberships.length} progressions</>
+                    )}
+                </span>
+            )}
+            {!exercise.progressionMemberships?.length && exercise.progressionLevel && (
                 <span className={styles.levelBadge}>
                     Lvl {exercise.progressionLevel}
                 </span>

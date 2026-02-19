@@ -85,6 +85,56 @@ function TemplateSetRow({ set, setNumber, onUpdate, onRemove, canRemove }: Templ
   );
 }
 
+// Split target reps input: two fields sharing an edge with a dash separator
+function TargetRepsInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  // Parse existing value like "8-12" or "8" into min/max
+  const parts = value.split('-').map(s => s.trim());
+  const minVal = parts[0] ?? '';
+  const maxVal = parts.length > 1 ? parts[1] : '';
+
+  const filterInt = (v: string) => v.replace(/[^0-9]/g, '');
+
+  const handleMinChange = (newMin: string) => {
+    const filtered = filterInt(newMin);
+    if (maxVal) {
+      onChange(`${filtered}-${maxVal}`);
+    } else {
+      onChange(filtered);
+    }
+  };
+
+  const handleMaxChange = (newMax: string) => {
+    const filtered = filterInt(newMax);
+    if (filtered) {
+      onChange(`${minVal}-${filtered}`);
+    } else {
+      onChange(minVal);
+    }
+  };
+
+  return (
+    <div className={styles.targetRepsGroup}>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={minVal}
+        onChange={(e) => handleMinChange(e.target.value)}
+        placeholder="min"
+        className={styles.targetRepsMin}
+      />
+      <span className={styles.targetRepsDash}>–</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        value={maxVal}
+        onChange={(e) => handleMaxChange(e.target.value)}
+        placeholder="max"
+        className={styles.targetRepsMax}
+      />
+    </div>
+  );
+}
+
 interface TemplateExerciseRowProps {
   exercise: TemplateExercise;
   onUpdate: (updates: Partial<TemplateExercise>) => void;
@@ -152,8 +202,8 @@ function TemplateExerciseRow({
         <span className={styles.exerciseName}>
           {exerciseData?.name ?? 'Loading...'}
         </span>
-        <Button variant="ghost" size="sm" onClick={onRemove}>
-          Remove
+        <Button variant="ghost" size="sm" onClick={onRemove} title="Remove exercise">
+          ×
         </Button>
       </div>
 
@@ -161,11 +211,9 @@ function TemplateExerciseRow({
       <div className={styles.exerciseSettings}>
         <div className={styles.settingField}>
           <label className={styles.settingLabel}>Target Reps</label>
-          <Input
-            placeholder="8-12"
+          <TargetRepsInput
             value={exercise.targetReps}
-            onChange={(e) => onUpdate({ targetReps: e.target.value })}
-            className={styles.repsInput}
+            onChange={(val) => onUpdate({ targetReps: val })}
           />
         </div>
         <div className={styles.settingField}>
@@ -260,13 +308,9 @@ export function TemplateExerciseList({
       {sortedExercises.length === 0 ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>No exercises added yet</p>
-          <button
-            type="button"
-            className={styles.addExerciseBtn}
-            onClick={onAddClick}
-          >
-            +
-          </button>
+          <Button variant="secondary" onClick={onAddClick} className={styles.addExerciseButton}>
+            + Add Exercise
+          </Button>
         </div>
       ) : (
         <>
@@ -284,13 +328,9 @@ export function TemplateExerciseList({
               }
             />
           ))}
-          <button
-            type="button"
-            className={styles.addExerciseBtnBottom}
-            onClick={onAddClick}
-          >
-            +
-          </button>
+          <Button variant="secondary" onClick={onAddClick} className={styles.addExerciseButton}>
+            + Add Exercise
+          </Button>
         </>
       )}
     </div>

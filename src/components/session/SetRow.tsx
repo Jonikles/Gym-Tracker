@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Input, Button } from '../common';
 import { PRNotification } from './PRNotification';
 import type { Set, IntensityTechnique, ExerciseField, PR, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, ClusterTechniqueData, PartialsTechniqueData } from '../../types';
 import { updateSet, deleteSet } from '../../hooks/useSets';
 import { detectAndSavePRs } from '../../utils/pr';
+import { detectAndSaveProgressionAdvancements } from '../../utils/progression';
 import styles from './SetRow.module.css';
 
 interface SetRowProps {
@@ -15,14 +16,17 @@ interface SetRowProps {
   showValidation?: boolean;
 }
 
-const INTENSITY_TECHNIQUES: { value: IntensityTechnique; label: string }[] = [
-  { value: 'standard', label: 'Standard' },
-  { value: 'failure', label: 'To Failure' },
-  { value: 'dropset', label: 'Drop Set' },
-  { value: 'myoreps', label: 'Myo Reps' },
-  { value: 'forcedreps', label: 'Forced Reps' },
-  { value: 'partials', label: 'Partials' },
-  { value: 'cluster', label: 'Cluster' },
+
+// All set types including warmup — used by the type picker
+const SET_TYPES: { value: string; label: string; short: string }[] = [
+  { value: 'warmup', label: 'Warmup', short: 'W' },
+  { value: 'standard', label: 'Standard', short: 'STD' },
+  { value: 'failure', label: 'To Failure', short: 'F' },
+  { value: 'dropset', label: 'Drop Set', short: 'DS' },
+  { value: 'myoreps', label: 'Myo Reps', short: 'MR' },
+  { value: 'forcedreps', label: 'Forced Reps', short: 'FR' },
+  { value: 'partials', label: 'Partials', short: 'PT' },
+  { value: 'cluster', label: 'Cluster', short: 'CL' },
 ];
 
 // Helper to check if technique data is MyoReps
@@ -45,16 +49,22 @@ function isPartialsData(data: TechniqueData | undefined): data is PartialsTechni
   return data !== undefined && 'mainReps' in data && 'partialReps' in data;
 }
 
+// Regex filters for numeric input — strips anything that isn't a valid number
+const filterDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+const filterInteger = (v: string) => v.replace(/[^0-9]/g, '');
+
 export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, showValidation }: SetRowProps) {
   const [weight, setWeight] = useState(set.weight?.toString() ?? '');
   const [reps, setReps] = useState(set.reps?.toString() ?? '');
   const [time, setTime] = useState(set.time?.toString() ?? '');
   const [distance, setDistance] = useState(set.distance?.toString() ?? '');
-  // Warmup and technique come from template, not editable during logging
-  const isWarmup = set.isWarmup;
-  const technique = set.intensityTechnique ?? 'standard';
+  // Warmup and technique are now editable via the type picker
+  const [isWarmup, setIsWarmup] = useState(set.isWarmup);
+  const [technique, setTechnique] = useState<IntensityTechnique>(set.intensityTechnique ?? 'standard');
+  const [showTypePicker, setShowTypePicker] = useState(false);
+  const typePickerRef = useRef<HTMLDivElement>(null);
   const [detectedPRs, setDetectedPRs] = useState<PR[]>([]);
-  
+
   // Technique-specific state
   // Myo Reps
   const [myoActivationReps, setMyoActivationReps] = useState<string>(
@@ -66,14 +76,14 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
   // Drop Set
   const [drops, setDrops] = useState<Array<{ weight: string; reps: string }>>(
-    isDropSetData(set.techniqueData) 
+    isDropSetData(set.techniqueData)
       ? set.techniqueData.drops.map(d => ({ weight: d.weight.toString(), reps: d.reps.toString() }))
       : [{ weight: weight, reps: reps }]
   );
 
   // Cluster
   const [clusters, setClusters] = useState<string[]>(
-    isClusterData(set.techniqueData) 
+    isClusterData(set.techniqueData)
       ? set.techniqueData.clusters.map(String)
       : [reps]
   );
@@ -91,6 +101,38 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
   // Track if we've already checked for PRs with current values
   const lastCheckedRef = useRef<string>('');
+
+  // Close type picker when clicking outside
+  useEffect(() => {
+    if (!showTypePicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (typePickerRef.current && !typePickerRef.current.contains(e.target as Node)) {
+        setShowTypePicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showTypePicker]);
+
+  // Handle type change from the picker
+  const handleTypeChange = useCallback(async (typeValue: string) => {
+    setShowTypePicker(false);
+
+    if (typeValue === 'warmup') {
+      setIsWarmup(true);
+      setTechnique('standard');
+      await updateSet(set.id, { isWarmup: true, intensityTechnique: 'standard', techniqueData: undefined });
+    } else {
+      const newTechnique = typeValue as IntensityTechnique;
+      setIsWarmup(false);
+      setTechnique(newTechnique);
+      await updateSet(set.id, { isWarmup: false, intensityTechnique: newTechnique, techniqueData: undefined });
+    }
+  }, [set.id]);
+
+  // Get the current type value for display
+  const currentTypeValue = isWarmup ? 'warmup' : technique;
+  const currentTypeInfo = SET_TYPES.find(t => t.value === currentTypeValue) ?? SET_TYPES[1];
 
   // Build techniqueData based on current technique
   const buildTechniqueData = (): TechniqueData | undefined => {
@@ -124,10 +166,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         const partial = parseInt(partialReps, 10);
         const pWeight = parseFloat(partialWeight) || parseFloat(weight) || 0;
         if (!isNaN(main)) {
-          return { 
-            mainReps: main, 
-            partialReps: isNaN(partial) ? 0 : partial, 
-            partialWeight: pWeight 
+          return {
+            mainReps: main,
+            partialReps: isNaN(partial) ? 0 : partial,
+            partialWeight: pWeight
           };
         }
         return undefined;
@@ -175,6 +217,8 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
       // Only for standard/failure/forcedreps (e1RM calculation)
       const checkKey = `${parsedWeight}-${parsedReps}-${isWarmup}-${technique}`;
       const canCalculatePR = ['standard', 'failure', 'forcedreps'].includes(technique);
+      const allPRs: PR[] = [];
+
       if (!isWarmup && parsedWeight && parsedReps && canCalculatePR && checkKey !== lastCheckedRef.current) {
         lastCheckedRef.current = checkKey;
 
@@ -189,9 +233,17 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         };
 
         const prs = await detectAndSavePRs(tempSet, exerciseId);
-        if (!cancelled && prs.length > 0) {
-          setDetectedPRs(prs);
-        }
+        if (!cancelled) allPRs.push(...prs);
+      }
+
+      // Check for progression level-ups (any non-warmup set counts)
+      if (!isWarmup && (parsedWeight || parsedReps || parsedTime || parsedDistance)) {
+        const progressionPRs = await detectAndSaveProgressionAdvancements(exerciseId, set.id);
+        if (!cancelled) allPRs.push(...progressionPRs);
+      }
+
+      if (!cancelled && allPRs.length > 0) {
+        setDetectedPRs(allPRs);
       }
     }, 500);
 
@@ -282,11 +334,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
     <div className={styles.fields}>
       {defaultFields.includes('weight') && (
         <Input
-          type="number"
-          min="0"
-          step="0.5"
+          type="text"
+          inputMode="decimal"
           value={weight}
-          onChange={(e) => setWeight(e.target.value)}
+          onChange={(e) => setWeight(filterDecimal(e.target.value))}
           placeholder="kg"
           className={getInputClass(!weight)}
         />
@@ -294,10 +345,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
       {defaultFields.includes('reps') && (
         <Input
-          type="number"
-          min="0"
+          type="text"
+          inputMode="numeric"
           value={reps}
-          onChange={(e) => setReps(e.target.value)}
+          onChange={(e) => setReps(filterInteger(e.target.value))}
           placeholder={technique === 'forcedreps' ? 'total reps' : 'reps'}
           className={getInputClass(!reps)}
         />
@@ -305,10 +356,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
       {defaultFields.includes('time') && (
         <Input
-          type="number"
-          min="0"
+          type="text"
+          inputMode="numeric"
           value={time}
-          onChange={(e) => setTime(e.target.value)}
+          onChange={(e) => setTime(filterInteger(e.target.value))}
           placeholder="time (s)"
           className={getInputClass(!time)}
         />
@@ -316,11 +367,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
       {defaultFields.includes('distance') && (
         <Input
-          type="number"
-          min="0"
-          step="0.1"
+          type="text"
+          inputMode="decimal"
           value={distance}
-          onChange={(e) => setDistance(e.target.value)}
+          onChange={(e) => setDistance(filterDecimal(e.target.value))}
           placeholder="dist (m)"
           className={getInputClass(!distance)}
         />
@@ -333,23 +383,22 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
     <div className={styles.techniqueUI}>
       <div className={styles.techniqueInputRow}>
         <Input
-          type="number"
-          min="0"
-          step="0.5"
+          type="text"
+          inputMode="decimal"
           value={weight}
-          onChange={(e) => setWeight(e.target.value)}
+          onChange={(e) => setWeight(filterDecimal(e.target.value))}
           placeholder="kg"
           className={getInputClass(!weight)}
         />
         <span className={styles.techniqueLabel}>Weight</span>
       </div>
-      
+
       <div className={styles.techniqueInputRow}>
         <Input
-          type="number"
-          min="0"
+          type="text"
+          inputMode="numeric"
           value={myoActivationReps}
-          onChange={(e) => setMyoActivationReps(e.target.value)}
+          onChange={(e) => setMyoActivationReps(filterInteger(e.target.value))}
           placeholder="activation"
           className={getInputClass(!myoActivationReps)}
         />
@@ -362,10 +411,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
           {myoMiniSets.map((miniSet, index) => (
             <div key={index} className={styles.miniSetRow}>
               <Input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={miniSet}
-                onChange={(e) => updateMiniSet(index, e.target.value)}
+                onChange={(e) => updateMiniSet(index, filterInteger(e.target.value))}
                 placeholder={`mini ${index + 1}`}
                 className={styles.miniInput}
               />
@@ -396,20 +445,19 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         <div key={index} className={styles.dropRow}>
           <span className={styles.dropLabel}>Drop {index + 1}:</span>
           <Input
-            type="number"
-            min="0"
-            step="0.5"
+            type="text"
+            inputMode="decimal"
             value={drop.weight}
-            onChange={(e) => updateDrop(index, 'weight', e.target.value)}
+            onChange={(e) => updateDrop(index, 'weight', filterDecimal(e.target.value))}
             placeholder="kg"
             className={getMiniInputClass(!drop.weight)}
           />
           <span className={styles.timesSign}>×</span>
           <Input
-            type="number"
-            min="0"
+            type="text"
+            inputMode="numeric"
             value={drop.reps}
-            onChange={(e) => updateDrop(index, 'reps', e.target.value)}
+            onChange={(e) => updateDrop(index, 'reps', filterInteger(e.target.value))}
             placeholder="reps"
             className={getMiniInputClass(!drop.reps)}
           />
@@ -430,11 +478,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
     <div className={styles.techniqueUI}>
       <div className={styles.techniqueInputRow}>
         <Input
-          type="number"
-          min="0"
-          step="0.5"
+          type="text"
+          inputMode="decimal"
           value={weight}
-          onChange={(e) => setWeight(e.target.value)}
+          onChange={(e) => setWeight(filterDecimal(e.target.value))}
           placeholder="kg"
           className={getInputClass(!weight)}
         />
@@ -447,10 +494,10 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
           {clusters.map((cluster, index) => (
             <div key={index} className={styles.clusterItem}>
               <Input
-                type="number"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={cluster}
-                onChange={(e) => updateCluster(index, e.target.value)}
+                onChange={(e) => updateCluster(index, filterInteger(e.target.value))}
                 placeholder={`#${index + 1}`}
                 className={getMiniInputClass(!cluster)}
               />
@@ -475,20 +522,19 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         <span className={styles.techniqueSubLabel}>Main Set:</span>
         <div className={styles.partialsRow}>
           <Input
-            type="number"
-            min="0"
-            step="0.5"
+            type="text"
+            inputMode="decimal"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(e) => setWeight(filterDecimal(e.target.value))}
             placeholder="kg"
             className={getMiniInputClass(!weight)}
           />
           <span className={styles.timesSign}>×</span>
           <Input
-            type="number"
-            min="0"
+            type="text"
+            inputMode="numeric"
             value={mainReps}
-            onChange={(e) => setMainReps(e.target.value)}
+            onChange={(e) => setMainReps(filterInteger(e.target.value))}
             placeholder="reps"
             className={getMiniInputClass(!mainReps)}
           />
@@ -499,20 +545,19 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         <span className={styles.techniqueSubLabel}>Partials:</span>
         <div className={styles.partialsRow}>
           <Input
-            type="number"
-            min="0"
-            step="0.5"
+            type="text"
+            inputMode="decimal"
             value={partialWeight}
-            onChange={(e) => setPartialWeight(e.target.value)}
+            onChange={(e) => setPartialWeight(filterDecimal(e.target.value))}
             placeholder="kg"
             className={styles.miniInput}
           />
           <span className={styles.timesSign}>×</span>
           <Input
-            type="number"
-            min="0"
+            type="text"
+            inputMode="numeric"
             value={partialReps}
-            onChange={(e) => setPartialReps(e.target.value)}
+            onChange={(e) => setPartialReps(filterInteger(e.target.value))}
             placeholder="partials"
             className={styles.miniInput}
           />
@@ -532,7 +577,7 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
   const hasAdvancedTechniqueUI = ['myoreps', 'dropset', 'cluster', 'partials'].includes(technique);
 
   return (
-    <div className={`${styles.row} ${isWarmup ? styles.warmup : ''} ${hasAdvancedTechniqueUI ? styles.expandedRow : ''}`}>
+    <div className={`${styles.row} ${isWarmup ? styles.warmup : ''} ${hasAdvancedTechniqueUI ? styles.expandedRow : ''} ${showTypePicker ? styles.pickerOpen : ''}`}>
       <div className={styles.mainRow}>
         <div className={styles.setNumber}>
           {isWarmup ? 'W' : setNumber}
@@ -541,6 +586,30 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         {renderInputs()}
 
         <div className={styles.actions}>
+          <div className={styles.typePickerWrapper} ref={typePickerRef}>
+            <button
+              className={`${styles.typeSwapButton} ${currentTypeValue !== 'standard' ? styles.typeActive : ''}`}
+              onClick={() => setShowTypePicker(!showTypePicker)}
+              title={`Set type: ${currentTypeInfo.label}`}
+            >
+              <span className={styles.typeSwapIcon}>⇄</span>
+              <span className={styles.typeShort}>{currentTypeInfo.short}</span>
+            </button>
+            {showTypePicker && (
+              <div className={styles.typePickerDropdown}>
+                {SET_TYPES.map((type) => (
+                  <button
+                    key={type.value}
+                    className={`${styles.typePickerOption} ${type.value === currentTypeValue ? styles.typePickerOptionActive : ''}`}
+                    onClick={() => handleTypeChange(type.value)}
+                  >
+                    <span className={styles.typePickerShort}>{type.short}</span>
+                    <span>{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <Button variant="ghost" size="sm" onClick={handleDelete} title="Delete set">
             ×
           </Button>
@@ -551,12 +620,6 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
       {technique === 'dropset' && renderDropSetUI()}
       {technique === 'cluster' && renderClusterUI()}
       {technique === 'partials' && renderPartialsUI()}
-
-      {technique !== 'standard' && !hasAdvancedTechniqueUI && (
-        <div className={styles.techniqueBadge}>
-          {INTENSITY_TECHNIQUES.find((t) => t.value === technique)?.label}
-        </div>
-      )}
 
       {detectedPRs.length > 0 && (
         <div className={styles.prNotification}>

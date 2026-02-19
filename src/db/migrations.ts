@@ -1,19 +1,21 @@
 /**
  * Database Migrations
- * 
+ *
  * All schema changes are handled via Dexie versioning in db/index.ts.
  * This file contains upgrade logic for data migrations when schema changes.
- * 
- * Current version: 3
- * 
+ *
+ * Current version: 4
+ *
  * Migration history:
  * - v1: Initial schema with exercises, routines, sessions, sessionExercises, sets, prs, settings
  * - v2: Added templates table, restructured routines, simplified sets, updated muscle groups
  * - v3: Templates now define individual sets (TemplateSet[]), removed theme setting
+ * - v4: Added progressionMemberships to exercises (Overcoming Gravity progressions)
  */
 
 import { db } from './index';
 import type { Template, TemplateExercise, TemplateSet, Routine, RoutineDay, IntensityTechnique } from '../types';
+import { PROGRESSION_EXERCISES } from '../data/progression-exercises';
 
 /**
  * Run any necessary migrations
@@ -22,15 +24,21 @@ import type { Template, TemplateExercise, TemplateSet, Routine, RoutineDay, Inte
 export async function runMigrations(): Promise<void> {
   // Ensure database is open
   await db.open();
-  
+
   // Check if we need to migrate old routines to templates
   await migrateRoutinesToTemplates();
-  
+
   // Migrate templates to new set structure (v3)
   await migrateTemplateSets();
-  
+
   // Remove theme setting (v3)
   await db.settings.delete('theme');
+
+  // Migrate to progression exercises (v4)
+  await migrateProgressionExercises();
+
+  // Clean up any duplicate exercises from past bugs
+  await deduplicateExercises();
 }
 
 /**
@@ -250,9 +258,135 @@ async function migrateTemplateSets(): Promise<void> {
 }
 
 /**
+ * Migrate existing exercises to include progression data (v4)
+ * Also adds new progression exercises that don't exist yet.
+ * Skips on fresh installs (seed handles it).
+ */
+async function migrateProgressionExercises(): Promise<void> {
+  // Skip on fresh install — seed will handle it
+  const exerciseCount = await db.exercises.count();
+  if (exerciseCount === 0) return;
+
+  // Check if already migrated
+  const sample = await db.exercises
+    .filter((e) => e.progressionMemberships !== undefined && e.progressionMemberships.length > 0)
+    .first();
+  if (sample) return;
+
+  const now = Date.now();
+  const existing = await db.exercises.toArray();
+  const nameMap = new Map<string, string>(); // lowercase name -> id
+  for (const ex of existing) {
+    nameMap.set(ex.name.toLowerCase(), ex.id);
+  }
+
+  let updated = 0;
+  let added = 0;
+
+  for (const def of PROGRESSION_EXERCISES) {
+    const existingId = nameMap.get(def.name.toLowerCase());
+    if (existingId) {
+      // Update existing exercise with progression data
+      await db.exercises.update(existingId, {
+        progressionMemberships: def.progressionMemberships,
+        progressionLevel: def.progressionMemberships[0]?.level,
+        muscleGroups: def.muscleGroups,
+        movementPattern: def.movementPattern,
+        updatedAt: now,
+      });
+      updated++;
+    } else {
+      // Add new exercise
+      await db.exercises.add({
+        id: crypto.randomUUID(),
+        name: def.name,
+        muscleGroups: def.muscleGroups,
+        movementPattern: def.movementPattern,
+        equipment: def.equipment,
+        defaultFields: def.defaultFields,
+        progressionLevel: def.progressionMemberships[0]?.level,
+        progressionMemberships: def.progressionMemberships,
+        isPreset: true,
+        isArchived: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+      added++;
+    }
+  }
+
+  console.log(`Progression migration: updated ${updated}, added ${added} exercises`);
+}
+
+/**
+ * Remove duplicate exercises (same name, case-insensitive).
+ * Keeps the one with progressionMemberships if available, otherwise the first.
+ * Runs on every startup to clean up any past duplication bugs.
+ */
+async function deduplicateExercises(): Promise<void> {
+  const all = await db.exercises.toArray();
+  const nameGroups = new Map<string, typeof all>();
+
+  for (const ex of all) {
+    const key = ex.name.toLowerCase();
+    const group = nameGroups.get(key);
+    if (group) {
+      group.push(ex);
+    } else {
+      nameGroups.set(key, [ex]);
+    }
+  }
+
+  let removed = 0;
+  for (const [, group] of nameGroups) {
+    if (group.length <= 1) continue;
+
+    // Sort: prefer one with progressionMemberships, then oldest (lowest createdAt)
+    group.sort((a, b) => {
+      const aHasProg = (a.progressionMemberships?.length ?? 0) > 0 ? 1 : 0;
+      const bHasProg = (b.progressionMemberships?.length ?? 0) > 0 ? 1 : 0;
+      if (aHasProg !== bHasProg) return bHasProg - aHasProg; // prefer with progression
+      return a.createdAt - b.createdAt; // prefer oldest
+    });
+
+    // Keep the first, delete the rest
+    const keep = group[0];
+    for (let i = 1; i < group.length; i++) {
+      const dup = group[i];
+      // If the duplicate has progressionMemberships that the keeper doesn't, merge them
+      if (dup.progressionMemberships?.length && !keep.progressionMemberships?.length) {
+        await db.exercises.update(keep.id, {
+          progressionMemberships: dup.progressionMemberships,
+          progressionLevel: dup.progressionLevel,
+        });
+      }
+      // Reassign any session references from duplicate to keeper
+      await db.sessionExercises
+        .where('exerciseId')
+        .equals(dup.id)
+        .modify({ exerciseId: keep.id });
+      // Reassign any PRs
+      await db.prs
+        .where('exerciseId')
+        .equals(dup.id)
+        .modify({ exerciseId: keep.id });
+      // Delete the duplicate
+      await db.exercises.delete(dup.id);
+      removed++;
+    }
+  }
+
+  if (removed > 0) {
+    console.log(`Deduplication: removed ${removed} duplicate exercises`);
+  }
+}
+
+/**
  * Check if this is a fresh install (no data)
+ * Opens the DB if not already open.
  */
 export async function isFreshInstall(): Promise<boolean> {
+  await db.open();
   const exerciseCount = await db.exercises.count();
   return exerciseCount === 0;
 }

@@ -39,7 +39,7 @@ const MOVEMENT_PATTERNS = [
     'carry',
 ];
 
-const EQUIPMENT_TYPES = ['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'kettlebell', 'bands'];
+const EQUIPMENT_TYPES = ['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'rings', 'kettlebell', 'bands'];
 
 export function ExerciseForm({ exercise, onSubmit, onCancel }: ExerciseFormProps) {
   const [name, setName] = useState(exercise?.name ?? '');

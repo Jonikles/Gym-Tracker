@@ -96,6 +96,15 @@ export const MUSCLE_GROUP_CATEGORIES: Record<string, MuscleGroup[]> = {
 };
 
 /**
+ * Represents an exercise's membership in a progression chain.
+ * An exercise can belong to multiple progressions with different levels.
+ */
+export interface ProgressionMembership {
+  progressionId: string;
+  level: number;
+}
+
+/**
  * Exercise entity - stored in exercises table
  */
 export interface Exercise {
@@ -107,6 +116,7 @@ export interface Exercise {
   equipment?: string;
   defaultFields: ExerciseField[];
   progressionLevel?: number;
+  progressionMemberships?: ProgressionMembership[];
   isPreset: boolean;
   isArchived: boolean;
   createdAt: number;
