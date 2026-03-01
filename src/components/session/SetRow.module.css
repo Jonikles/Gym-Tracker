@@ -15,8 +15,8 @@
 }
 
 .row.warmup {
-  opacity: 0.7;
   border-style: dashed;
+  color: var(--color-text-muted);
 }
 
 .row.expandedRow {
@@ -276,11 +276,6 @@
     border-color: var(--color-accent);
     color: var(--color-text);
   }
-}
-
-.typeSwapButton.typeActive {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
 }
 
 .typeSwapIcon {

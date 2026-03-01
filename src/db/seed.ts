@@ -149,7 +149,7 @@ const presetExercises: ExerciseDefinition[] = [
   { name: 'Dumbbell Kickback', muscleGroups: ['triceps'], movementPattern: 'horizontal-push', equipment: 'dumbbell', defaultFields: ['weight', 'reps'] },
   { name: 'Tricep Pushdown', muscleGroups: ['triceps'], movementPattern: 'vertical-push', equipment: 'cable', defaultFields: ['weight', 'reps'] },
   { name: 'Rope Pushdown', muscleGroups: ['triceps'], movementPattern: 'vertical-push', equipment: 'cable', defaultFields: ['weight', 'reps'] },
-  { name: 'Single-Arm Cable Pushdown', muscleGroups: ['triceps'], movementPattern: 'vertcal-push', equipment: 'cable', defaultFields: ['weight', 'reps'] },
+  { name: 'Single-Arm Cable Pushdown', muscleGroups: ['triceps'], movementPattern: 'vertical-push', equipment: 'cable', defaultFields: ['weight', 'reps'] },
   { name: 'Machine Tricep Extension', muscleGroups: ['triceps'], movementPattern: 'vertical-push', equipment: 'machine', defaultFields: ['weight', 'reps'] },
   { name: 'Machine Dip', muscleGroups: ['triceps', 'lower-chest'], movementPattern: 'dip', equipment: 'machine', defaultFields: ['weight', 'reps'] },
   

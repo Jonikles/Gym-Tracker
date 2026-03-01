@@ -144,6 +144,41 @@
   opacity: 1;
 }
 
+.notesModal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.notesTextarea {
+  width: 100%;
+  min-height: 120px;
+  padding: var(--space-md);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+
+.notesTextarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.notesTextarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.notesActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
 @media (max-width: 600px) {
   .header {
     flex-direction: column;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { Button, ConfirmDialog, Modal } from '../common';
@@ -9,6 +9,7 @@ import { useSessionContext } from '../../context/SessionContext';
 import { useRoutine } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
 import { useSessionSets } from '../../hooks/useSets';
+import { updateSessionNotes } from '../../hooks/useSessions';
 import type { TemplateExercise, ExerciseField } from '../../types';
 import styles from './ActiveSession.module.css';
 
@@ -52,6 +53,9 @@ export function ActiveSession() {
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [notes, setNotes] = useState(activeSession?.notes ?? '');
+  const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [showValidation, setShowValidation] = useState(false);
@@ -277,6 +281,18 @@ export function ActiveSession() {
     setShowCompleteConfirm(true);
   }, [exerciseFieldsMap, sessionExercises, allSets]);
 
+  const handleOpenNotes = useCallback(() => {
+    setNotes(activeSession?.notes ?? '');
+    setShowNotesModal(true);
+  }, [activeSession?.notes]);
+
+  const handleSaveNotes = useCallback(async () => {
+    if (activeSession) {
+      await updateSessionNotes(activeSession.id, notes.trim());
+    }
+    setShowNotesModal(false);
+  }, [activeSession, notes]);
+
   if (!activeSession) {
     return (
       <div className={styles.empty}>
@@ -303,6 +319,13 @@ export function ActiveSession() {
           </div>
         </div>
         <div className={styles.headerActions}>
+          <Button
+            variant="ghost"
+            onClick={handleOpenNotes}
+            disabled={isLoading}
+          >
+            {activeSession.notes ? '📝' : '📋'}
+          </Button>
           <Button
             variant="secondary"
             onClick={() => setShowAbandonConfirm(true)}
@@ -434,6 +457,33 @@ export function ActiveSession() {
         confirmLabel="Discard"
         variant="danger"
       />
+
+      {/* Workout Notes Modal */}
+      <Modal
+        isOpen={showNotesModal}
+        onClose={() => setShowNotesModal(false)}
+        title="Workout Notes"
+      >
+        <div className={styles.notesModal}>
+          <textarea
+            ref={notesTextareaRef}
+            className={styles.notesTextarea}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="How did the workout feel? Any observations..."
+            rows={5}
+            autoFocus
+          />
+          <div className={styles.notesActions}>
+            <Button variant="secondary" onClick={() => setShowNotesModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveNotes}>
+              Save Notes
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

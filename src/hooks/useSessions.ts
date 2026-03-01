@@ -499,6 +499,19 @@ export async function updateSessionNotes(
 }
 
 /**
+ * Update session start time and/or completed time
+ */
+export async function updateSessionTimes(
+  sessionId: string,
+  updates: { startedAt?: number; completedAt?: number }
+): Promise<void> {
+  await db.sessions.update(sessionId, {
+    ...updates,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
  * Update notes on a session exercise
  */
 export async function updateSessionExerciseNotes(
@@ -601,6 +614,82 @@ export async function importTemplateIntoSession(
 
   await db.sessionExercises.bulkAdd(sessionExercises);
   await db.sets.bulkAdd(setsToCreate);
+}
+
+/**
+ * Repeat a past session: creates a new active session with the same exercises/sets
+ * Copies exercise structure and set weights, but leaves reps blank for the user to fill in.
+ */
+export async function repeatSession(sourceSessionId: string): Promise<string> {
+  const sourceSession = await db.sessions.get(sourceSessionId);
+  if (!sourceSession) throw new Error('Session not found');
+
+  const now = Date.now();
+  const newSessionId = crypto.randomUUID();
+
+  // Create the new session (link to same routine/template if applicable)
+  const session: Session = {
+    id: newSessionId,
+    routineId: sourceSession.routineId,
+    templateId: sourceSession.templateId,
+    startedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.sessions.add(session);
+
+  // Copy all exercises and sets from the source session
+  const sourceExercises = await db.sessionExercises
+    .where('sessionId')
+    .equals(sourceSessionId)
+    .toArray();
+  const sorted = [...sourceExercises].sort((a, b) => a.order - b.order);
+
+  const newExercises: SessionExercise[] = [];
+  const newSets: Set[] = [];
+
+  for (const se of sorted) {
+    const newSEId = crypto.randomUUID();
+    newExercises.push({
+      id: newSEId,
+      sessionId: newSessionId,
+      exerciseId: se.exerciseId,
+      order: se.order,
+      groupId: se.groupId,
+      groupType: se.groupType,
+      groupOrder: se.groupOrder,
+      notes: se.notes,
+      createdAt: now,
+    });
+
+    // Copy sets: keep weight and structure, clear reps (user fills in)
+    const sourceSets = await db.sets
+      .where('sessionExerciseId')
+      .equals(se.id)
+      .toArray();
+    const sortedSets = [...sourceSets].sort((a, b) => a.order - b.order);
+
+    for (const s of sortedSets) {
+      newSets.push({
+        id: crypto.randomUUID(),
+        sessionExerciseId: newSEId,
+        order: s.order,
+        weight: s.weight,
+        reps: undefined, // User fills this in
+        time: undefined,
+        distance: undefined,
+        targetReps: s.targetReps,
+        isWarmup: s.isWarmup,
+        intensityTechnique: s.intensityTechnique,
+        createdAt: now,
+      });
+    }
+  }
+
+  await db.sessionExercises.bulkAdd(newExercises);
+  await db.sets.bulkAdd(newSets);
+
+  return newSessionId;
 }
 
 /**

@@ -26,6 +26,26 @@
   margin-top: var(--space-xs);
 }
 
+.timeSection {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.timeField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.timeLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-left: 2px;
+}
+
 .notesSection {
   padding: var(--space-md);
   background-color: var(--color-bg-secondary);
@@ -74,6 +94,10 @@
 
 @media (max-width: 600px) {
   .header {
+    flex-direction: column;
+  }
+
+  .timeSection {
     flex-direction: column;
   }
 }

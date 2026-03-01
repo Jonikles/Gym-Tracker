@@ -372,7 +372,7 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
           inputMode="decimal"
           value={distance}
           onChange={(e) => setDistance(filterDecimal(e.target.value))}
-          placeholder="dist (m)"
+          placeholder="dist"
           className={getInputClass(!distance)}
         />
       )}
@@ -589,7 +589,7 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         <div className={styles.actions}>
           <div className={styles.typePickerWrapper} ref={typePickerRef}>
             <button
-              className={`${styles.typeSwapButton} ${currentTypeValue !== 'standard' ? styles.typeActive : ''}`}
+              className={styles.typeSwapButton}
               onClick={() => setShowTypePicker(!showTypePicker)}
               title={`Set type: ${currentTypeInfo.label}`}
             >

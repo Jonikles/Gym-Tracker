@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Button } from '../common';
+import { Input, Button, ConfirmDialog } from '../common';
 import { ExercisePicker } from '../exercises';
 import { TemplateExerciseList } from './TemplateExerciseList';
-import { createTemplate, updateTemplate } from '../../hooks/useTemplates';
+import { createTemplate, updateTemplate, deleteTemplate } from '../../hooks/useTemplates';
 import type { Template, TemplateExercise, TemplateSet, Exercise } from '../../types';
 import styles from './TemplateForm.module.css';
 
@@ -20,6 +20,7 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
   );
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
 
   // Track the DB id for this template (set immediately for edits, after first save for creates)
   const [templateId, setTemplateId] = useState<string | undefined>(template?.id);
@@ -55,8 +56,9 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
     const currentName = nameRef.current.trim();
     const currentExercises = exercisesRef.current;
 
-    // Can't save without a name
+    // Can't save without a name or without any exercises
     if (!currentName) return;
+    if (currentExercises.length === 0) return;
 
     try {
       if (templateId) {
@@ -147,6 +149,12 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
   };
 
   const handleBack = () => {
+    // Check if template has no exercises — show warning
+    if (exercisesRef.current.length === 0) {
+      setShowIncompleteWarning(true);
+      return;
+    }
+
     // Flush any pending save before navigating
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
@@ -168,10 +176,36 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
     }
   };
 
+  const handleConfirmIncomplete = async () => {
+    // Cancel any pending auto-save
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
+    if (!isEditing || !templateId) {
+      // New template with 0 exercises — delete if it was already saved
+      if (templateId) {
+        await deleteTemplate(templateId);
+      }
+      navigate('/templates');
+    } else {
+      // Existing template — revert (DB still has last valid state since we didn't save)
+      navigate(`/templates/${templateId}`);
+    }
+  };
+
   const existingExerciseIds = exercises.map((e) => e.exerciseId);
 
   return (
     <div className={styles.form}>
+      <header className={styles.header}>
+        <Button variant="ghost" onClick={handleBack}>
+          ← Back
+        </Button>
+        <h1 className={styles.headerTitle}>{isEditing ? 'Edit Template' : 'New Template'}</h1>
+      </header>
+
       <div className={styles.field}>
         <Input
           label="Template Name"
@@ -199,22 +233,26 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
 
       {error && <p className={styles.error}>{error}</p>}
 
-      <div className={styles.actions}>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={handleBack}
-        >
-          ← Back
-        </Button>
-      </div>
-
       <ExercisePicker
         isOpen={isPickerOpen}
         onClose={() => setIsPickerOpen(false)}
         onSelect={handleAddExercise}
         excludeIds={existingExerciseIds}
         title="Add Exercise"
+      />
+
+      <ConfirmDialog
+        isOpen={showIncompleteWarning}
+        onClose={() => setShowIncompleteWarning(false)}
+        onConfirm={handleConfirmIncomplete}
+        title="No Exercises"
+        message={
+          !isEditing
+            ? `"${name || 'This template'}" has no exercises. Going back will delete this template. Are you sure?`
+            : `"${name || 'This template'}" has no exercises. Your changes will be reverted. Are you sure?`
+        }
+        confirmLabel={!isEditing ? 'Delete Template' : 'Revert & Leave'}
+        variant="danger"
       />
     </div>
   );

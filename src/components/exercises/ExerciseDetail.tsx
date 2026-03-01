@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, Card, ConfirmDialog, Modal } from '../common';
 import { ExerciseForm, type ExerciseFormData } from './ExerciseForm';
 import {
@@ -11,6 +12,8 @@ import {
   deleteExercise,
   duplicateExercise,
 } from '../../hooks/useExercises';
+import { PROGRESSION_MAP } from '../../data/progressions';
+import { db } from '../../db';
 import styles from './ExerciseDetail.module.css';
 
 // Helper to format muscle group keys for display
@@ -36,6 +39,39 @@ export function ExerciseDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Get the progression IDs this exercise belongs to
+  const progressionIds = exercise?.progressionMemberships?.map((pm) => pm.progressionId) ?? [];
+
+  // Query all exercises that share the same progressions to build the level map
+  const siblingExercises = useLiveQuery(
+    async () => {
+      if (progressionIds.length === 0) return [];
+      const all = await db.exercises.toArray();
+      return all.filter((e) =>
+        e.progressionMemberships?.some((pm) => progressionIds.includes(pm.progressionId))
+      );
+    },
+    [progressionIds.join(',')]
+  );
+
+  // Build progressionId → level → exerciseId map
+  const progressionLevelMap = useMemo(() => {
+    const map = new Map<string, Map<number, string>>();
+    if (!siblingExercises) return map;
+    for (const ex of siblingExercises) {
+      if (!ex.progressionMemberships) continue;
+      for (const pm of ex.progressionMemberships) {
+        let levelMap = map.get(pm.progressionId);
+        if (!levelMap) {
+          levelMap = new Map();
+          map.set(pm.progressionId, levelMap);
+        }
+        levelMap.set(pm.level, ex.id);
+      }
+    }
+    return map;
+  }, [siblingExercises]);
 
   if (!exercise) {
     return (
@@ -164,6 +200,57 @@ export function ExerciseDetail() {
             </div>
           )}
         </div>
+
+        {/* Progression memberships */}
+        {exercise.progressionMemberships && exercise.progressionMemberships.length > 0 && (
+          <div className={styles.progressionSection}>
+            <span className={styles.label}>Progressions</span>
+            {exercise.progressionMemberships.map((pm) => {
+              const progDef = PROGRESSION_MAP[pm.progressionId];
+              const progName = progDef?.name ?? pm.progressionId;
+              const levelMap = progressionLevelMap.get(pm.progressionId);
+              // Find nearest lower and higher levels (handles gaps like 15 → 17)
+              const levels = levelMap ? [...levelMap.keys()].sort((a, b) => a - b) : [];
+              const prevLevel = levels.filter((l) => l < pm.level).pop();
+              const nextLevel = levels.find((l) => l > pm.level);
+              const prevId = prevLevel !== undefined ? levelMap?.get(prevLevel) : undefined;
+              const nextId = nextLevel !== undefined ? levelMap?.get(nextLevel) : undefined;
+
+              return (
+                <div key={pm.progressionId} className={styles.progressionRow}>
+                  <span className={styles.levelBadge}>Lvl {pm.level}</span>
+                  <button
+                    className={styles.progressionLink}
+                    onClick={() => navigate(`/progressions/${pm.progressionId}`)}
+                    title={`View ${progName} progression`}
+                  >
+                    {progName}
+                  </button>
+                  <div className={styles.progressionNav}>
+                    {prevId && prevLevel !== undefined && (
+                      <button
+                        className={styles.progressionNavBtn}
+                        onClick={() => navigate(`/exercises/${prevId}`)}
+                        title={`Go to level ${prevLevel}`}
+                      >
+                        ◀ Lvl {prevLevel}
+                      </button>
+                    )}
+                    {nextId && nextLevel !== undefined && (
+                      <button
+                        className={styles.progressionNavBtn}
+                        onClick={() => navigate(`/exercises/${nextId}`)}
+                        title={`Go to level ${nextLevel}`}
+                      >
+                        Lvl {nextLevel} ▶
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Placeholder for future: photo/video/instructions */}
         <div className={styles.mediaPlaceholder}>

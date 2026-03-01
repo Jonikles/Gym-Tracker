@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Select, Button, Modal } from '../common';
-import { ExerciseCard } from './ExerciseCard';
+import { ExerciseCard, type ProgressionLevelMap } from './ExerciseCard';
 import { ExerciseForm, type ExerciseFormData } from './ExerciseForm';
 import {
   useExercises,
@@ -31,7 +31,7 @@ function formatLabel(str: string): string {
 }
 
 // Max level across all progressions (covers OG2 ranges)
-const ALL_LEVELS = Array.from({ length: 16 }, (_, i) => i + 1);
+const ALL_LEVELS = Array.from({ length: 17 }, (_, i) => i + 1);
 
 export function ExerciseList() {
   const navigate = useNavigate();
@@ -61,6 +61,7 @@ export function ExerciseList() {
   };
 
   const exercises = useExercises(filters);
+  const allExercises = useExercises({}); // Unfiltered — used for progression level lookups
   const filteredExercises = exercises.filter((e) => {
     if (selectedLevels.length > 0) {
       if (!e.progressionLevel) return false;
@@ -71,6 +72,23 @@ export function ExerciseList() {
   const muscleGroups = useUniqueMuscleGroups() ?? [];
   const equipment = useUniqueEquipment() ?? [];
   const movements = useUniqueMovementPatterns() ?? [];
+
+  // Build progressionId → level → exerciseId map for prev/next navigation
+  const progressionLevelMap: ProgressionLevelMap = useMemo(() => {
+    const map: ProgressionLevelMap = new Map();
+    for (const ex of allExercises) {
+      if (!ex.progressionMemberships) continue;
+      for (const pm of ex.progressionMemberships) {
+        let levelMap = map.get(pm.progressionId);
+        if (!levelMap) {
+          levelMap = new Map();
+          map.set(pm.progressionId, levelMap);
+        }
+        levelMap.set(pm.level, ex.id);
+      }
+    }
+    return map;
+  }, [allExercises]);
 
   const handleCreate = async (data: ExerciseFormData) => {
     const id = await createExercise(data);
@@ -115,138 +133,143 @@ export function ExerciseList() {
       </header>
 
       <div className={styles.filters}>
-        <Input
-          placeholder="Search exercises..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <Select
-          value={equipmentFilter}
-          onChange={(e) => setEquipmentFilter(e.target.value)}
-          options={equipment.map((eq) => ({ value: eq, label: formatLabel(eq) }))}
-          placeholder="All equipment"
-        />
-        <Select
-          value={movementFilter}
-          onChange={(e) => setMovementFilter(e.target.value)}
-          options={movements.map((m) => ({ value: m, label: formatLabel(m) }))}
-          placeholder="All movements"
-        />
-        <Select
-          value={progressionFilter}
-          onChange={(e) => setProgressionFilter(e.target.value)}
-          options={PROGRESSION_DEFINITIONS.map((p) => ({ value: p.id, label: p.name }))}
-          placeholder="All progressions"
-        />
-        <Select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value as ExerciseSortOption)}
-          options={[
-            { value: 'name-asc', label: 'Name A-Z' },
-            { value: 'name-desc', label: 'Name Z-A' },
-            { value: 'level-asc', label: 'Level Low\u2192High' },
-            { value: 'level-desc', label: 'Level High\u2192Low' },
-          ]}
-          placeholder="Sort by"
-        />
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Clear
-          </Button>
-        )}
-      </div>
+        <div className={styles.searchRow}>
+          <Input
+            placeholder="Search exercises..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Select
+            label="Sort by"
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as ExerciseSortOption)}
+            options={[
+              { value: 'name-asc', label: 'Name A-Z' },
+              { value: 'name-desc', label: 'Name Z-A' },
+              { value: 'level-asc', label: 'Level Low\u2192High' },
+              { value: 'level-desc', label: 'Level High\u2192Low' },
+            ]}
+          />
+        </div>
 
-      {/* Muscle Group Multi-Select - Collapsible */}
-      <div className={styles.muscleFilterSection}>
-        <button
-          className={styles.muscleFilterToggle}
-          onClick={() => setIsMuscleFilterExpanded(!isMuscleFilterExpanded)}
-        >
-          <span className={styles.muscleFilterLabel}>
-            Muscles: {muscleGroupFilters.length > 0 ? `${muscleGroupFilters.length} selected` : 'All'}
-          </span>
-          <span className={styles.chevron}>{isMuscleFilterExpanded ? '\u25B2' : '\u25BC'}</span>
-        </button>
+        <div className={styles.filterRow}>
+          <Select
+            value={equipmentFilter}
+            onChange={(e) => setEquipmentFilter(e.target.value)}
+            options={equipment.map((eq) => ({ value: eq, label: formatLabel(eq) }))}
+            placeholder="All equipment"
+          />
+          <Select
+            value={movementFilter}
+            onChange={(e) => setMovementFilter(e.target.value)}
+            options={movements.map((m) => ({ value: m, label: formatLabel(m) }))}
+            placeholder="All movements"
+          />
+          <Select
+            value={progressionFilter}
+            onChange={(e) => setProgressionFilter(e.target.value)}
+            options={PROGRESSION_DEFINITIONS.map((p) => ({ value: p.id, label: p.name }))}
+            placeholder="All progressions"
+          />
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          )}
+        </div>
 
-        {isMuscleFilterExpanded && (
-          <div className={styles.muscleFilterDropdown}>
-            {muscleGroupFilters.length > 1 && (
-              <div className={styles.filterModeRow}>
-                <span className={styles.filterModeLabel}>Match:</span>
-                <div className={styles.filterModeToggle}>
-                  <button
-                    className={`${styles.modeButton} ${filterMode === 'any' ? styles.modeActive : ''}`}
-                    onClick={() => setFilterMode('any')}
-                  >
-                    ANY
-                  </button>
-                  <button
-                    className={`${styles.modeButton} ${filterMode === 'all' ? styles.modeActive : ''}`}
-                    onClick={() => setFilterMode('all')}
-                  >
-                    ALL
-                  </button>
+        {/* Muscle Group Multi-Select - Collapsible */}
+        <div className={styles.chipFilterSection}>
+          <button
+            className={styles.chipFilterToggle}
+            onClick={() => setIsMuscleFilterExpanded(!isMuscleFilterExpanded)}
+          >
+            <span className={styles.chipFilterLabel}>
+              Muscles{muscleGroupFilters.length > 0 ? `: ${muscleGroupFilters.length} selected` : ''}
+            </span>
+            <span className={styles.chevron}>{isMuscleFilterExpanded ? '\u25B2' : '\u25BC'}</span>
+          </button>
+
+          {isMuscleFilterExpanded && (
+            <div className={styles.chipFilterDropdown}>
+              {muscleGroupFilters.length > 1 && (
+                <div className={styles.filterModeRow}>
+                  <span className={styles.filterModeLabel}>Match:</span>
+                  <div className={styles.filterModeToggle}>
+                    <button
+                      className={`${styles.modeButton} ${filterMode === 'any' ? styles.modeActive : ''}`}
+                      onClick={() => setFilterMode('any')}
+                    >
+                      ANY
+                    </button>
+                    <button
+                      className={`${styles.modeButton} ${filterMode === 'all' ? styles.modeActive : ''}`}
+                      onClick={() => setFilterMode('all')}
+                    >
+                      ALL
+                    </button>
+                  </div>
                 </div>
+              )}
+              <div className={styles.muscleChips}>
+                {muscleGroups.map((mg) => (
+                  <button
+                    key={mg}
+                    className={`${styles.muscleChip} ${muscleGroupFilters.includes(mg) ? styles.muscleChipActive : ''}`}
+                    onClick={() => handleMuscleGroupToggle(mg)}
+                  >
+                    {formatMuscleGroup(mg)}
+                  </button>
+                ))}
               </div>
-            )}
-            <div className={styles.muscleChips}>
-              {muscleGroups.map((mg) => (
+              {muscleGroupFilters.length > 0 && (
                 <button
-                  key={mg}
-                  className={`${styles.muscleChip} ${muscleGroupFilters.includes(mg) ? styles.muscleChipActive : ''}`}
-                  onClick={() => handleMuscleGroupToggle(mg)}
+                  className={styles.clearChipsBtn}
+                  onClick={() => setMuscleGroupFilters([])}
                 >
-                  {formatMuscleGroup(mg)}
+                  Clear muscle filters
                 </button>
-              ))}
+              )}
             </div>
-            {muscleGroupFilters.length > 0 && (
-              <button
-                className={styles.clearMusclesBtn}
-                onClick={() => setMuscleGroupFilters([])}
-              >
-                Clear muscle filters
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Level Multi-Select - Collapsible */}
-      <div className={styles.muscleFilterSection}>
-        <button
-          className={styles.muscleFilterToggle}
-          onClick={() => setIsLevelFilterExpanded(!isLevelFilterExpanded)}
-        >
-          <span className={styles.muscleFilterLabel}>
-            Level: {selectedLevels.length > 0 ? selectedLevels.join(', ') : 'All'}
-          </span>
-          <span className={styles.chevron}>{isLevelFilterExpanded ? '\u25B2' : '\u25BC'}</span>
-        </button>
+        {/* Level Multi-Select - Collapsible */}
+        <div className={styles.chipFilterSection}>
+          <button
+            className={styles.chipFilterToggle}
+            onClick={() => setIsLevelFilterExpanded(!isLevelFilterExpanded)}
+          >
+            <span className={styles.chipFilterLabel}>
+              Level{selectedLevels.length > 0 ? `: ${selectedLevels.join(', ')}` : ''}
+            </span>
+            <span className={styles.chevron}>{isLevelFilterExpanded ? '\u25B2' : '\u25BC'}</span>
+          </button>
 
-        {isLevelFilterExpanded && (
-          <div className={styles.muscleFilterDropdown}>
-            <div className={styles.levelChips}>
-              {ALL_LEVELS.map((level) => (
+          {isLevelFilterExpanded && (
+            <div className={styles.chipFilterDropdown}>
+              <div className={styles.levelChips}>
+                {ALL_LEVELS.map((level) => (
+                  <button
+                    key={level}
+                    className={`${styles.levelChip} ${selectedLevels.includes(level) ? styles.muscleChipActive : ''}`}
+                    onClick={() => handleLevelToggle(level)}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+              {selectedLevels.length > 0 && (
                 <button
-                  key={level}
-                  className={`${styles.levelChip} ${selectedLevels.includes(level) ? styles.muscleChipActive : ''}`}
-                  onClick={() => handleLevelToggle(level)}
+                  className={styles.clearChipsBtn}
+                  onClick={() => setSelectedLevels([])}
                 >
-                  {level}
+                  Clear level filters
                 </button>
-              ))}
+              )}
             </div>
-            {selectedLevels.length > 0 && (
-              <button
-                className={styles.clearMusclesBtn}
-                onClick={() => setSelectedLevels([])}
-              >
-                Clear level filters
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className={styles.toggleRow}>
@@ -267,6 +290,7 @@ export function ExerciseList() {
                 key={exercise.id}
                 exercise={exercise}
                 onClick={() => navigate(`/exercises/${exercise.id}`)}
+                progressionLevelMap={progressionLevelMap}
             />
         ))}
         {filteredExercises.length === 0 && (

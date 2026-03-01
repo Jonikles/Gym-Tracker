@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, ConfirmDialog } from '../common';
 import { ExercisePicker } from '../exercises';
@@ -7,6 +7,7 @@ import {
   useSession,
   useSessionExercises,
   updateSessionNotes,
+  updateSessionTimes,
   addExerciseToSession,
   removeExerciseFromSession,
   deleteSession,
@@ -16,6 +17,22 @@ import { useExercise } from '../../hooks/useExercises';
 import { useRoutine } from '../../hooks/useRoutines';
 import type { SessionExercise as SessionExerciseType, Exercise, ExerciseField } from '../../types';
 import styles from './SessionEditor.module.css';
+
+/** Convert a timestamp to a datetime-local input value (YYYY-MM-DDTHH:MM) */
+function timestampToDatetimeLocal(ts: number): string {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${min}`;
+}
+
+/** Convert a datetime-local input value back to timestamp */
+function datetimeLocalToTimestamp(val: string): number {
+  return new Date(val).getTime();
+}
 
 function EditableExercise({
   sessionExercise,
@@ -80,9 +97,24 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
   const sessionExercises = useSessionExercises(sessionId) ?? [];
   const routine = useRoutine(session?.routineId);
 
-  const [notes, setNotes] = useState(session?.notes ?? '');
+  const [notes, setNotes] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  // Sync local state when session loads from DB (fixes notes not pre-filling)
+  useEffect(() => {
+    if (session && !hasInitialized) {
+      setNotes(session.notes ?? '');
+      setStartTime(timestampToDatetimeLocal(session.startedAt));
+      if (session.completedAt) {
+        setEndTime(timestampToDatetimeLocal(session.completedAt));
+      }
+      setHasInitialized(true);
+    }
+  }, [session, hasInitialized]);
 
   const sortedExercises = useMemo(() => {
     return [...sessionExercises].sort((a, b) => a.order - b.order);
@@ -92,6 +124,20 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
     setNotes(newNotes);
     if (session) {
       await updateSessionNotes(session.id, newNotes);
+    }
+  };
+
+  const handleStartTimeChange = async (value: string) => {
+    setStartTime(value);
+    if (session && value) {
+      await updateSessionTimes(session.id, { startedAt: datetimeLocalToTimestamp(value) });
+    }
+  };
+
+  const handleEndTimeChange = async (value: string) => {
+    setEndTime(value);
+    if (session && value) {
+      await updateSessionTimes(session.id, { completedAt: datetimeLocalToTimestamp(value) });
     }
   };
 
@@ -127,14 +173,30 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
         </Button>
         <div className={styles.headerContent}>
           <h1 className={styles.title}>Edit: {routine?.name ?? 'Workout'}</h1>
-          <div className={styles.meta}>
-            {new Date(session.startedAt).toLocaleDateString()}
-          </div>
         </div>
         <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
           Delete
         </Button>
       </header>
+
+      <div className={styles.timeSection}>
+        <div className={styles.timeField}>
+          <label className={styles.timeLabel}>Started at</label>
+          <Input
+            type="datetime-local"
+            value={startTime}
+            onChange={(e) => handleStartTimeChange(e.target.value)}
+          />
+        </div>
+        <div className={styles.timeField}>
+          <label className={styles.timeLabel}>Completed at</label>
+          <Input
+            type="datetime-local"
+            value={endTime}
+            onChange={(e) => handleEndTimeChange(e.target.value)}
+          />
+        </div>
+      </div>
 
       <div className={styles.notesSection}>
         <Input

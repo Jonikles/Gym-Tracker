@@ -90,9 +90,11 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const isActive = activeRoutineId === routineId;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSetActiveConfirm, setShowSetActiveConfirm] = useState(false);
+  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   const [activeTab, setActiveTab] = useState<'schedule' | 'calendar'>('schedule');
 
   // Local schedule state for editing
@@ -111,6 +113,7 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   }, [routine?.id]);
 
   // Auto-save schedule changes to DB (debounced) so navigating away doesn't lose data
+  // Only saves when at least one template is assigned — never persists an invalid (all rest) state
   useEffect(() => {
     // Skip the initial load (when localSchedule is set from routine.schedule)
     if (isInitialLoadRef.current) {
@@ -118,6 +121,10 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
       return;
     }
     if (!hasChanges) return;
+
+    // Don't persist a schedule with 0 templates — that's an invalid state
+    const hasTemplate = localSchedule.some((d) => d.templateId);
+    if (!hasTemplate) return;
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(async () => {
@@ -138,8 +145,13 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   }
 
   const handleUpdateMeta = async (data: RoutineFormData) => {
-    await updateRoutine(routineId, data);
-    setIsEditModalOpen(false);
+    try {
+      setEditError(null);
+      await updateRoutine(routineId, data);
+      setIsEditModalOpen(false);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update routine');
+    }
   };
 
   const handleDuplicate = async () => {
@@ -191,15 +203,39 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
     setHasChanges(true);
   };
 
+  const isDraft = sessionStorage.getItem('draftRoutineId') === routineId;
+  const hasAnyTemplate = localSchedule.some((d) => d.templateId);
+
   const handleBack = () => {
-    // Clear draft marker when leaving
+    // If no templates assigned, warn the user regardless of draft status
+    if (!hasAnyTemplate) {
+      setShowIncompleteWarning(true);
+      return;
+    }
+
+    // Clear draft marker when leaving via back button
     sessionStorage.removeItem('draftRoutineId');
-    // Auto-save already persists changes, so just navigate
     // Flush any pending auto-save immediately
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
       updateRoutine(routineId, { schedule: localSchedule });
     }
+    navigate('/routines');
+  };
+
+  const handleConfirmIncomplete = async () => {
+    // Cancel any pending auto-save (shouldn't exist for 0-template state, but be safe)
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
+    if (isDraft) {
+      // Draft with no templates — delete it
+      sessionStorage.removeItem('draftRoutineId');
+      await deleteRoutine(routineId);
+    }
+    // Existing routine — DB still has the last valid state, just leave
     navigate('/routines');
   };
 
@@ -307,7 +343,7 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
       {/* Edit Details Modal */}
       <Modal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={() => { setIsEditModalOpen(false); setEditError(null); }}
         title="Edit Routine"
       >
         <RoutineForm
@@ -316,8 +352,9 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
             type: routine.type,
           }}
           onSubmit={handleUpdateMeta}
-          onCancel={() => setIsEditModalOpen(false)}
+          onCancel={() => { setIsEditModalOpen(false); setEditError(null); }}
           isEdit
+          error={editError}
         />
       </Modal>
 
@@ -351,6 +388,21 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
         title="Set as Active Routine"
         message={`Make "${routine.name}" your active routine? This will be used for your home screen workouts.`}
         confirmLabel="Set as Active"
+      />
+
+      {/* Incomplete Routine Warning */}
+      <ConfirmDialog
+        isOpen={showIncompleteWarning}
+        onClose={() => setShowIncompleteWarning(false)}
+        onConfirm={handleConfirmIncomplete}
+        title="No Templates Assigned"
+        message={
+          isDraft
+            ? `"${routine.name}" has no templates assigned. Going back will delete this routine. Are you sure?`
+            : `"${routine.name}" has no templates assigned. Your changes will be reverted. Are you sure?`
+        }
+        confirmLabel={isDraft ? 'Delete Routine' : 'Revert & Leave'}
+        variant="danger"
       />
     </div>
   );

@@ -27,15 +27,105 @@
 
 .details {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
+  flex-direction: column;
+  gap: 6px;
 }
 
-.tag {
+.infoLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: var(--text-xs);
+}
+
+.infoLabel {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.infoValue {
+  color: var(--color-text-secondary);
+}
+
+.muscleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.muscleTag {
+  font-size: var(--text-xs);
+  padding: 1px 6px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+}
+
+.levelBadge {
+  font-size: var(--text-xs);
+  font-weight: 600;
   padding: 2px 8px;
-  background-color: var(--color-bg);
+  background-color: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: var(--radius-sm);
+  color: #a855f7;
+  white-space: nowrap;
+}
+
+/* Progression row — level badge + progression link + prev/next nav */
+.progressionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.progressionLink {
+  font-size: var(--text-xs);
+  font-family: inherit;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.progressionLink:hover {
+  color: var(--color-text);
+}
+
+.progressionNav {
+  display: flex;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
+.progressionNavBtn {
+  font-size: var(--text-xs);
+  font-family: inherit;
+  padding: 2px 8px;
+  background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.progressionNavBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
 }

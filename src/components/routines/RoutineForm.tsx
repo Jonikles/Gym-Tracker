@@ -41,14 +41,17 @@ export function RoutineForm({
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
-      <Input
-        label="Routine Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="e.g., PPL Split, Upper/Lower"
-        required
-        autoFocus
-      />
+      <div>
+        <Input
+          label="Routine Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g., PPL Split, Upper/Lower"
+          required
+          autoFocus
+        />
+        {error && <p className={styles.error}>{error}</p>}
+      </div>
 
       {!isEdit && (
         <Select
@@ -77,8 +80,6 @@ export function RoutineForm({
           )}
         </div>
       )}
-
-      {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.actions}>
         <Button type="button" variant="secondary" onClick={onCancel}>
