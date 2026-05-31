@@ -5,7 +5,10 @@ import { Button, ConfirmDialog, Modal } from '../common';
 import { ExercisePicker } from '../exercises';
 import { SessionExercise } from './SessionExercise';
 import { ExerciseGroup } from './ExerciseGroup';
+import { PlateCalculator } from './PlateCalculator';
 import { useSessionContext } from '../../context/SessionContext';
+import { useUndo } from '../../context/UndoContext';
+import { useExercise } from '../../hooks/useExercises';
 import { useRoutine } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
 import { useSessionSets } from '../../hooks/useSets';
@@ -24,6 +27,12 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+/** Lightweight name-only label for select mode */
+function ExerciseNameLabel({ exerciseId }: { exerciseId: string }) {
+  const exercise = useExercise(exerciseId);
+  return <span className={styles.selectExerciseName}>{exercise?.name ?? 'Loading...'}</span>;
+}
+
 export function ActiveSession() {
   const {
     activeSession,
@@ -35,7 +44,27 @@ export function ActiveSession() {
     addExercise,
     removeExercise,
     reorderExercises,
+    switchProgressionLevel,
+    groupExercises,
+    ungroupAll,
   } = useSessionContext();
+  const { showUndo } = useUndo();
+
+  // Wrap removeExercise with undo support
+  const handleRemoveExercise = useCallback(async (sessionExerciseId: string) => {
+    // Save data for undo before deleting
+    const se = await db.sessionExercises.get(sessionExerciseId);
+    const sets = await db.sets.where('sessionExerciseId').equals(sessionExerciseId).toArray();
+    const exercise = se ? await db.exercises.get(se.exerciseId) : null;
+
+    await removeExercise(sessionExerciseId);
+
+    showUndo(`${exercise?.name ?? 'Exercise'} removed`, async () => {
+      // Restore the session exercise and its sets
+      if (se) await db.sessionExercises.add(se);
+      if (sets.length > 0) await db.sets.bulkAdd(sets);
+    });
+  }, [removeExercise, showUndo]);
 
   const routine = useRoutine(activeSession?.routineId);
   const allTemplates = useTemplates() ?? [];
@@ -51,6 +80,7 @@ export function ActiveSession() {
 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
+  const [isPlateCalcOpen, setIsPlateCalcOpen] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -58,6 +88,8 @@ export function ActiveSession() {
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showValidation, setShowValidation] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   // Track which type of validation error is active: 'no-exercises' | 'no-sets' | 'empty-fields' | null
@@ -148,12 +180,16 @@ export function ActiveSession() {
     return () => clearInterval(interval);
   }, [activeSession?.startedAt]);
 
-  // Create a map of exerciseId -> TemplateExercise for quick lookup
+  // Create a map for template exercise lookup.
+  // Keys by exerciseId AND by progressionId (prefixed with "prog:") for progression slots.
   const templateExerciseMap = useMemo(() => {
     const map = new Map<string, TemplateExercise>();
     if (template?.exercises) {
       for (const te of template.exercises) {
         map.set(te.exerciseId, te);
+        if (te.progressionId) {
+          map.set(`prog:${te.progressionId}`, te);
+        }
       }
     }
     return map;
@@ -224,6 +260,35 @@ export function ActiveSession() {
     },
     [draggedId, sessionExercises, reorderExercises]
   );
+
+  // Selection mode handlers for superset/circuit grouping
+  const toggleSelect = useCallback((sessionExerciseId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionExerciseId)) {
+        next.delete(sessionExerciseId);
+      } else {
+        next.add(sessionExerciseId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleGroup = useCallback(async (groupType: 'superset' | 'circuit') => {
+    if (selectedIds.size < 2) return;
+    await groupExercises([...selectedIds], groupType);
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  }, [selectedIds, groupExercises]);
+
+  const handleUngroup = useCallback(async (groupId: string) => {
+    await ungroupAll(groupId);
+  }, [ungroupAll]);
+
+  const cancelSelectMode = useCallback(() => {
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  }, []);
 
   // Handle complete button click — validate all sets have required fields filled
   const handleCompleteClick = useCallback(() => {
@@ -316,6 +381,18 @@ export function ActiveSession() {
           </div>
           <div className={styles.timerRow}>
             <span className={styles.timer}>{formatTime(elapsed)}</span>
+            <button
+              className={styles.plateCalcBtn}
+              onClick={() => setIsPlateCalcOpen(true)}
+              title="Plate Calculator"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="2" width="4" height="20" rx="1" />
+                <rect x="10" y="6" width="4" height="12" rx="1" />
+                <rect x="16" y="4" width="4" height="16" rx="1" />
+              </svg>
+              Plates
+            </button>
           </div>
         </div>
         <div className={styles.headerActions}>
@@ -358,21 +435,45 @@ export function ActiveSession() {
                 groupType={group.groupType}
                 exercises={group.exercises}
                 templateExerciseMap={templateExerciseMap}
-                onRemoveExercise={removeExercise}
+                onRemoveExercise={handleRemoveExercise}
+                onSwitchProgression={switchProgressionLevel}
                 showValidation={showValidation}
+                onUngroup={() => group.groupId && handleUngroup(group.groupId)}
               />
             );
           }
 
           const exercise = group.exercises[0];
-          const templateExercise = templateExerciseMap.get(exercise.exerciseId);
-          
+          // For progression slots, look up by progressionId first, then exerciseId
+          const templateExercise = exercise.progressionId
+            ? templateExerciseMap.get(`prog:${exercise.progressionId}`)
+            : templateExerciseMap.get(exercise.exerciseId);
+
+          if (isSelectMode) {
+            // Minimal card in select mode — just name + checkbox
+            return (
+              <div
+                key={exercise.id}
+                className={`${styles.selectableExercise} ${selectedIds.has(exercise.id) ? styles.selectedExercise : ''}`}
+                onClick={() => toggleSelect(exercise.id)}
+              >
+                <div className={styles.selectCheckbox}>
+                  <div className={`${styles.checkbox} ${selectedIds.has(exercise.id) ? styles.checked : ''}`}>
+                    {selectedIds.has(exercise.id) && '✓'}
+                  </div>
+                </div>
+                <ExerciseNameLabel exerciseId={exercise.exerciseId} />
+              </div>
+            );
+          }
+
           return (
             <SessionExercise
               key={exercise.id}
               sessionExercise={exercise}
               templateExercise={templateExercise}
-              onRemove={() => removeExercise(exercise.id)}
+              onRemove={() => handleRemoveExercise(exercise.id)}
+              onSwitchProgression={switchProgressionLevel}
               isDragging={draggedId === exercise.id}
               onDragStart={() => handleDragStart(exercise.id)}
               onDragOver={handleDragOver}
@@ -383,6 +484,34 @@ export function ActiveSession() {
         })}
       </div>
 
+      {/* Select mode toolbar */}
+      {isSelectMode && (
+        <div className={styles.selectToolbar}>
+          <span className={styles.selectCount}>{selectedIds.size} selected</span>
+          <div className={styles.selectActions}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleGroup('superset')}
+              disabled={selectedIds.size < 2}
+            >
+              Superset
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleGroup('circuit')}
+              disabled={selectedIds.size < 2}
+            >
+              Circuit
+            </Button>
+            <Button variant="ghost" size="sm" onClick={cancelSelectMode}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.addExercise}>
         <Button
           variant="secondary"
@@ -391,6 +520,16 @@ export function ActiveSession() {
         >
           + Add Exercise
         </Button>
+        {/* Group button — only show when 2+ ungrouped exercises exist */}
+        {!isSelectMode && sessionExercises.filter((e) => !e.groupId).length >= 2 && (
+          <Button
+            variant="ghost"
+            onClick={() => setIsSelectMode(true)}
+            className={styles.addButton}
+          >
+            Link Superset / Circuit
+          </Button>
+        )}
         {/* Import Template button - only show for blank workouts without a template */}
         {!template && sessionExercises.length === 0 && (
           <Button
@@ -484,6 +623,11 @@ export function ActiveSession() {
           </div>
         </div>
       </Modal>
+
+      <PlateCalculator
+        isOpen={isPlateCalcOpen}
+        onClose={() => setIsPlateCalcOpen(false)}
+      />
     </div>
   );
 }

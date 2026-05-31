@@ -1,0 +1,120 @@
+/* Share card — rendered off-screen, captured as PNG */
+.card {
+  width: 440px;
+  padding: 24px;
+  background: #141414;
+  color: #e5e5e5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-radius: 16px;
+}
+
+/* Header */
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.appName {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.periodLabel {
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+/* Stats row */
+.statsRow {
+  display: flex;
+  gap: 8px;
+}
+
+.stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px;
+  background: #1e1e1e;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.statNum {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.statNum small {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+.statLbl {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+/* Body heatmap */
+.heatmap {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.heatmapView {
+  width: 140px;
+}
+
+/* Top muscles */
+.topMuscles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #1e1e1e;
+  border-radius: 10px;
+}
+
+.topLabel {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.topList {
+  display: flex;
+  gap: 12px;
+}
+
+.topItem {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Footer */
+.cardFooter {
+  display: flex;
+  justify-content: center;
+  font-size: 11px;
+  color: #555;
+}

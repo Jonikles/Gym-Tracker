@@ -1,0 +1,293 @@
+/* ── Container ── */
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.genderToggle {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.genderBtn {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.genderBtn:not(:last-child) {
+  border-right: 1px solid var(--color-border);
+}
+
+.genderBtn:hover {
+  background: var(--color-bg-secondary);
+}
+
+.genderBtnActive {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.genderBtnActive:hover {
+  background: var(--color-accent);
+}
+
+/* ── Bodyweight prompt ── */
+.setupPrompt {
+  text-align: center;
+  padding: var(--space-xl);
+  color: var(--color-text-muted);
+}
+
+.setupLink {
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ── Total card ── */
+.totalCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+}
+
+.totalLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.totalValue {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.totalUnit {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.totalRatio {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* ── Lift cards ── */
+.lifts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.liftCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.liftHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.liftName {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.liftValue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.liftE1rm {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.liftRatio {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.noData {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* ── Progress bar ── */
+.progressSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.progressBar {
+  position: relative;
+  height: 28px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progressFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+
+.progressMarker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 100%;
+  background: var(--overlay-separator);
+}
+
+/* ── Level labels ── */
+.levelLabels {
+  display: flex;
+  justify-content: space-between;
+}
+
+.levelLabel {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-align: center;
+  flex: 1;
+}
+
+.levelLabelActive {
+  font-weight: 700;
+}
+
+/* ── Level badge ── */
+.levelBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Standards table ── */
+.standardsTable {
+  width: 100%;
+  margin-top: var(--space-xs);
+}
+
+.standardsToggle {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.standardsToggle:hover {
+  color: var(--color-text-secondary);
+}
+
+.standardsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  margin-top: var(--space-xs);
+}
+
+.standardCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-tertiary);
+}
+
+.standardCellLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.standardCellValue {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.standardCellActive {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+/* ── Wilks-like summary ── */
+.summaryRow {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.summaryValue {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.summaryLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}

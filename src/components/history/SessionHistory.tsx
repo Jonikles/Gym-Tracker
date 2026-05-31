@@ -5,10 +5,12 @@ import { Input, Select, Button, ConfirmDialog } from '../common';
 import { useSessions, deleteSession } from '../../hooks/useSessions';
 import { useRoutines } from '../../hooks/useRoutines';
 import { db } from '../../db';
-import type { Session, PRType, Template } from '../../types';
+import type { Session, PRType } from '../../types';
 import { matchesAllWords } from '../../utils/search';
 import { CalendarView } from './CalendarView';
 import { useSetting } from '../../hooks/useSettings';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { useScrollRestore } from '../../hooks/useScrollRestore';
 import styles from './SessionHistory.module.css';
 
 function formatDate(timestamp: number): string {
@@ -112,29 +114,30 @@ function SessionCard({ session, routineName, templateName, prCount, selectionMod
 
 export function SessionHistory() {
   const navigate = useNavigate();
-  const [routineFilter, setRoutineFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [minDuration, setMinDuration] = useState('');
-  const [maxDuration, setMaxDuration] = useState('');
-  const [minSets, setMinSets] = useState('');
-  const [maxSets, setMaxSets] = useState('');
-  const [prFilter, setPrFilter] = useState(''); // '' | 'any' | 'weight' | 'reps' | 'e1rm' | 'progression'
-  const [prExerciseFilter, setPrExerciseFilter] = useState('');
-  const [exerciseFilters, setExerciseFilters] = useState<string[]>([]);
-  const [exerciseFilterMode, setExerciseFilterMode] = useState<'any' | 'all'>('any');
-  const [isExerciseFilterOpen, setIsExerciseFilterOpen] = useState(false);
-  const [exerciseSearchQuery, setExerciseSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('date-desc');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [selectionMode, setSelectionMode] = useState(false);
+  useScrollRestore();
+  const [routineFilter, setRoutineFilter] = usePersistedState('history.routine', '');
+  const [dateFilter, setDateFilter] = usePersistedState('history.datePreset', '');
+  const [dateFrom, setDateFrom] = usePersistedState('history.dateFrom', '');
+  const [dateTo, setDateTo] = usePersistedState('history.dateTo', '');
+  const [searchQuery, setSearchQuery] = usePersistedState('history.search', '');
+  const [minDuration, setMinDuration] = usePersistedState('history.minDuration', '');
+  const [maxDuration, setMaxDuration] = usePersistedState('history.maxDuration', '');
+  const [minSets, setMinSets] = usePersistedState('history.minSets', '');
+  const [maxSets, setMaxSets] = usePersistedState('history.maxSets', '');
+  const [prFilter, setPrFilter] = usePersistedState('history.prFilter', '');
+  const [prExerciseFilter, setPrExerciseFilter] = usePersistedState('history.prExercise', '');
+  const [exerciseFilters, setExerciseFilters] = usePersistedState<string[]>('history.exercises', []);
+  const [exerciseFilterMode, setExerciseFilterMode] = usePersistedState<'any' | 'all'>('history.exerciseMode', 'any');
+  const [isExerciseFilterOpen, setIsExerciseFilterOpen] = usePersistedState('history.exerciseFilterOpen', false);
+  const [exerciseSearchQuery, setExerciseSearchQuery] = useState(''); // Don't persist in-modal search
+  const [sortBy, setSortBy] = usePersistedState('history.sort', 'date-desc');
+  const [viewMode, setViewMode] = usePersistedState<'list' | 'calendar'>('history.viewMode', 'list');
+  const [selectionMode, setSelectionMode] = useState(false); // Don't persist selection mode
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [visibleCount, setVisibleCount] = useState(30);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = usePersistedState('history.advancedOpen', false);
+  const [showExportMenu, setShowExportMenu] = useState(false); // Don't persist dropdown
 
   const routines = useRoutines();
   const weekStartDay = useSetting('weekStartDay') as number;
@@ -668,6 +671,7 @@ export function SessionHistory() {
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
           />
           <Select
             value={routineFilter}

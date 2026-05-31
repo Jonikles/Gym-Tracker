@@ -1,7 +1,3 @@
-html {
-    scrollbar-gutter: stable;
-}
-
 .container {
   display: flex;
   flex-direction: column;
@@ -254,6 +250,31 @@ html {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-sm);
+}
+
+.favFilterBtn {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.favFilterBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.favFilterActive {
+  color: #eab308;
+  border-color: #eab308;
+  background: rgba(234, 179, 8, 0.1);
 }
 
 .toggle {
@@ -288,4 +309,28 @@ html {
   text-align: center;
   color: var(--color-text-muted);
   padding: var(--space-xl);
+}
+
+/* Favorite toggle */
+.favBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: all 0.15s ease;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.favBtn:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.favActive {
+  color: #eab308;
+  opacity: 1;
 }

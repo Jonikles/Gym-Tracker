@@ -1,8 +1,12 @@
 import { useOverallStats } from '../../hooks/useStats';
 import styles from './Analytics.module.css';
 
-export function StatsCards() {
-  const stats = useOverallStats();
+interface StatsCardsProps {
+  days: number;
+}
+
+export function StatsCards({ days }: StatsCardsProps) {
+  const stats = useOverallStats(days);
 
   if (!stats) {
     return null;
@@ -37,6 +41,14 @@ export function StatsCards() {
           {stats.currentStreak}
         </span>
         <span className={styles.statCardLabel}>Day Streak</span>
+      </div>
+      <div className={styles.statCard}>
+        <span className={styles.statCardValue}>{stats.avgDurationMin}m</span>
+        <span className={styles.statCardLabel}>Avg Duration</span>
+      </div>
+      <div className={styles.statCard}>
+        <span className={styles.statCardValue}>{stats.consistencyRate}%</span>
+        <span className={styles.statCardLabel}>Consistency</span>
       </div>
     </div>
   );

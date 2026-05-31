@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { Button, Input, Select } from '../common';
 import type { RoutineType } from '../../types';
 import styles from './RoutineForm.module.css';
@@ -28,6 +28,13 @@ export function RoutineForm({
 }: RoutineFormProps) {
   const [name, setName] = useState(initialValues?.name ?? '');
   const [type, setType] = useState<RoutineType>(initialValues?.type ?? 'fixed');
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  // Focus name input after dialog opens (autoFocus doesn't work with <dialog>.showModal())
+  useEffect(() => {
+    const timer = setTimeout(() => nameRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -43,12 +50,12 @@ export function RoutineForm({
     <form onSubmit={handleSubmit} className={styles.form}>
       <div>
         <Input
+          ref={nameRef}
           label="Routine Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g., PPL Split, Upper/Lower"
           required
-          autoFocus
         />
         {error && <p className={styles.error}>{error}</p>}
       </div>

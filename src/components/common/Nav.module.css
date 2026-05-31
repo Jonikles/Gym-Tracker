@@ -1,4 +1,7 @@
-.nav {
+/* ════════════════════════════════════════
+   Desktop top bar (hidden on mobile)
+   ════════════════════════════════════════ */
+.desktopNav {
   display: flex;
   align-items: center;
   padding: var(--space-md) var(--space-lg);
@@ -17,7 +20,7 @@
   white-space: nowrap;
 }
 
-.links {
+.desktopLinks {
   display: flex;
   flex: 1;
   gap: var(--space-xs);
@@ -29,7 +32,7 @@
   align-items: center;
 }
 
-.link {
+.desktopLink {
   display: block;
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--text-sm);
@@ -39,17 +42,17 @@
   white-space: nowrap;
 }
 
-.link:hover {
+.desktopLink:hover {
   color: var(--color-text);
   background-color: var(--color-bg-tertiary);
 }
 
-.link.active {
+.desktopLink.active {
   color: var(--color-text);
   background-color: var(--color-bg-tertiary);
 }
 
-.workoutButton {
+.desktopWorkoutBtn {
   display: block;
   padding: var(--space-xs) var(--space-lg);
   font-size: var(--text-sm);
@@ -62,8 +65,145 @@
   flex-shrink: 0;
 }
 
+/* ════════════════════════════════════════
+   Mobile bottom tab bar (hidden on desktop)
+   ════════════════════════════════════════ */
+.mobileNav {
+  display: none;
+}
+
 @media (max-width: 768px) {
-  .links {
-    padding-bottom: var(--space-xs);
+  .desktopNav {
+    display: none;
   }
+
+  .mobileNav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    background-color: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+.mobileTab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-sm) 0;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobileTab:hover {
+  color: var(--color-text-secondary);
+}
+
+.mobileTabActive {
+  color: var(--color-text);
+}
+
+.mobileTabLive {
+  color: var(--color-success);
+}
+
+.mobileTabIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.mobileTabLabel {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ════════════════════════════════════════
+   More sheet (slides up from bottom on mobile)
+   ════════════════════════════════════════ */
+.moreBackdrop {
+  display: none;
+}
+
+.moreSheet {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .moreBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 190;
+    animation: fadeIn 0.15s ease;
+  }
+
+  .moreSheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    left: 0;
+    right: 0;
+    z-index: 195;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: var(--space-sm) 0;
+    animation: slideUp 0.2s ease;
+  }
+
+  .moreLink {
+    display: block;
+    padding: var(--space-md) var(--space-lg);
+    color: var(--color-text-secondary);
+    font-size: var(--text-base);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.1s ease;
+  }
+
+  .moreLink:hover,
+  .moreLink:active {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  .moreLinkActive {
+    color: var(--color-text);
+  }
+}
+
+/* ════════════════════════════════════════
+   Page bottom padding (so content isn't hidden behind tab bar)
+   ════════════════════════════════════════ */
+@media (max-width: 768px) {
+  :global(.page) {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ════════════════════════════════════════
+   Animations
+   ════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }

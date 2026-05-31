@@ -11,8 +11,12 @@ import {
 import { useWorkoutFrequency } from '../../hooks/useStats';
 import styles from './Analytics.module.css';
 
-export function FrequencyChart() {
-  const data = useWorkoutFrequency(12);
+interface FrequencyChartProps {
+  days: number;
+}
+
+export function FrequencyChart({ days }: FrequencyChartProps) {
+  const data = useWorkoutFrequency(days);
 
   if (!data || data.weeks.length === 0) {
     return (

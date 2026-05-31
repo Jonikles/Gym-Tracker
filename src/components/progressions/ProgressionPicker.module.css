@@ -1,0 +1,89 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 0;
+  flex: 1;
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: var(--space-xs);
+}
+
+.categoryGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.categoryHeader {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-sm) var(--space-xs);
+  margin-top: var(--space-sm);
+}
+
+.categoryGroup:first-child .categoryHeader {
+  margin-top: 0;
+}
+
+.progressionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color 0.15s;
+  width: 100%;
+  text-align: left;
+  font-size: var(--font-sm);
+}
+
+.progressionItem:hover {
+  background: var(--color-surface-hover);
+}
+
+.progressionItem:active {
+  background: var(--color-surface-active);
+}
+
+.progressionName {
+  font-weight: 500;
+}
+
+.arrow {
+  color: var(--color-text-muted);
+  font-size: var(--font-lg);
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-lg);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}

@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button, ConfirmDialog } from '../common';
 import { ExercisePicker } from '../exercises';
+import { ProgressionPicker } from '../progressions/ProgressionPicker';
 import { TemplateExerciseList } from './TemplateExerciseList';
 import { createTemplate, updateTemplate, deleteTemplate } from '../../hooks/useTemplates';
+import { getLowestLevelExercise } from '../../hooks/useProgressions';
 import type { Template, TemplateExercise, TemplateSet, Exercise } from '../../types';
 import styles from './TemplateForm.module.css';
 
@@ -19,6 +21,7 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
     template?.exercises ?? []
   );
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isProgressionPickerOpen, setIsProgressionPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
 
@@ -122,21 +125,50 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
     setIsPickerOpen(false);
   };
 
+  const handleAddProgression = async (progressionId: string) => {
+    const defaultSets: TemplateSet[] = [
+      { order: 0, isWarmup: false, intensityTechnique: 'standard' },
+      { order: 1, isWarmup: false, intensityTechnique: 'standard' },
+      { order: 2, isWarmup: false, intensityTechnique: 'standard' },
+    ];
+
+    // Get the lowest-level exercise as default
+    const lowestExercise = await getLowestLevelExercise(progressionId);
+    if (!lowestExercise) return;
+
+    const newExercise: TemplateExercise = {
+      exerciseId: lowestExercise.id,
+      progressionId,
+      order: exercises.length,
+      sets: defaultSets,
+      targetReps: '8-12',
+    };
+    setExercises([...exercises, newExercise]);
+    setIsProgressionPickerOpen(false);
+  };
+
   const handleUpdateExercise = (
     exerciseId: string,
-    updates: Partial<TemplateExercise>
+    updates: Partial<TemplateExercise>,
+    order?: number
   ) => {
     setExercises(
-      exercises.map((e) =>
-        e.exerciseId === exerciseId ? { ...e, ...updates } : e
-      )
+      exercises.map((e) => {
+        if (order !== undefined) {
+          return e.order === order ? { ...e, ...updates } : e;
+        }
+        return e.exerciseId === exerciseId ? { ...e, ...updates } : e;
+      })
     );
   };
 
-  const handleRemoveExercise = (exerciseId: string) => {
+  const handleRemoveExercise = (exerciseId: string, order?: number) => {
     setExercises(
       exercises
-        .filter((e) => e.exerciseId !== exerciseId)
+        .filter((e) => {
+          if (order !== undefined) return e.order !== order;
+          return e.exerciseId !== exerciseId;
+        })
         .map((e, index) => ({ ...e, order: index }))
     );
   };
@@ -228,6 +260,7 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
           onRemove={handleRemoveExercise}
           onReorder={handleReorder}
           onAddClick={() => setIsPickerOpen(true)}
+          onAddProgressionClick={() => setIsProgressionPickerOpen(true)}
         />
       </div>
 
@@ -239,6 +272,12 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         onSelect={handleAddExercise}
         excludeIds={existingExerciseIds}
         title="Add Exercise"
+      />
+
+      <ProgressionPicker
+        isOpen={isProgressionPickerOpen}
+        onClose={() => setIsProgressionPickerOpen(false)}
+        onSelect={handleAddProgression}
       />
 
       <ConfirmDialog

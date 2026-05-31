@@ -117,6 +117,7 @@ export interface Exercise {
   defaultFields: ExerciseField[];
   progressionLevel?: number;
   progressionMemberships?: ProgressionMembership[];
+  isFavorite?: boolean;
   isPreset: boolean;
   isArchived: boolean;
   createdAt: number;

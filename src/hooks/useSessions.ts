@@ -4,6 +4,7 @@ import type { Session, SessionExercise, Set, Template, TemplateExercise } from '
 import { advanceRollingPosition } from './useRoutines';
 import { detectAndSavePRs } from '../utils/pr';
 import { detectAndSaveProgressionAdvancements } from '../utils/progression';
+import { getLastUsedExerciseForProgression } from './useProgressions';
 
 /**
  * Filter options for session queries
@@ -170,11 +171,21 @@ export async function startSessionFromTemplate(
     const te = sortedExercises[i];
     const sessionExerciseId = crypto.randomUUID();
 
+    // Resolve exerciseId for progression slots
+    let resolvedExerciseId = te.exerciseId;
+    if (te.progressionId) {
+      const lastUsed = await getLastUsedExerciseForProgression(te.progressionId);
+      if (lastUsed) {
+        resolvedExerciseId = lastUsed.id;
+      }
+    }
+
     // Create session exercise
     sessionExercises.push({
       id: sessionExerciseId,
       sessionId,
-      exerciseId: te.exerciseId,
+      exerciseId: resolvedExerciseId,
+      progressionId: te.progressionId,
       order: i + 1,
       groupId: te.groupId,
       groupType: te.groupType,
@@ -448,6 +459,28 @@ export async function addExerciseToSession(
 }
 
 /**
+ * Switch the progression level for a session exercise mid-workout.
+ * Swaps the exerciseId in-place on the existing SessionExercise.
+ * Keeps existing sets (user's logged data is preserved).
+ * Returns the same SessionExercise ID.
+ */
+export async function switchProgressionLevel(
+  _sessionId: string,
+  currentSessionExerciseId: string,
+  newExerciseId: string
+): Promise<string> {
+  const currentSE = await db.sessionExercises.get(currentSessionExerciseId);
+  if (!currentSE) throw new Error('Session exercise not found');
+
+  // Simply swap the exerciseId — keeps all existing sets, order, groups intact
+  await db.sessionExercises.update(currentSessionExerciseId, {
+    exerciseId: newExerciseId,
+  });
+
+  return currentSessionExerciseId;
+}
+
+/**
  * Remove an exercise from a session
  */
 export async function removeExerciseFromSession(
@@ -462,6 +495,85 @@ export async function removeExerciseFromSession(
 
   // Delete the session exercise
   await db.sessionExercises.delete(sessionExerciseId);
+}
+
+/**
+ * Group exercises into a superset or circuit
+ */
+export async function groupSessionExercises(
+  sessionExerciseIds: string[],
+  groupType: 'superset' | 'circuit'
+): Promise<void> {
+  if (sessionExerciseIds.length < 2) return;
+  const groupId = crypto.randomUUID();
+
+  const updates = sessionExerciseIds.map((id, index) =>
+    db.sessionExercises.update(id, {
+      groupId,
+      groupType,
+      groupOrder: index,
+    })
+  );
+  await Promise.all(updates);
+}
+
+/**
+ * Remove an exercise from its group (ungroup single exercise)
+ */
+export async function ungroupSessionExercise(
+  sessionExerciseId: string
+): Promise<void> {
+  const se = await db.sessionExercises.get(sessionExerciseId);
+  if (!se?.groupId) return;
+
+  const groupId = se.groupId;
+
+  // Remove this exercise from group
+  await db.sessionExercises.update(sessionExerciseId, {
+    groupId: undefined,
+    groupType: undefined,
+    groupOrder: undefined,
+  });
+
+  // Check remaining group members — if only 1 left, dissolve the group
+  const remaining = await db.sessionExercises
+    .where('sessionId')
+    .equals(se.sessionId)
+    .filter((e) => e.groupId === groupId && e.id !== sessionExerciseId)
+    .toArray();
+
+  if (remaining.length <= 1) {
+    for (const r of remaining) {
+      await db.sessionExercises.update(r.id, {
+        groupId: undefined,
+        groupType: undefined,
+        groupOrder: undefined,
+      });
+    }
+  }
+}
+
+/**
+ * Dissolve an entire group back to individual exercises
+ */
+export async function ungroupAllSessionExercises(
+  sessionId: string,
+  groupId: string
+): Promise<void> {
+  const members = await db.sessionExercises
+    .where('sessionId')
+    .equals(sessionId)
+    .filter((e) => e.groupId === groupId)
+    .toArray();
+
+  const updates = members.map((m) =>
+    db.sessionExercises.update(m.id, {
+      groupId: undefined,
+      groupType: undefined,
+      groupOrder: undefined,
+    })
+  );
+  await Promise.all(updates);
 }
 
 /**
@@ -533,14 +645,21 @@ export async function getTemplateForSession(
 }
 
 /**
- * Get template exercise config for a specific exercise in a session
+ * Get template exercise config for a specific exercise in a session.
+ * For progression slots, matches by progressionId first.
  */
 export async function getTemplateExerciseConfig(
   sessionId: string,
-  exerciseId: string
+  exerciseId: string,
+  progressionId?: string
 ): Promise<TemplateExercise | undefined> {
   const template = await getTemplateForSession(sessionId);
   if (!template) return undefined;
+
+  // For progression slots, match by progressionId
+  if (progressionId) {
+    return template.exercises.find((e) => e.progressionId === progressionId);
+  }
   return template.exercises.find((e) => e.exerciseId === exerciseId);
 }
 
@@ -583,10 +702,20 @@ export async function importTemplateIntoSession(
     const te = sortedExercises[i];
     const sessionExerciseId = crypto.randomUUID();
 
+    // Resolve exerciseId for progression slots
+    let resolvedExerciseId = te.exerciseId;
+    if (te.progressionId) {
+      const lastUsed = await getLastUsedExerciseForProgression(te.progressionId);
+      if (lastUsed) {
+        resolvedExerciseId = lastUsed.id;
+      }
+    }
+
     sessionExercises.push({
       id: sessionExerciseId,
       sessionId,
-      exerciseId: te.exerciseId,
+      exerciseId: resolvedExerciseId,
+      progressionId: te.progressionId,
       order: startOrder + i + 1,
       groupId: te.groupId,
       groupType: te.groupType,
@@ -654,6 +783,7 @@ export async function repeatSession(sourceSessionId: string): Promise<string> {
       id: newSEId,
       sessionId: newSessionId,
       exerciseId: se.exerciseId,
+      progressionId: se.progressionId,
       order: se.order,
       groupId: se.groupId,
       groupType: se.groupType,

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../common';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import { useProgressionExercises, useProgressionAchievements } from '../../hooks/useProgressions';
+import { useProgressionHistory } from '../../hooks/useProgressionHistory';
 import styles from './ProgressionDetail.module.css';
 
 interface ProgressionDetailProps {
@@ -15,6 +16,7 @@ export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
   const exercises = useProgressionExercises(progressionId) ?? [];
   const achievements = useProgressionAchievements() ?? {};
   const achievedLevel = achievements[progressionId] ?? 0;
+  const history = useProgressionHistory(progressionId);
 
   // Group exercises that share the same level
   const levelGroups = useMemo(() => {
@@ -104,6 +106,49 @@ export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
 
       {exercises.length === 0 && (
         <p className={styles.empty}>No exercises found for this progression.</p>
+      )}
+
+      {/* History Timeline */}
+      {history && history.length > 0 && (
+        <section className={styles.historySection}>
+          <h2 className={styles.historyTitle}>History</h2>
+          <div className={styles.timeline}>
+            {history.map((entry, i) => {
+              const prevEntry = history[i + 1]; // older entry (sorted newest-first)
+              const levelChanged = prevEntry && prevEntry.level !== entry.level;
+              const levelUp = levelChanged && entry.level > prevEntry.level;
+
+              return (
+                <button
+                  key={`${entry.sessionId}-${entry.exerciseId}`}
+                  className={styles.timelineEntry}
+                  onClick={() => navigate(`/history/${entry.sessionId}`)}
+                >
+                  <div className={styles.timelineDot} />
+                  {i < history.length - 1 && <div className={styles.timelineLine} />}
+                  <div className={styles.timelineContent}>
+                    <span className={styles.timelineDate}>
+                      {new Date(entry.date).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                    <span className={styles.timelineExercise}>{entry.exerciseName}</span>
+                    <div className={styles.timelineMeta}>
+                      <span className={styles.timelineLevel}>Lvl {entry.level}</span>
+                      {levelChanged && (
+                        <span className={levelUp ? styles.levelUpBadge : styles.levelDownBadge}>
+                          {levelUp ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

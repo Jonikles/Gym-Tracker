@@ -3,16 +3,20 @@ import { Button, Card } from '../common';
 import { SetRow } from './SetRow';
 import { SetHistory } from './SetHistory';
 import { OverloadHint } from './OverloadHint';
+import { ProgressionLevelPicker } from './ProgressionLevelPicker';
 import { useSets, createSet, quickFillFromPrevious } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
 import { updateSessionExerciseNotes } from '../../hooks/useSessions';
-import type { SessionExercise as SessionExerciseType, ExerciseField, TemplateExercise } from '../../types';
+import { useRestTimer } from '../../context/RestTimerContext';
+import { PROGRESSION_MAP } from '../../data/progressions';
+import type { SessionExercise as SessionExerciseType, ExerciseField, TemplateExercise, Exercise } from '../../types';
 import styles from './SessionExercise.module.css';
 
 interface SessionExerciseProps {
   sessionExercise: SessionExerciseType;
   templateExercise?: TemplateExercise;
   onRemove: () => void;
+  onSwitchProgression?: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
   isDragging?: boolean;
   onDragStart?: () => void;
   onDragOver?: (e: React.DragEvent) => void;
@@ -24,6 +28,7 @@ export function SessionExercise({
   sessionExercise,
   templateExercise,
   onRemove,
+  onSwitchProgression,
   isDragging,
   onDragStart,
   onDragOver,
@@ -32,11 +37,21 @@ export function SessionExercise({
 }: SessionExerciseProps) {
   const exercise = useExercise(sessionExercise.exerciseId);
   const sets = useSets(sessionExercise.id) ?? [];
+  const { start: startRestTimer } = useRestTimer();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [quickFillMessage, setQuickFillMessage] = useState<string | null>(null);
   const [showNotes, setShowNotes] = useState(!!sessionExercise.notes);
   const [notes, setNotes] = useState(sessionExercise.notes ?? '');
   const notesRef = useRef(notes);
+  const [showLevelPicker, setShowLevelPicker] = useState(false);
+
+  const isProgression = !!sessionExercise.progressionId;
+  const progressionDef = isProgression ? PROGRESSION_MAP[sessionExercise.progressionId!] : null;
+  const exerciseLevel = isProgression
+    ? exercise?.progressionMemberships?.find(
+        (pm) => pm.progressionId === sessionExercise.progressionId
+      )?.level
+    : undefined;
 
   // Save notes on blur
   const handleNotesSave = useCallback(() => {
@@ -68,6 +83,12 @@ export function SessionExercise({
       setTimeout(() => setQuickFillMessage(null), 3000);
     }
   }, [sessionExercise.id, sessionExercise.exerciseId]);
+
+  const handleSwitchLevel = useCallback(async (newExercise: Exercise) => {
+    if (onSwitchProgression) {
+      await onSwitchProgression(sessionExercise.id, newExercise.id);
+    }
+  }, [onSwitchProgression, sessionExercise.id]);
 
   if (!exercise) {
     return (
@@ -105,11 +126,31 @@ export function SessionExercise({
       <div className={styles.header}>
         {onDragStart && <span className={styles.dragHandle}>⋮⋮</span>}
         <div className={styles.titleRow} onClick={() => setIsCollapsed(!isCollapsed)}>
-          <h3 className={styles.name}>{exercise.name}</h3>
+          <div className={styles.titleGroup}>
+            {isProgression && progressionDef && (
+              <span className={styles.progressionLabel}>{progressionDef.name}</span>
+            )}
+            <h3 className={styles.name}>
+              {exercise.name}
+              {isProgression && exerciseLevel !== undefined && (
+                <span className={styles.levelBadge}>Lvl {exerciseLevel}</span>
+              )}
+            </h3>
+          </div>
           {sessionExercise.groupType && (
             <span className={styles.groupBadge}>{sessionExercise.groupType}</span>
           )}
         </div>
+        {isProgression && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowLevelPicker(true)}
+            title="Switch progression level"
+          >
+            Switch
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -161,6 +202,7 @@ export function SessionExercise({
                   exerciseId={sessionExercise.exerciseId}
                   onDelete={() => {}}
                   showValidation={showValidation}
+                  onSetCompleted={startRestTimer}
                 />
               );
             })}
@@ -180,6 +222,16 @@ export function SessionExercise({
             )}
           </div>
         </>
+      )}
+
+      {isProgression && sessionExercise.progressionId && (
+        <ProgressionLevelPicker
+          isOpen={showLevelPicker}
+          onClose={() => setShowLevelPicker(false)}
+          progressionId={sessionExercise.progressionId}
+          currentExerciseId={sessionExercise.exerciseId}
+          onSelect={handleSwitchLevel}
+        />
       )}
     </div>
   );

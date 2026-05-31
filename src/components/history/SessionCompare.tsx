@@ -39,8 +39,6 @@ function ExerciseCompare({
   const name = leftExercise?.name ?? rightExercise?.name ?? 'Unknown';
   const leftWorking = leftSets.filter((s) => !s.isWarmup);
   const rightWorking = rightSets.filter((s) => !s.isWarmup);
-  const maxSets = Math.max(leftWorking.length, rightWorking.length);
-
   // Volume comparison
   const leftVol = leftWorking.reduce((sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 0), 0);
   const rightVol = rightWorking.reduce((sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 0), 0);

@@ -26,7 +26,8 @@ export interface TemplateSet {
  * targetReps is defined once for the exercise, not per set
  */
 export interface TemplateExercise {
-  exerciseId: string;
+  exerciseId: string; // For progression slots: the default/last-used exercise
+  progressionId?: string; // If present, this is a progression slot (references PROGRESSION_DEFINITIONS id)
   order: number;
   sets: TemplateSet[]; // Array of set definitions
   targetReps: string; // e.g., "8-12" or "5" - applies to all working sets

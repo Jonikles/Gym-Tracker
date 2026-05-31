@@ -220,17 +220,24 @@ export async function addExerciseToTemplate(
 }
 
 /**
- * Remove an exercise from a template
+ * Remove an exercise from a template by order index.
+ * Uses order instead of exerciseId to handle progression slots
+ * (two progression slots could share the same default exerciseId).
  */
 export async function removeExerciseFromTemplate(
   templateId: string,
-  exerciseId: string
+  exerciseId: string,
+  order?: number
 ): Promise<void> {
   const template = await db.templates.get(templateId);
   if (!template) throw new Error('Template not found');
 
   const updatedExercises = template.exercises
-    .filter((e) => e.exerciseId !== exerciseId)
+    .filter((e) => {
+      // If order is provided, match by order (more precise for progression slots)
+      if (order !== undefined) return e.order !== order;
+      return e.exerciseId !== exerciseId;
+    })
     .map((e, index) => ({ ...e, order: index }));
 
   await db.templates.update(templateId, {
@@ -263,19 +270,24 @@ export async function reorderTemplateExercises(
 }
 
 /**
- * Update an exercise within a template
+ * Update an exercise within a template.
+ * When order is provided, matches by order (required for progression slots).
  */
 export async function updateTemplateExercise(
   templateId: string,
   exerciseId: string,
-  updates: Partial<Omit<TemplateExercise, 'exerciseId' | 'order'>>
+  updates: Partial<Omit<TemplateExercise, 'exerciseId' | 'order'>>,
+  order?: number
 ): Promise<void> {
   const template = await db.templates.get(templateId);
   if (!template) throw new Error('Template not found');
 
-  const updatedExercises = template.exercises.map((e) =>
-    e.exerciseId === exerciseId ? { ...e, ...updates } : e
-  );
+  const updatedExercises = template.exercises.map((e) => {
+    if (order !== undefined) {
+      return e.order === order ? { ...e, ...updates } : e;
+    }
+    return e.exerciseId === exerciseId ? { ...e, ...updates } : e;
+  });
 
   await db.templates.update(templateId, {
     exercises: updatedExercises,

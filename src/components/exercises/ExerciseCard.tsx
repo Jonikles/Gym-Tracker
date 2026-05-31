@@ -24,10 +24,14 @@ interface ExerciseCardProps {
   exercise: Exercise;
   onClick?: () => void;
   showDetails?: boolean;
+  /** Show progression links + prev/next nav. Only true on the Exercise Library page. */
+  showProgressionNav?: boolean;
   progressionLevelMap?: ProgressionLevelMap;
+  /** Optional extra content rendered after the card header (e.g. favorite button) */
+  headerExtra?: React.ReactNode;
 }
 
-export function ExerciseCard({ exercise, onClick, showDetails = true, progressionLevelMap }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, onClick, showDetails = true, showProgressionNav = false, progressionLevelMap, headerExtra }: ExerciseCardProps) {
   const navigate = useNavigate();
 
   const memberships = exercise.progressionMemberships;
@@ -38,6 +42,7 @@ export function ExerciseCard({ exercise, onClick, showDetails = true, progressio
       <div className={styles.header}>
         <h3 className={styles.name}>{exercise.name}</h3>
         {exercise.isArchived && <span className={`${styles.badge} ${styles.archivedBadge}`}>Archived</span>}
+        {headerExtra}
       </div>
       {showDetails && (
         <div className={styles.details}>
@@ -72,8 +77,8 @@ export function ExerciseCard({ exercise, onClick, showDetails = true, progressio
         </div>
       )}
 
-      {/* Progression row(s) — shown for exercises with progression memberships */}
-      {showDetails && hasProgression && memberships.map((pm) => {
+      {/* Progression row(s) — only shown on Exercise Library page */}
+      {showProgressionNav && hasProgression && memberships.map((pm) => {
         const progDef = PROGRESSION_MAP[pm.progressionId];
         const progName = progDef?.name ?? pm.progressionId;
         const levelMap = progressionLevelMap?.get(pm.progressionId);

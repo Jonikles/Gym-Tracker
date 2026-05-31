@@ -21,13 +21,17 @@ const COLORS = [
   '#6366f1',
 ];
 
-export function MuscleChart() {
-  const data = useMuscleDistribution(30);
+interface MuscleChartProps {
+  days: number;
+}
+
+export function MuscleChart({ days }: MuscleChartProps) {
+  const data = useMuscleDistribution(days);
 
   if (!data || data.length === 0) {
     return (
       <div className={styles.chart}>
-        <h3 className={styles.chartTitle}>Muscle Distribution (30 days)</h3>
+        <h3 className={styles.chartTitle}>Muscle Distribution</h3>
         <div className={styles.empty}>No workout data yet</div>
       </div>
     );
@@ -56,7 +60,7 @@ export function MuscleChart() {
 
   return (
     <div className={styles.chart}>
-      <h3 className={styles.chartTitle}>Muscle Distribution (30 days)</h3>
+      <h3 className={styles.chartTitle}>Muscle Distribution</h3>
       <div className={styles.chartContainer}>
         <ResponsiveContainer width="100%" height={280}>
           <PieChart>

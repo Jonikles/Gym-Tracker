@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
+  <!-- Barbell icon -->
+  <rect x="96" y="224" width="320" height="64" rx="8" fill="#e5e5e5"/>
+  <!-- Left plates -->
+  <rect x="64" y="176" width="48" height="160" rx="8" fill="#e5e5e5"/>
+  <rect x="32" y="200" width="40" height="112" rx="6" fill="#a3a3a3"/>
+  <!-- Right plates -->
+  <rect x="400" y="176" width="48" height="160" rx="8" fill="#e5e5e5"/>
+  <rect x="440" y="200" width="40" height="112" rx="6" fill="#a3a3a3"/>
+</svg>

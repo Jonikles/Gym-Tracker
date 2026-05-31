@@ -5,13 +5,29 @@
   background-color: var(--color-bg);
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
 .label {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: var(--space-sm);
+}
+
+.ungroupBtn {
+  font-size: var(--text-xs) !important;
+  padding: 2px var(--space-sm) !important;
+  color: var(--color-text-muted) !important;
+}
+
+.ungroupBtn:hover {
+  color: var(--color-text) !important;
 }
 
 .exercises {

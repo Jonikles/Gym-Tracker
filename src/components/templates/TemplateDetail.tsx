@@ -10,11 +10,15 @@ import {
   deleteTemplate,
   getRoutinesUsingTemplate,
 } from '../../hooks/useTemplates';
+import { useUndo } from '../../context/UndoContext';
+import { PROGRESSION_MAP } from '../../data/progressions';
 import type { TemplateExercise, Routine } from '../../types';
 import styles from './TemplateDetail.module.css';
 
 function ExerciseSummary({ exercise }: { exercise: TemplateExercise }) {
   const exerciseData = useExercise(exercise.exerciseId);
+  const isProgression = !!exercise.progressionId;
+  const progressionDef = isProgression ? PROGRESSION_MAP[exercise.progressionId!] : null;
 
   // Summarize sets info
   const setCount = exercise.sets.length;
@@ -24,9 +28,16 @@ function ExerciseSummary({ exercise }: { exercise: TemplateExercise }) {
   // Check for non-standard techniques
   const techniques = [...new Set(exercise.sets.map(s => s.intensityTechnique).filter(t => t !== 'standard'))];
 
+  const displayName = isProgression && progressionDef
+    ? progressionDef.name
+    : exerciseData?.name ?? 'Loading...';
+
   return (
     <div className={styles.exerciseSummary}>
-      <span className={styles.exerciseName}>{exerciseData?.name ?? 'Loading...'}</span>
+      <span className={styles.exerciseName}>
+        {isProgression && <span className={styles.progressionTag}>Progression</span>}
+        {displayName}
+      </span>
       <span className={styles.exerciseDetail}>
         {setCount} sets × {targetReps}
         {warmupCount > 0 && ` (${warmupCount} warmup)`}
@@ -46,8 +57,8 @@ interface TemplateDetailProps {
 export function TemplateDetail({ templateId }: TemplateDetailProps) {
   const navigate = useNavigate();
   const template = useTemplate(templateId);
+  const { showUndo } = useUndo();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showRoutineWarning, setShowRoutineWarning] = useState(false);
   const [affectedRoutines, setAffectedRoutines] = useState<Routine[]>([]);
 
@@ -67,6 +78,7 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
   const handleArchive = async () => {
     await archiveTemplate(templateId);
     navigate('/templates');
+    showUndo('Template archived', () => restoreTemplate(templateId));
   };
 
   const handleRestore = async () => {
@@ -119,7 +131,7 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
                 <Button variant="ghost" onClick={handleDuplicate}>
                     Duplicate
                 </Button>
-                <Button variant="ghost" onClick={() => setShowArchiveConfirm(true)}>
+                <Button variant="ghost" onClick={handleArchive}>
                     Archive
                 </Button>
                 <Button variant="danger" onClick={handleDeleteClick}>
@@ -144,7 +156,7 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
         <h2>Exercises</h2>
         <div className={styles.exerciseList}>
           {sortedExercises.map((exercise, index) => (
-            <div key={exercise.exerciseId} className={styles.exerciseRow}>
+            <div key={`${exercise.order}`} className={styles.exerciseRow}>
               <span className={styles.exerciseNumber}>{index + 1}</span>
               <ExerciseSummary exercise={exercise} />
             </div>
@@ -202,15 +214,6 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
         variant="danger"
       />
 
-      <ConfirmDialog
-        isOpen={showArchiveConfirm}
-        onClose={() => setShowArchiveConfirm(false)}
-        onConfirm={handleArchive}
-        title="Archive Template"
-        message={`Archive "${template.name}"? This will remove it from the template list but past workouts using it will be preserved.`}
-        confirmLabel="Archive"
-        variant="danger"
-      />
     </div>
   );
 }

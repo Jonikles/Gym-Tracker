@@ -4,13 +4,14 @@
  * All schema changes are handled via Dexie versioning in db/index.ts.
  * This file contains upgrade logic for data migrations when schema changes.
  *
- * Current version: 4
+ * Current version: 5
  *
  * Migration history:
  * - v1: Initial schema with exercises, routines, sessions, sessionExercises, sets, prs, settings
  * - v2: Added templates table, restructured routines, simplified sets, updated muscle groups
  * - v3: Templates now define individual sets (TemplateSet[]), removed theme setting
  * - v4: Added progressionMemberships to exercises (Overcoming Gravity progressions)
+ * - v5: Added progressionId index to sessionExercises (progression slots in templates)
  */
 
 import { db } from './index';

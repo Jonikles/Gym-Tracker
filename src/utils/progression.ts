@@ -1,5 +1,5 @@
 import { db } from '../db';
-import type { PR, Exercise } from '../types';
+import type { PR } from '../types';
 import { PROGRESSION_MAP } from '../data/progressions';
 
 /**

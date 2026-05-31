@@ -1,17 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Select, Button } from '../common';
 import { TemplateCard } from './TemplateCard';
 import { useTemplates } from '../../hooks/useTemplates';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { useScrollRestore } from '../../hooks/useScrollRestore';
 import styles from './TemplateList.module.css';
 
 type SortOrder = 'recent' | 'name-asc' | 'name-desc';
 
 export function TemplateList() {
     const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showArchived, setShowArchived] = useState(false);
-    const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
+    useScrollRestore();
+    const [searchQuery, setSearchQuery] = usePersistedState('templates.search', '');
+    const [showArchived, setShowArchived] = usePersistedState('templates.archived', false);
+    const [sortOrder, setSortOrder] = usePersistedState<SortOrder>('templates.sort', 'recent');
 
     const templates = useTemplates({
         search: searchQuery,
@@ -52,6 +55,7 @@ export function TemplateList() {
                     placeholder="Search templates..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    autoFocus
                 />
                 <Select
                     value={sortOrder}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Input, Select } from '../common';
 import { useExercise } from '../../hooks/useExercises';
+import { PROGRESSION_MAP } from '../../data/progressions';
 import type { TemplateExercise, TemplateSet, IntensityTechnique } from '../../types';
 import styles from './TemplateExerciseList.module.css';
 
@@ -156,6 +157,8 @@ function TemplateExerciseRow({
 }: TemplateExerciseRowProps) {
   const exerciseData = useExercise(exercise.exerciseId);
   const [showNotes, setShowNotes] = useState(!!exercise.notes);
+  const isProgression = !!exercise.progressionId;
+  const progressionDef = isProgression ? PROGRESSION_MAP[exercise.progressionId!] : null;
 
   const handleSetUpdate = (setIndex: number, updates: Partial<TemplateSet>) => {
     const newSets = [...exercise.sets];
@@ -190,9 +193,18 @@ function TemplateExerciseRow({
     >
       <div className={styles.exerciseHeader}>
         {onDragStart && <span className={styles.dragHandle}>⋮⋮</span>}
-        <span className={styles.exerciseName}>
-          {exerciseData?.name ?? 'Loading...'}
-        </span>
+        <div className={styles.exerciseNameGroup}>
+          {isProgression && progressionDef && (
+            <span className={styles.progressionBadge}>
+              {progressionDef.name}
+            </span>
+          )}
+          <span className={styles.exerciseName}>
+            {isProgression
+              ? `Default: ${exerciseData?.name ?? 'Loading...'}`
+              : exerciseData?.name ?? 'Loading...'}
+          </span>
+        </div>
         <Button variant="ghost" size="sm" onClick={onRemove} title="Remove exercise">
           ×
         </Button>
@@ -279,10 +291,11 @@ function TemplateExerciseRow({
 
 interface TemplateExerciseListProps {
   exercises: TemplateExercise[];
-  onUpdate: (exerciseId: string, updates: Partial<TemplateExercise>) => void;
-  onRemove: (exerciseId: string) => void;
+  onUpdate: (exerciseId: string, updates: Partial<TemplateExercise>, order?: number) => void;
+  onRemove: (exerciseId: string, order?: number) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onAddClick: () => void;
+  onAddProgressionClick?: () => void;
 }
 
 export function TemplateExerciseList({
@@ -291,9 +304,45 @@ export function TemplateExerciseList({
   onRemove,
   onReorder,
   onAddClick,
+  onAddProgressionClick,
 }: TemplateExerciseListProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const sortedExercises = [...exercises].sort((a, b) => a.order - b.order);
+
+  const toggleSelectIndex = (index: number) => {
+    setSelectedIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  };
+
+  const handleGroupTemplate = (groupType: 'superset' | 'circuit') => {
+    if (selectedIndices.size < 2) return;
+    const groupId = crypto.randomUUID();
+    const indices = [...selectedIndices].sort((a, b) => a - b);
+    for (let i = 0; i < indices.length; i++) {
+      const ex = sortedExercises[indices[i]];
+      onUpdate(ex.exerciseId, { groupId, groupType, groupOrder: i }, ex.progressionId ? ex.order : undefined);
+    }
+    setSelectedIndices(new Set());
+    setIsSelectMode(false);
+  };
+
+  const handleUngroupTemplate = (groupId: string) => {
+    for (const ex of sortedExercises) {
+      if (ex.groupId === groupId) {
+        onUpdate(ex.exerciseId, { groupId: undefined, groupType: undefined, groupOrder: undefined }, ex.progressionId ? ex.order : undefined);
+      }
+    }
+  };
+
+  const cancelSelect = () => {
+    setSelectedIndices(new Set());
+    setIsSelectMode(false);
+  };
 
   const handleDragStart = (index: number) => {
     setDragIndex(index);
@@ -316,32 +365,133 @@ export function TemplateExerciseList({
     setDragIndex(null);
   };
 
+  // Identify groups for rendering group wrappers
+  const processedGroupIds = new Set<string>();
+
   return (
     <div className={styles.list} onDragEnd={handleDragEnd}>
+      {/* Select mode toolbar */}
+      {isSelectMode && (
+        <div className={styles.selectToolbar}>
+          <span className={styles.selectCount}>{selectedIndices.size} selected</span>
+          <div className={styles.selectActions}>
+            <Button variant="secondary" size="sm" onClick={() => handleGroupTemplate('superset')} disabled={selectedIndices.size < 2}>
+              Superset
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => handleGroupTemplate('circuit')} disabled={selectedIndices.size < 2}>
+              Circuit
+            </Button>
+            <Button variant="ghost" size="sm" onClick={cancelSelect}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       {sortedExercises.length === 0 ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyText}>No exercises added yet</p>
-          <Button variant="secondary" onClick={onAddClick} className={styles.addExerciseButton}>
-            + Add Exercise
-          </Button>
+          <div className={styles.addButtons}>
+            <Button variant="secondary" onClick={onAddClick} className={styles.addExerciseButton}>
+              + Add Exercise
+            </Button>
+            {onAddProgressionClick && (
+              <Button variant="secondary" onClick={onAddProgressionClick} className={styles.addExerciseButton}>
+                + Add Progression
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <>
-          {sortedExercises.map((exercise, index) => (
-            <TemplateExerciseRow
-              key={exercise.exerciseId}
-              exercise={exercise}
-              onUpdate={(updates) => onUpdate(exercise.exerciseId, updates)}
-              onRemove={() => onRemove(exercise.exerciseId)}
-              isDragging={dragIndex === index}
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={handleDrop}
-            />
-          ))}
-          <Button variant="secondary" onClick={onAddClick} className={styles.addExerciseButton}>
-            + Add Exercise
-          </Button>
+          {sortedExercises.map((exercise, index) => {
+            // Group wrapper rendering
+            if (exercise.groupId && !processedGroupIds.has(exercise.groupId)) {
+              processedGroupIds.add(exercise.groupId);
+              const groupMembers = sortedExercises.filter((e) => e.groupId === exercise.groupId);
+              return (
+                <div key={`group-${exercise.groupId}`} className={styles.groupWrapper}>
+                  <div className={styles.groupHeader}>
+                    <span className={styles.groupLabel}>
+                      {exercise.groupType === 'superset' ? 'Superset' : 'Circuit'}
+                    </span>
+                    <button
+                      className={styles.ungroupBtn}
+                      onClick={() => handleUngroupTemplate(exercise.groupId!)}
+                    >
+                      Unlink
+                    </button>
+                  </div>
+                  {groupMembers.map((gm) => {
+                    const gIndex = sortedExercises.indexOf(gm);
+                    return (
+                      <TemplateExerciseRow
+                        key={`${gm.order}`}
+                        exercise={gm}
+                        onUpdate={(updates) => onUpdate(gm.exerciseId, updates, gm.progressionId ? gm.order : undefined)}
+                        onRemove={() => onRemove(gm.exerciseId, gm.progressionId ? gm.order : undefined)}
+                        isDragging={dragIndex === gIndex}
+                        onDragStart={() => handleDragStart(gIndex)}
+                        onDragOver={(e) => handleDragOver(e, gIndex)}
+                        onDrop={handleDrop}
+                      />
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            // Skip exercises already rendered inside a group
+            if (exercise.groupId) return null;
+
+            if (isSelectMode) {
+              return (
+                <div
+                  key={`${exercise.order}`}
+                  className={`${styles.selectableRow} ${selectedIndices.has(index) ? styles.selectedRow : ''}`}
+                  onClick={() => toggleSelectIndex(index)}
+                >
+                  <div className={`${styles.selectCheck} ${selectedIndices.has(index) ? styles.selectCheckActive : ''}`}>
+                    {selectedIndices.has(index) && '✓'}
+                  </div>
+                  <TemplateExerciseRow
+                    exercise={exercise}
+                    onUpdate={(updates) => onUpdate(exercise.exerciseId, updates, exercise.progressionId ? exercise.order : undefined)}
+                    onRemove={() => onRemove(exercise.exerciseId, exercise.progressionId ? exercise.order : undefined)}
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <TemplateExerciseRow
+                key={`${exercise.order}`}
+                exercise={exercise}
+                onUpdate={(updates) => onUpdate(exercise.exerciseId, updates, exercise.progressionId ? exercise.order : undefined)}
+                onRemove={() => onRemove(exercise.exerciseId, exercise.progressionId ? exercise.order : undefined)}
+                isDragging={dragIndex === index}
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDrop={handleDrop}
+              />
+            );
+          })}
+
+          <div className={styles.addButtons}>
+            <Button variant="secondary" onClick={onAddClick} className={styles.addExerciseButton}>
+              + Add Exercise
+            </Button>
+            {onAddProgressionClick && (
+              <Button variant="secondary" onClick={onAddProgressionClick} className={styles.addExerciseButton}>
+                + Add Progression
+              </Button>
+            )}
+            {!isSelectMode && sortedExercises.filter((e) => !e.groupId).length >= 2 && (
+              <Button variant="ghost" onClick={() => setIsSelectMode(true)} className={styles.addExerciseButton}>
+                Link Superset / Circuit
+              </Button>
+            )}
+          </div>
         </>
       )}
     </div>

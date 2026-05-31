@@ -11,3 +11,5 @@ export { History } from './History';
 export { Progress } from './Progress';
 export { Analytics } from './Analytics';
 export { Settings } from './Settings';
+export { Tools } from './Tools';
+export { Measurements } from './Measurements';

@@ -1,0 +1,193 @@
+/* ── Floating rest timer overlay ── */
+.overlay {
+  position: fixed;
+  bottom: 80px;
+  left: var(--space-md);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(12px);
+  animation: slideUp 0.25s ease-out;
+  min-width: 220px;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.overlay.almostDone {
+  border-color: var(--color-success);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(34, 197, 94, 0.15);
+}
+
+/* ── Progress ring ── */
+.ringWrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.ring {
+  width: 100%;
+  height: 100%;
+}
+
+.ringBg {
+  stroke: var(--color-border);
+}
+
+.ringProgress {
+  stroke: var(--color-primary, #6366f1);
+  transition: stroke-dashoffset 1s linear;
+}
+
+.almostDone .ringProgress {
+  stroke: var(--color-success);
+}
+
+.timeDisplay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.label {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.time {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.almostDone .time {
+  color: var(--color-success);
+}
+
+/* ── Action buttons ── */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.timeBtn {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--font-mono);
+}
+
+.timeBtn:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.timeBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.skipBtn {
+  padding: var(--space-xs) var(--space-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary, var(--color-border));
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.skipBtn:hover {
+  background: var(--color-text-muted);
+  color: var(--color-bg);
+}
+
+/* ── Minimize button ── */
+.minimizeBtn {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.minimizeBtn:hover {
+  opacity: 1;
+}
+
+/* ── Minimized pill ── */
+.minimized {
+  position: fixed;
+  bottom: 80px;
+  left: var(--space-md);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  animation: slideUp 0.2s ease-out;
+}
+
+.minimized:hover {
+  border-color: var(--color-text-muted);
+}
+
+.minimized.almostDone {
+  border-color: var(--color-success);
+}
+
+.miniTime {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.minimized.almostDone .miniTime {
+  color: var(--color-success);
+}

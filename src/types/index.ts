@@ -6,3 +6,4 @@ export * from './set';
 export * from './pr';
 export * from './settings';
 export * from './template';
+export * from './measurement';

@@ -10,8 +10,12 @@ import {
 import { useWeeklyVolume } from '../../hooks/useStats';
 import styles from './Analytics.module.css';
 
-export function VolumeChart() {
-  const data = useWeeklyVolume(12);
+interface VolumeChartProps {
+  days: number;
+}
+
+export function VolumeChart({ days }: VolumeChartProps) {
+  const data = useWeeklyVolume(days);
 
   if (!data || data.length === 0) {
     return (

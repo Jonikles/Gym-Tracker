@@ -14,6 +14,7 @@ interface SetRowProps {
   exerciseId: string;
   onDelete: () => void;
   showValidation?: boolean;
+  onSetCompleted?: () => void;
 }
 
 
@@ -53,7 +54,7 @@ function isPartialsData(data: TechniqueData | undefined): data is PartialsTechni
 const filterDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
 const filterInteger = (v: string) => v.replace(/[^0-9]/g, '');
 
-export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, showValidation }: SetRowProps) {
+export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, showValidation, onSetCompleted }: SetRowProps) {
   const [weight, setWeight] = useState(set.weight?.toString() ?? '');
   const [reps, setReps] = useState(set.reps?.toString() ?? '');
   const [time, setTime] = useState(set.time?.toString() ?? '');
@@ -101,6 +102,8 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
   // Track if we've already checked for PRs with current values
   const lastCheckedRef = useRef<string>('');
+  // Track if we've already fired the rest timer for this set
+  const restTimerFiredRef = useRef(false);
 
   // Close type picker when clicking outside
   useEffect(() => {
@@ -212,6 +215,21 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
 
       // Bail if a newer debounce has started (values changed while saving)
       if (cancelled) return;
+
+      // Fire rest timer when a working set becomes complete (all required fields filled)
+      if (!isWarmup && !restTimerFiredRef.current && onSetCompleted) {
+        const allFilled = defaultFields.every((field) => {
+          if (field === 'weight') return parsedWeight !== undefined && parsedWeight > 0;
+          if (field === 'reps') return parsedReps !== undefined && parsedReps > 0;
+          if (field === 'time') return parsedTime !== undefined && parsedTime > 0;
+          if (field === 'distance') return parsedDistance !== undefined && parsedDistance > 0;
+          return true;
+        });
+        if (allFilled) {
+          restTimerFiredRef.current = true;
+          onSetCompleted();
+        }
+      }
 
       // Check for PRs only if not warmup and values have changed
       // Only for standard/failure/forcedreps (e1RM calculation)

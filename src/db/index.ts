@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template } from '../types';
+import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template, BodyMeasurement } from '../types';
 
 /**
  * GymTrackerDB - Dexie database instance with all tables
@@ -13,6 +13,7 @@ export class GymTrackerDB extends Dexie {
   sets!: Table<Set, string>;
   prs!: Table<PR, string>;
   settings!: Table<Setting, string>;
+  measurements!: Table<BodyMeasurement, string>;
 
   constructor() {
     super('GymTrackerDB');
@@ -71,6 +72,35 @@ export class GymTrackerDB extends Dexie {
       settings: 'key',
     }).upgrade(async () => {
       console.log('Upgrading database to version 4 - progression exercises...');
+    });
+
+    // Version 5 - Added progressionId index to sessionExercises for progression slots
+    this.version(5).stores({
+      exercises: 'id, name, parentId, *muscleGroups, equipment, isArchived',
+      templates: 'id, name, isArchived',
+      routines: 'id, name, type, isArchived',
+      sessions: 'id, routineId, templateId, startedAt, completedAt',
+      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
+      sets: 'id, sessionExerciseId, order',
+      prs: 'id, exerciseId, type, achievedAt',
+      settings: 'key',
+    }).upgrade(async () => {
+      console.log('Upgrading database to version 5 - progression slots...');
+    });
+
+    // Version 6 - Added body measurements table
+    this.version(6).stores({
+      exercises: 'id, name, parentId, *muscleGroups, equipment, isArchived',
+      templates: 'id, name, isArchived',
+      routines: 'id, name, type, isArchived',
+      sessions: 'id, routineId, templateId, startedAt, completedAt',
+      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
+      sets: 'id, sessionExerciseId, order',
+      prs: 'id, exerciseId, type, achievedAt',
+      settings: 'key',
+      measurements: 'id, date', // NEW table
+    }).upgrade(async () => {
+      console.log('Upgrading database to version 6 - body measurements...');
     });
   }
 }

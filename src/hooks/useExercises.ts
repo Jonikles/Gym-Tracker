@@ -357,6 +357,75 @@ export async function deleteExercise(id: string): Promise<void> {
   await db.exercises.delete(id);
 }
 
+/**
+ * Toggle favorite status on an exercise
+ */
+export async function toggleFavorite(id: string): Promise<void> {
+  const exercise = await db.exercises.get(id);
+  if (!exercise) return;
+  await db.exercises.update(id, {
+    isFavorite: !exercise.isFavorite,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Hook to get recently used exercises (based on session history)
+ */
+export function useRecentExercises(limit = 10) {
+  return useLiveQuery(async () => {
+    // Get the most recent sessions
+    const recentSessions = await db.sessions
+      .orderBy('startedAt')
+      .reverse()
+      .limit(20)
+      .toArray();
+
+    if (recentSessions.length === 0) return [];
+
+    const sessionIds = recentSessions.map((s) => s.id);
+
+    // Get session exercises from those sessions
+    const sessionExercises = await db.sessionExercises
+      .where('sessionId')
+      .anyOf(sessionIds)
+      .toArray();
+
+    // Deduplicate by exerciseId, keeping most recent
+    const seen = new Set<string>();
+    const recentExerciseIds: string[] = [];
+    // Sort by sessionId order (most recent session first)
+    const sessionOrder = new Map(sessionIds.map((id, i) => [id, i]));
+    sessionExercises.sort(
+      (a, b) => (sessionOrder.get(a.sessionId) ?? 999) - (sessionOrder.get(b.sessionId) ?? 999)
+    );
+
+    for (const se of sessionExercises) {
+      if (!seen.has(se.exerciseId)) {
+        seen.add(se.exerciseId);
+        recentExerciseIds.push(se.exerciseId);
+        if (recentExerciseIds.length >= limit) break;
+      }
+    }
+
+    // Fetch the actual exercises
+    const exercises = await db.exercises.bulkGet(recentExerciseIds);
+    return exercises.filter((e): e is Exercise => e !== undefined && !e.isArchived);
+  }, [limit]);
+}
+
+/**
+ * Hook to get favorite exercises
+ */
+export function useFavoriteExercises() {
+  return useLiveQuery(async () => {
+    const favorites = await db.exercises
+      .filter((e) => !!e.isFavorite && !e.isArchived)
+      .toArray();
+    return favorites.sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
+}
+
 export async function duplicateExercise(id: string): Promise<string> {
     const original = await db.exercises.get(id);
     if (!original) throw new Error('Exercise not found');

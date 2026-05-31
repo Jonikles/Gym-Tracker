@@ -12,7 +12,10 @@ import {
   deleteExercise,
   duplicateExercise,
 } from '../../hooks/useExercises';
+import { useUndo } from '../../context/UndoContext';
 import { PROGRESSION_MAP } from '../../data/progressions';
+import { MuscleHighlighter } from './MuscleHighlighter';
+import { ExerciseImage } from './ExerciseImage';
 import { db } from '../../db';
 import styles from './ExerciseDetail.module.css';
 
@@ -36,8 +39,8 @@ export function ExerciseDetail() {
   const variations = useExerciseVariations(exercise?.id);
   const parentExercise = useExercise(exercise?.parentId);
 
+  const { showUndo } = useUndo();
   const [isEditing, setIsEditing] = useState(false);
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Get the progression IDs this exercise belongs to
@@ -90,9 +93,10 @@ export function ExerciseDetail() {
   };
 
   const handleArchive = async () => {
-    await archiveExercise(exercise.id);
-    setShowArchiveConfirm(false);
+    const id = exercise.id;
+    await archiveExercise(id);
     navigate('/exercises');
+    showUndo('Exercise archived', () => restoreExercise(id));
   };
 
   const handleRestore = async () => {
@@ -126,7 +130,7 @@ export function ExerciseDetail() {
                 <Button variant="ghost" onClick={handleDuplicate}>
                   Duplicate
                 </Button>
-                <Button variant="ghost" onClick={() => setShowArchiveConfirm(true)}>
+                <Button variant="ghost" onClick={handleArchive}>
                   Archive
                 </Button>
                 <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
@@ -252,11 +256,14 @@ export function ExerciseDetail() {
           </div>
         )}
 
-        {/* Placeholder for future: photo/video/instructions */}
-        <div className={styles.mediaPlaceholder}>
-          <span className={styles.placeholderIcon}>📷</span>
-          <span className={styles.placeholderText}>Photo/video/instructions coming soon</span>
-        </div>
+        <ExerciseImage exerciseName={exercise.name} />
+
+        {exercise.muscleGroups && exercise.muscleGroups.length > 0 && (
+          <MuscleHighlighter
+            name={exercise.name}
+            muscleGroups={exercise.muscleGroups}
+          />
+        )}
       </Card>
 
       {/* Variations section */}
@@ -290,17 +297,6 @@ export function ExerciseDetail() {
           onCancel={() => setIsEditing(false)}
         />
       </Modal>
-
-      {/* Archive Confirmation */}
-      <ConfirmDialog
-        isOpen={showArchiveConfirm}
-        onClose={() => setShowArchiveConfirm(false)}
-        onConfirm={handleArchive}
-        title="Archive Exercise"
-        message={`Archive "${exercise.name}"? It will no longer appear in the exercise list but will remain in your history.`}
-        confirmLabel="Archive"
-        variant="danger"
-      />
 
       {/* Delete Confirmation */}
       <ConfirmDialog

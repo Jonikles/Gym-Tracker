@@ -9,10 +9,13 @@ import {
   useUniqueEquipment,
   useUniqueMovementPatterns,
   createExercise,
+  toggleFavorite,
   type ExerciseFilters,
   type ExerciseSortOption,
   type FilterMode,
 } from '../../hooks/useExercises';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { useScrollRestore } from '../../hooks/useScrollRestore';
 import { PROGRESSION_DEFINITIONS } from '../../data/progressions';
 import type { MuscleGroup } from '../../types';
 import styles from './ExerciseList.module.css';
@@ -35,19 +38,21 @@ const ALL_LEVELS = Array.from({ length: 17 }, (_, i) => i + 1);
 
 export function ExerciseList() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [muscleGroupFilters, setMuscleGroupFilters] = useState<MuscleGroup[]>([]);
-  const [filterMode, setFilterMode] = useState<FilterMode>('any');
-  const [equipmentFilter, setEquipmentFilter] = useState('');
-  const [movementFilter, setMovementFilter] = useState('');
-  const [sortOption, setSortOption] = useState<ExerciseSortOption>('name-asc');
-  const [showArchived, setShowArchived] = useState(false);
-  const [progressionFilter, setProgressionFilter] = useState('');
-  const [selectedLevels, setSelectedLevels] = useState<number[]>([]);
+  useScrollRestore();
+  const [searchQuery, setSearchQuery] = usePersistedState('exercises.search', '');
+  const [muscleGroupFilters, setMuscleGroupFilters] = usePersistedState<MuscleGroup[]>('exercises.muscles', []);
+  const [filterMode, setFilterMode] = usePersistedState<FilterMode>('exercises.filterMode', 'any');
+  const [equipmentFilter, setEquipmentFilter] = usePersistedState('exercises.equipment', '');
+  const [movementFilter, setMovementFilter] = usePersistedState('exercises.movement', '');
+  const [sortOption, setSortOption] = usePersistedState<ExerciseSortOption>('exercises.sort', 'name-asc');
+  const [showArchived, setShowArchived] = usePersistedState('exercises.archived', false);
+  const [progressionFilter, setProgressionFilter] = usePersistedState('exercises.progression', '');
+  const [selectedLevels, setSelectedLevels] = usePersistedState<number[]>('exercises.levels', []);
 
+  const [showFavoritesOnly, setShowFavoritesOnly] = usePersistedState('exercises.favoritesOnly', false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isMuscleFilterExpanded, setIsMuscleFilterExpanded] = useState(false);
-  const [isLevelFilterExpanded, setIsLevelFilterExpanded] = useState(false);
+  const [isMuscleFilterExpanded, setIsMuscleFilterExpanded] = usePersistedState('exercises.muscleExpanded', false);
+  const [isLevelFilterExpanded, setIsLevelFilterExpanded] = usePersistedState('exercises.levelExpanded', false);
 
   const filters: ExerciseFilters = {
     searchQuery,
@@ -63,6 +68,7 @@ export function ExerciseList() {
   const exercises = useExercises(filters);
   const allExercises = useExercises({}); // Unfiltered — used for progression level lookups
   const filteredExercises = exercises.filter((e) => {
+    if (showFavoritesOnly && !e.isFavorite) return false;
     if (selectedLevels.length > 0) {
       if (!e.progressionLevel) return false;
       if (!selectedLevels.includes(e.progressionLevel)) return false;
@@ -119,9 +125,10 @@ export function ExerciseList() {
     setMovementFilter('');
     setProgressionFilter('');
     setSelectedLevels([]);
+    setShowFavoritesOnly(false);
   };
 
-  const hasFilters = searchQuery || muscleGroupFilters.length > 0 || equipmentFilter || movementFilter || progressionFilter || selectedLevels.length > 0;
+  const hasFilters = searchQuery || muscleGroupFilters.length > 0 || equipmentFilter || movementFilter || progressionFilter || selectedLevels.length > 0 || showFavoritesOnly;
 
   return (
     <div className={styles.container}>
@@ -138,6 +145,7 @@ export function ExerciseList() {
             placeholder="Search exercises..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
           />
           <Select
             label="Sort by"
@@ -273,6 +281,12 @@ export function ExerciseList() {
       </div>
 
       <div className={styles.toggleRow}>
+        <button
+          className={`${styles.favFilterBtn} ${showFavoritesOnly ? styles.favFilterActive : ''}`}
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+        >
+          {showFavoritesOnly ? '★ Favorites' : '☆ Favorites'}
+        </button>
         <label className={styles.toggle}>
           <input className={styles.toggleInput}
             type="checkbox"
@@ -290,7 +304,17 @@ export function ExerciseList() {
                 key={exercise.id}
                 exercise={exercise}
                 onClick={() => navigate(`/exercises/${exercise.id}`)}
+                showProgressionNav
                 progressionLevelMap={progressionLevelMap}
+                headerExtra={
+                  <button
+                    className={`${styles.favBtn} ${exercise.isFavorite ? styles.favActive : ''}`}
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(exercise.id); }}
+                    title={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                  >
+                    {exercise.isFavorite ? '★' : '☆'}
+                  </button>
+                }
             />
         ))}
         {filteredExercises.length === 0 && (

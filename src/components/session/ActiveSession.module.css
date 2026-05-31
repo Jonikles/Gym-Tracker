@@ -34,6 +34,29 @@
 
 .timerRow {
   margin-top: var(--space-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.plateCalcBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-sm);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.plateCalcBtn:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
 }
 
 .timer {
@@ -177,6 +200,83 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-sm);
+}
+
+/* ── Select mode for grouping ── */
+.selectToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.selectCount {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.selectActions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.selectableExercise {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  transition: all 0.15s ease;
+}
+
+.selectableExercise:hover {
+  border-color: var(--color-text-muted);
+}
+
+.selectedExercise {
+  background-color: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.selectExerciseName {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.selectCheckbox {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.checkbox {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-bg);
+  transition: all 0.15s ease;
+}
+
+.checkbox.checked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 @media (max-width: 600px) {

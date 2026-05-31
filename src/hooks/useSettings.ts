@@ -11,6 +11,11 @@ export const defaultSettings: SettingsMap = {
   weightIncrement: 2.5,
   weekStartDay: 0, // Sunday
   activeRoutineId: null, // v1.4: No active routine by default
+  restTimerDuration: 90, // 90 seconds default rest
+  restTimerSound: true,
+  restTimerVibrate: true,
+  bodyweight: 0, // 0 = not set
+  theme: 'dark',
 };
 
 /**
@@ -77,7 +82,7 @@ export async function resetSettings(): Promise<void> {
  * Export all data as JSON
  */
 export async function exportData(): Promise<string> {
-  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings] =
+  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings, measurements] =
     await Promise.all([
       db.exercises.toArray(),
       db.templates.toArray(),
@@ -87,10 +92,11 @@ export async function exportData(): Promise<string> {
       db.sets.toArray(),
       db.prs.toArray(),
       db.settings.toArray(),
+      db.measurements.toArray(),
     ]);
 
   const data = {
-    version: 4, // Updated for v1.4
+    version: 6,
     exportedAt: new Date().toISOString(),
     exercises,
     templates,
@@ -100,6 +106,7 @@ export async function exportData(): Promise<string> {
     sets,
     prs,
     settings,
+    measurements,
   };
 
   return JSON.stringify(data, null, 2);
@@ -112,7 +119,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
   try {
     const data = JSON.parse(json);
 
-    if (!data.version || (data.version !== 1 && data.version !== 2 && data.version !== 3 && data.version !== 4)) {
+    if (!data.version || ![1, 2, 3, 4, 5, 6].includes(data.version)) {
       return { success: false, message: 'Invalid or unsupported data format' };
     }
 
@@ -133,6 +140,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
     validateArray('sets', data.sets);
     validateArray('prs', data.prs);
     validateArray('settings', data.settings);
+    validateArray('measurements', data.measurements);
 
     // Validate required fields on key entities
     if (Array.isArray(data.exercises)) {
@@ -167,6 +175,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
       db.sets.clear(),
       db.prs.clear(),
       db.settings.clear(),
+      db.measurements.clear(),
     ]);
 
     await Promise.all([
@@ -178,6 +187,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
       data.sets?.length > 0 && db.sets.bulkAdd(data.sets),
       data.prs?.length > 0 && db.prs.bulkAdd(data.prs),
       data.settings?.length > 0 && db.settings.bulkAdd(data.settings),
+      data.measurements?.length > 0 && db.measurements.bulkAdd(data.measurements),
     ]);
 
     return { success: true, message: 'Data imported successfully' };
@@ -214,5 +224,6 @@ export async function factoryReset(): Promise<void> {
     db.sets.clear(),
     db.prs.clear(),
     db.settings.clear(),
+    db.measurements.clear(),
   ]);
 }

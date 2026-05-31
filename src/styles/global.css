@@ -23,7 +23,15 @@
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
-  
+
+  /* Muscle diagram */
+  --muscle-body: #3a3a3a;
+  --muscle-highlight: #ef4444;
+
+  /* Overlay / glass */
+  --overlay-hover: rgba(255, 255, 255, 0.05);
+  --overlay-separator: rgba(255, 255, 255, 0.15);
+
   /* Spacing */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
@@ -53,6 +61,31 @@
   --transition-normal: 250ms ease;
 }
 
+/* Light theme overrides */
+[data-theme="light"] {
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f5f5f5;
+  --color-bg-tertiary: #e5e5e5;
+  --color-text: #171717;
+  --color-text-secondary: #525252;
+  --color-text-muted: #a3a3a3;
+  --color-border: #d4d4d4;
+  --color-border-focus: #a3a3a3;
+  --color-accent: #171717;
+  --color-accent-muted: #a3a3a3;
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warning: #d97706;
+
+  --muscle-body: #c8c8c8;
+  --muscle-highlight: #dc2626;
+
+  --overlay-hover: rgba(0, 0, 0, 0.05);
+  --overlay-separator: rgba(0, 0, 0, 0.1);
+
+  color-scheme: light;
+}
+
 /* Hide number input spinners */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -69,7 +102,7 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: dark;
+  color-scheme: dark; /* overridden by [data-theme="light"] */
 }
 
 body {
@@ -140,6 +173,16 @@ h4 { font-size: var(--text-lg); }
   color: var(--color-error);
 }
 
+/* Page transitions */
+.page {
+  animation: pageIn 0.15s ease;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Utility classes */
 .sr-only {
   position: absolute;
@@ -153,23 +196,13 @@ h4 { font-size: var(--text-lg); }
   border-width: 0;
 }
 
-/* Scrollbar styling */
+/* Hide scrollbar (content remains scrollable) */
+html {
+  scrollbar-width: none; /* Firefox */
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-bg);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-focus);
+  display: none; /* Chrome, Safari, Edge */
 }
 
 /* Selection */

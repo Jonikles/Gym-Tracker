@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../common';
 import {
@@ -8,12 +8,15 @@ import {
 } from '../../data/progressions';
 import { useProgressionAchievements } from '../../hooks/useProgressions';
 import { useExercises } from '../../hooks/useExercises';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { useScrollRestore } from '../../hooks/useScrollRestore';
 import styles from './ProgressionList.module.css';
 
 export function ProgressionList() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedCategory, setExpandedCategory] = useState<ProgressionCategory | null>(null);
+  useScrollRestore();
+  const [searchQuery, setSearchQuery] = usePersistedState('progressions.search', '');
+  const [expandedCategory, setExpandedCategory] = usePersistedState<ProgressionCategory | null>('progressions.expanded', null);
   const exercises = useExercises();
   const achievements = useProgressionAchievements() ?? {};
 
@@ -63,6 +66,7 @@ export function ProgressionList() {
         placeholder="Search progressions..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
+        autoFocus
       />
 
       <div className={styles.categories}>

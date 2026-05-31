@@ -27,7 +27,8 @@ export interface Session {
 export interface SessionExercise {
   id: string;
   sessionId: string;
-  exerciseId: string;
+  exerciseId: string; // Always the concrete exercise used
+  progressionId?: string; // Tracks that this came from a progression slot
   order: number;
   groupId?: string;
   groupType?: 'superset' | 'circuit';

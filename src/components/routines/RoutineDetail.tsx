@@ -7,11 +7,13 @@ import {
   useRoutine,
   updateRoutine,
   archiveRoutine,
+  restoreRoutine,
   deleteRoutine,
   duplicateRoutine,
 } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
 import { useSetting, updateSetting } from '../../hooks/useSettings';
+import { useUndo } from '../../context/UndoContext';
 import type { RoutineDay, Template } from '../../types';
 import styles from './RoutineDetail.module.css';
 
@@ -88,10 +90,10 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const activeRoutineId = useSetting('activeRoutineId');
   const weekStartDay = useSetting('weekStartDay') as number;
   const isActive = activeRoutineId === routineId;
+  const { showUndo } = useUndo();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSetActiveConfirm, setShowSetActiveConfirm] = useState(false);
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
@@ -163,6 +165,7 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
     sessionStorage.removeItem('draftRoutineId');
     await archiveRoutine(routineId);
     navigate('/routines');
+    showUndo('Routine archived', () => restoreRoutine(routineId));
   };
 
   const handleDelete = async () => {
@@ -276,7 +279,7 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
                 <Button variant="ghost" onClick={handleDuplicate}>
                 Duplicate
                 </Button>
-                <Button variant="ghost" onClick={() => setShowArchiveConfirm(true)}>
+                <Button variant="ghost" onClick={handleArchive}>
                 Archive
                 </Button>
                 <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
@@ -357,17 +360,6 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
           error={editError}
         />
       </Modal>
-
-      {/* Archive Confirmation */}
-      <ConfirmDialog
-        isOpen={showArchiveConfirm}
-        onClose={() => setShowArchiveConfirm(false)}
-        onConfirm={handleArchive}
-        title="Archive Routine"
-        message={`Archive "${routine.name}"? It will no longer appear in the routine list.`}
-        confirmLabel="Archive"
-        variant="danger"
-      />
 
       {/* Delete Confirmation */}
       <ConfirmDialog

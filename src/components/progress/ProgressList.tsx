@@ -1,8 +1,10 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Select, Card } from '../common';
+import { StrengthStandards } from './StrengthStandards';
 import { useExercisesWithHistory } from '../../hooks/useAnalytics';
 import { useUniqueMuscleGroups, useUniqueEquipment } from '../../hooks/useExercises';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { useScrollRestore } from '../../hooks/useScrollRestore';
 import type { Exercise, MuscleGroup } from '../../types';
 import styles from './ProgressList.module.css';
 
@@ -40,10 +42,11 @@ function ExerciseItem({ exercise, sessionCount, onClick }: ExerciseItemProps) {
 
 export function ProgressList() {
   const navigate = useNavigate();
+  useScrollRestore();
   const exercisesWithHistory = useExercisesWithHistory() ?? [];
-  const [searchQuery, setSearchQuery] = useState('');
-  const [muscleFilter, setMuscleFilter] = useState<MuscleGroup | ''>('');
-  const [equipmentFilter, setEquipmentFilter] = useState('');
+  const [searchQuery, setSearchQuery] = usePersistedState('progress.search', '');
+  const [muscleFilter, setMuscleFilter] = usePersistedState<MuscleGroup | ''>('progress.muscle', '');
+  const [equipmentFilter, setEquipmentFilter] = usePersistedState('progress.equipment', '');
 
   const muscleGroups = useUniqueMuscleGroups() ?? [];
   const equipment = useUniqueEquipment() ?? [];
@@ -75,11 +78,16 @@ export function ProgressList() {
         <h1>Progress</h1>
       </header>
 
+      <StrengthStandards />
+
+      <h2 className={styles.sectionTitle}>Exercise Progress</h2>
+
       <div className={styles.filters}>
         <Input
           placeholder="Search exercises..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          autoFocus
         />
         <Select
           value={muscleFilter}

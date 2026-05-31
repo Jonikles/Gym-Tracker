@@ -9,6 +9,8 @@ import {
   type RoutineFilters,
 } from '../../hooks/useRoutines';
 import { useSetting } from '../../hooks/useSettings';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { useScrollRestore } from '../../hooks/useScrollRestore';
 import type { RoutineType } from '../../types';
 import styles from './RoutineList.module.css';
 
@@ -18,11 +20,12 @@ const DRAFT_ROUTINE_KEY = 'draftRoutineId';
 
 export function RoutineList() {
   const navigate = useNavigate();
+  useScrollRestore();
   const activeRoutineId = useSetting('activeRoutineId');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<RoutineType | ''>('');
-  const [showArchived, setShowArchived] = useState(false);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
+  const [searchQuery, setSearchQuery] = usePersistedState('routines.search', '');
+  const [typeFilter, setTypeFilter] = usePersistedState<RoutineType | ''>('routines.type', '');
+  const [showArchived, setShowArchived] = usePersistedState('routines.archived', false);
+  const [sortOrder, setSortOrder] = usePersistedState<SortOrder>('routines.sort', 'recent');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -97,6 +100,7 @@ export function RoutineList() {
           placeholder="Search routines..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
+          autoFocus
         />
         <Select
           value={typeFilter}

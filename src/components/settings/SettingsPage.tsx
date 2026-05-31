@@ -140,8 +140,136 @@ export function SettingsPage() {
       </section>
 
       <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Body</h2>
+        <Card>
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.settingLabel}>Bodyweight (kg)</span>
+              <span className={styles.settingDesc}>Used for strength standards and relative strength calculations</span>
+            </div>
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={settings.bodyweight ? String(settings.bodyweight) : ''}
+              placeholder="0"
+              onChange={(e) => {
+                const filtered = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
+                const parsed = parseFloat(filtered);
+                if (!isNaN(parsed)) {
+                  updateSetting('bodyweight', parsed);
+                } else if (filtered === '' || filtered === '.') {
+                  updateSetting('bodyweight', 0);
+                }
+              }}
+              style={{ width: 100 }}
+            />
+          </div>
+        </Card>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Rest Timer</h2>
+        <Card>
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.settingLabel}>Rest Duration</span>
+              <span className={styles.settingDesc}>Default rest time between sets (seconds). Set to 0 to disable.</span>
+            </div>
+            <div className={styles.restTimerControl}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const current = settings.restTimerDuration ?? 90;
+                  updateSetting('restTimerDuration', Math.max(0, current - 15));
+                }}
+              >
+                −
+              </Button>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={String(settings.restTimerDuration ?? 90)}
+                onChange={(e) => {
+                  const filtered = e.target.value.replace(/[^0-9]/g, '');
+                  const parsed = parseInt(filtered, 10);
+                  if (!isNaN(parsed)) {
+                    updateSetting('restTimerDuration', parsed);
+                  } else if (filtered === '') {
+                    updateSetting('restTimerDuration', 0);
+                  }
+                }}
+                style={{ width: 70, textAlign: 'center' }}
+              />
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const current = settings.restTimerDuration ?? 90;
+                  updateSetting('restTimerDuration', current + 15);
+                }}
+              >
+                +
+              </Button>
+              <span className={styles.settingUnit}>
+                {Math.floor((settings.restTimerDuration ?? 90) / 60)}:{((settings.restTimerDuration ?? 90) % 60).toString().padStart(2, '0')}
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.settingLabel}>Sound Alert</span>
+              <span className={styles.settingDesc}>Play a beep when rest timer ends</span>
+            </div>
+            <label className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={settings.restTimerSound ?? true}
+                onChange={(e) => updateSetting('restTimerSound', e.target.checked)}
+              />
+              <span className={styles.toggleSlider} />
+            </label>
+          </div>
+
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.settingLabel}>Vibration</span>
+              <span className={styles.settingDesc}>Vibrate when rest timer ends (mobile)</span>
+            </div>
+            <label className={styles.toggle}>
+              <input
+                type="checkbox"
+                checked={settings.restTimerVibrate ?? true}
+                onChange={(e) => updateSetting('restTimerVibrate', e.target.checked)}
+              />
+              <span className={styles.toggleSlider} />
+            </label>
+          </div>
+        </Card>
+      </section>
+
+      <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Display</h2>
         <Card>
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.settingLabel}>Theme</span>
+              <span className={styles.settingDesc}>Switch between dark and light mode</span>
+            </div>
+            <div className={styles.themeToggle}>
+              <button
+                className={`${styles.themeBtn} ${settings.theme === 'dark' ? styles.themeBtnActive : ''}`}
+                onClick={() => updateSetting('theme', 'dark')}
+              >
+                Dark
+              </button>
+              <button
+                className={`${styles.themeBtn} ${settings.theme === 'light' ? styles.themeBtnActive : ''}`}
+                onClick={() => updateSetting('theme', 'light')}
+              >
+                Light
+              </button>
+            </div>
+          </div>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
               <span className={styles.settingLabel}>Week Start Day</span>
@@ -232,6 +360,8 @@ export function SettingsPage() {
           </div>
         </Card>
       </section>
+
+      <p className={styles.version}>v{__APP_VERSION__}</p>
 
       <ConfirmDialog
         isOpen={!!confirmAction}

@@ -23,13 +23,22 @@ export interface MuscleDistribution {
   percentage: number;
 }
 
+/** Helper: compute a start-date timestamp from a days count (0 = all time → 0). */
+function getStartDate(days: number): number {
+  return days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0;
+}
+
 /**
- * Get weekly volume over time
+ * Get weekly volume over time.
+ * @param days Number of days to look back (0 = all time, capped at shown weeks).
  */
-export function useWeeklyVolume(weeks = 12) {
+export function useWeeklyVolume(days: number) {
   return useLiveQuery(async () => {
-    const now = Date.now();
     const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    // Determine how many weeks to show
+    const weeks = days > 0 ? Math.max(Math.ceil(days / 7), 4) : 52; // all-time → 1 year of weeks
     const startDate = now - weeks * weekMs;
 
     // Get all completed sessions in range
@@ -95,23 +104,23 @@ export function useWeeklyVolume(weeks = 12) {
       const data = weekData.get(weekStart);
 
       if (data) {
-        // Use technique-aware volume calculation
         data.totalVolume += getSetVolume(set);
         data.totalSets += 1;
       }
     }
 
     return Array.from(weekData.values());
-  }, [weeks]);
+  }, [days]);
 }
 
 /**
  * Get workout frequency (sessions per week)
  */
-export function useWorkoutFrequency(weeks = 12) {
+export function useWorkoutFrequency(days: number) {
   return useLiveQuery(async () => {
-    const now = Date.now();
     const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const weeks = days > 0 ? Math.max(Math.ceil(days / 7), 4) : 52;
     const startDate = now - weeks * weekMs;
 
     const sessions = await db.sessions
@@ -147,22 +156,30 @@ export function useWorkoutFrequency(weeks = 12) {
       avgPerWeek: Math.round(avgPerWeek * 10) / 10,
       currentWeekCount,
     };
-  }, [weeks]);
+  }, [days]);
 }
 
 /**
- * Get muscle group volume distribution (last 30 days)
+ * Get muscle group volume distribution.
+ * @param days Number of days to look back (0 = all time).
  */
-export function useMuscleDistribution(days = 30) {
+export function useMuscleDistribution(days: number) {
   return useLiveQuery(async () => {
-    const startDate = Date.now() - days * 24 * 60 * 60 * 1000;
+    const startDate = getStartDate(days);
 
     // Get completed sessions
-    const sessions = await db.sessions
-      .where('startedAt')
-      .above(startDate)
-      .filter((s) => !!s.completedAt)
-      .toArray();
+    let sessions;
+    if (startDate > 0) {
+      sessions = await db.sessions
+        .where('startedAt')
+        .above(startDate)
+        .filter((s) => !!s.completedAt)
+        .toArray();
+    } else {
+      sessions = await db.sessions
+        .filter((s) => !!s.completedAt)
+        .toArray();
+    }
 
     if (sessions.length === 0) return [];
 
@@ -197,7 +214,6 @@ export function useMuscleDistribution(days = 30) {
       const exercise = exerciseMap.get(se.exerciseId);
       if (!exercise?.muscleGroups) continue;
 
-      // Use technique-aware volume calculation
       const volume = getSetVolume(set);
 
       for (const muscle of exercise.muscleGroups) {
@@ -224,14 +240,35 @@ export function useMuscleDistribution(days = 30) {
 }
 
 /**
- * Get overall stats
+ * Get overall stats for a time period.
+ * @param days Number of days to look back (0 = all time).
  */
-export function useOverallStats() {
+export function useOverallStats(days: number) {
   return useLiveQuery(async () => {
-    const sessions = await db.sessions.filter((s) => !!s.completedAt).toArray();
-    const prs = await db.prs.toArray();
+    const startDate = getStartDate(days);
 
-    // Total volume (all time)
+    let sessions;
+    if (startDate > 0) {
+      sessions = await db.sessions
+        .where('startedAt')
+        .above(startDate)
+        .filter((s) => !!s.completedAt)
+        .toArray();
+    } else {
+      sessions = await db.sessions.filter((s) => !!s.completedAt).toArray();
+    }
+
+    let prs;
+    if (startDate > 0) {
+      prs = await db.prs
+        .where('achievedAt')
+        .above(startDate)
+        .toArray();
+    } else {
+      prs = await db.prs.toArray();
+    }
+
+    // Total volume
     const sessionIds = sessions.map((s) => s.id);
     const sessionExercises = await db.sessionExercises
       .where('sessionId')
@@ -244,31 +281,43 @@ export function useOverallStats() {
       .filter((s) => !s.isWarmup)
       .toArray();
 
-    // Use technique-aware volume calculation
     const totalVolume = sets.reduce((sum, s) => sum + getSetVolume(s), 0);
     const totalSets = sets.length;
 
-    // Streak calculation
+    // Average session duration (only sessions with completedAt)
+    const durationsMs = sessions
+      .filter((s) => s.completedAt)
+      .map((s) => s.completedAt! - s.startedAt)
+      .filter((d) => d > 0 && d < 12 * 60 * 60 * 1000); // cap at 12h to exclude outliers
+
+    const avgDurationMin = durationsMs.length > 0
+      ? Math.round(durationsMs.reduce((a, b) => a + b, 0) / durationsMs.length / 60000)
+      : 0;
+
+    // Streak calculation (always computed from present, regardless of period)
+    const allSessions = days > 0
+      ? await db.sessions.filter((s) => !!s.completedAt).toArray()
+      : sessions;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let currentStreak = 0;
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
 
     while (true) {
       const dayStart = checkDate.getTime();
       const dayEnd = dayStart + 24 * 60 * 60 * 1000;
-      const hasSession = sessions.some(
+      const hasSession = allSessions.some(
         (s) => s.startedAt >= dayStart && s.startedAt < dayEnd
       );
       if (hasSession) {
         currentStreak += 1;
         checkDate.setDate(checkDate.getDate() - 1);
       } else if (currentStreak === 0) {
-        // Check yesterday for streak
         checkDate.setDate(checkDate.getDate() - 1);
         const yesterdayStart = checkDate.getTime();
         const yesterdayEnd = yesterdayStart + 24 * 60 * 60 * 1000;
-        const hasYesterday = sessions.some(
+        const hasYesterday = allSessions.some(
           (s) => s.startedAt >= yesterdayStart && s.startedAt < yesterdayEnd
         );
         if (hasYesterday) {
@@ -282,12 +331,133 @@ export function useOverallStats() {
       }
     }
 
+    // Consistency: % of weeks with ≥3 workouts
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const periodStart = startDate > 0 ? startDate : (sessions.length > 0 ? Math.min(...sessions.map(s => s.startedAt)) : Date.now());
+    const totalWeeks = Math.max(1, Math.ceil((Date.now() - periodStart) / weekMs));
+    let consistentWeeks = 0;
+    for (let i = 0; i < totalWeeks; i++) {
+      const wStart = periodStart + i * weekMs;
+      const wEnd = wStart + weekMs;
+      const weekSessions = sessions.filter(s => s.startedAt >= wStart && s.startedAt < wEnd);
+      if (weekSessions.length >= 3) consistentWeeks++;
+    }
+    const consistencyRate = totalWeeks > 0 ? Math.round((consistentWeeks / totalWeeks) * 100) : 0;
+
     return {
       totalSessions: sessions.length,
       totalVolume: Math.round(totalVolume),
       totalSets,
       totalPRs: prs.length,
       currentStreak,
+      avgDurationMin,
+      consistencyRate,
     };
-  }, []);
+  }, [days]);
+}
+
+/**
+ * Per-exercise breakdown for a set of muscle groups within a time period.
+ * Returns exercises sorted by volume (descending), with volume, sets, and
+ * percentage of the total for these muscles.
+ */
+export interface ExerciseBreakdownItem {
+  exerciseId: string;
+  exerciseName: string;
+  volume: number;
+  sets: number;
+  percentage: number;
+}
+
+export function useMuscleExerciseBreakdown(
+  days: number,
+  muscleGroups: string[] | null
+) {
+  return useLiveQuery(
+    async () => {
+      if (!muscleGroups || muscleGroups.length === 0) return null;
+
+      const startDate = getStartDate(days);
+
+      let sessions;
+      if (startDate > 0) {
+        sessions = await db.sessions
+          .where('startedAt')
+          .above(startDate)
+          .filter((s) => !!s.completedAt)
+          .toArray();
+      } else {
+        sessions = await db.sessions
+          .filter((s) => !!s.completedAt)
+          .toArray();
+      }
+
+      if (sessions.length === 0) return [];
+
+      const sessionIds = sessions.map((s) => s.id);
+      const sessionExercises = await db.sessionExercises
+        .where('sessionId')
+        .anyOf(sessionIds)
+        .toArray();
+
+      // Get exercises
+      const exerciseIds = [...new Set(sessionExercises.map((se) => se.exerciseId))];
+      const exercises = await db.exercises.bulkGet(exerciseIds);
+      const exerciseMap = new Map(exercises.filter(Boolean).map((e) => [e!.id, e!]));
+
+      // Filter to only exercises that target any of the requested muscle groups
+      const relevantExerciseIds = new Set<string>();
+      for (const [id, ex] of exerciseMap) {
+        if (ex.muscleGroups?.some((mg) => muscleGroups.includes(mg))) {
+          relevantExerciseIds.add(id);
+        }
+      }
+
+      // Get sets for relevant exercises
+      const relevantSEs = sessionExercises.filter(
+        (se) => relevantExerciseIds.has(se.exerciseId)
+      );
+      const seIds = relevantSEs.map((se) => se.id);
+      const sets = await db.sets
+        .where('sessionExerciseId')
+        .anyOf(seIds)
+        .filter((s) => !s.isWarmup)
+        .toArray();
+
+      const seMap = new Map(relevantSEs.map((se) => [se.id, se]));
+
+      // Accumulate per exercise
+      const exerciseData = new Map<string, { volume: number; sets: number }>();
+
+      for (const set of sets) {
+        const se = seMap.get(set.sessionExerciseId);
+        if (!se) continue;
+        const existing = exerciseData.get(se.exerciseId) ?? { volume: 0, sets: 0 };
+        existing.volume += getSetVolume(set);
+        existing.sets += 1;
+        exerciseData.set(se.exerciseId, existing);
+      }
+
+      const totalVolume = Array.from(exerciseData.values()).reduce(
+        (sum, d) => sum + d.volume,
+        0
+      );
+
+      const result: ExerciseBreakdownItem[] = Array.from(exerciseData.entries())
+        .map(([exerciseId, data]) => ({
+          exerciseId,
+          exerciseName: exerciseMap.get(exerciseId)?.name ?? 'Unknown',
+          volume: Math.round(data.volume),
+          sets: data.sets,
+          percentage:
+            totalVolume > 0
+              ? Math.round((data.volume / totalVolume) * 100)
+              : 0,
+        }))
+        .sort((a, b) => b.volume - a.volume);
+
+      return result;
+    },
+    [days, muscleGroups?.join(',')]
+  );
 }

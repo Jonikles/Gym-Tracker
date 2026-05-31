@@ -1,0 +1,86 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 0;
+  flex: 1;
+}
+
+.subtitle {
+  font-size: var(--font-sm);
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: 50vh;
+  padding-right: var(--space-xs);
+}
+
+.levelItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color 0.15s;
+  width: 100%;
+  text-align: left;
+  font-size: var(--font-sm);
+}
+
+.levelItem:hover {
+  background: var(--color-surface-hover);
+}
+
+.levelItem:active {
+  background: var(--color-surface-active);
+}
+
+.levelItem.current {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle, rgba(99, 102, 241, 0.1));
+}
+
+.levelBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  padding: var(--space-xxs) var(--space-xs);
+  background: var(--color-primary);
+  color: white;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.exerciseName {
+  flex: 1;
+  font-weight: 500;
+}
+
+.currentLabel {
+  font-size: var(--font-xs);
+  color: var(--color-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}

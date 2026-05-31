@@ -17,6 +17,10 @@ import {
   removeExerciseFromSession,
   reorderSessionExercises,
   importTemplateIntoSession,
+  switchProgressionLevel as switchProgressionLevelFn,
+  groupSessionExercises,
+  ungroupSessionExercise,
+  ungroupAllSessionExercises,
 } from '../hooks/useSessions';
 import type { Session, SessionExercise, Exercise } from '../types';
 
@@ -37,6 +41,12 @@ interface SessionContextValue {
   addExercise: (exercise: Exercise) => Promise<void>;
   removeExercise: (sessionExerciseId: string) => Promise<void>;
   reorderExercises: (exerciseIds: string[]) => Promise<void>;
+  switchProgressionLevel: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
+
+  // Grouping actions (superset/circuit)
+  groupExercises: (sessionExerciseIds: string[], groupType: 'superset' | 'circuit') => Promise<void>;
+  ungroupExercise: (sessionExerciseId: string) => Promise<void>;
+  ungroupAll: (groupId: string) => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -113,6 +123,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await reorderSessionExercises(activeSession.id, exerciseIds);
   }, [activeSession]);
 
+  const switchProgression = useCallback(async (sessionExerciseId: string, newExerciseId: string) => {
+    if (!activeSession) return undefined;
+    return switchProgressionLevelFn(activeSession.id, sessionExerciseId, newExerciseId);
+  }, [activeSession]);
+
+  const groupExercises = useCallback(async (sessionExerciseIds: string[], groupType: 'superset' | 'circuit') => {
+    await groupSessionExercises(sessionExerciseIds, groupType);
+  }, []);
+
+  const ungroupExercise = useCallback(async (sessionExerciseId: string) => {
+    await ungroupSessionExercise(sessionExerciseId);
+  }, []);
+
+  const ungroupAll = useCallback(async (groupId: string) => {
+    if (!activeSession) return;
+    await ungroupAllSessionExercises(activeSession.id, groupId);
+  }, [activeSession]);
+
   return (
     <SessionContext.Provider
       value={{
@@ -127,6 +155,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         addExercise,
         removeExercise,
         reorderExercises,
+        switchProgressionLevel: switchProgression,
+        groupExercises,
+        ungroupExercise,
+        ungroupAll,
       }}
     >
       {children}

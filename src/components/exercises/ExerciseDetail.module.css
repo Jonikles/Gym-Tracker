@@ -176,26 +176,6 @@
   color: var(--color-text);
 }
 
-.mediaPlaceholder {
-  margin-top: var(--space-lg);
-  padding: var(--space-xl);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.placeholderIcon {
-  font-size: 2rem;
-  opacity: 0.4;
-}
-
-.placeholderText {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
 
 .variationsCard {
   padding: var(--space-lg);
