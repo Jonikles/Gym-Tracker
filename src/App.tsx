@@ -6,8 +6,6 @@ import { useThemeEffect } from './hooks/useTheme';
 import { Nav, ErrorBoundary, SkeletonList } from './components/common';
 import { UpdatePrompt } from './components/common/UpdatePrompt';
 import { SessionProvider } from './context/SessionContext';
-import { RestTimerProvider } from './context/RestTimerContext';
-import { RestTimer } from './components/session/RestTimer';
 import { UndoProvider } from './context/UndoContext';
 import './styles/global.css';
 import './styles/theme.css';
@@ -83,7 +81,6 @@ function App() {
     <BrowserRouter>
       <UpdatePrompt />
       <SessionProvider>
-        <RestTimerProvider>
         <UndoProvider>
         <Nav />
         <ErrorBoundary>
@@ -114,8 +111,6 @@ function App() {
         </Suspense>
         </ErrorBoundary>
         </UndoProvider>
-        <RestTimer />
-        </RestTimerProvider>
       </SessionProvider>
     </BrowserRouter>
   );

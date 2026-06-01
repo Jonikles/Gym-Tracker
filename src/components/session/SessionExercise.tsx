@@ -7,7 +7,6 @@ import { ProgressionLevelPicker } from './ProgressionLevelPicker';
 import { useSets, createSet, quickFillFromPrevious } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
 import { updateSessionExerciseNotes } from '../../hooks/useSessions';
-import { useRestTimer } from '../../context/RestTimerContext';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import type { SessionExercise as SessionExerciseType, ExerciseField, TemplateExercise, Exercise } from '../../types';
 import styles from './SessionExercise.module.css';
@@ -37,7 +36,6 @@ export function SessionExercise({
 }: SessionExerciseProps) {
   const exercise = useExercise(sessionExercise.exerciseId);
   const sets = useSets(sessionExercise.id) ?? [];
-  const { start: startRestTimer } = useRestTimer();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [quickFillMessage, setQuickFillMessage] = useState<string | null>(null);
   const [showNotes, setShowNotes] = useState(!!sessionExercise.notes);
@@ -202,7 +200,7 @@ export function SessionExercise({
                   exerciseId={sessionExercise.exerciseId}
                   onDelete={() => {}}
                   showValidation={showValidation}
-                  onSetCompleted={startRestTimer}
+                  onSetCompleted={undefined}
                 />
               );
             })}
