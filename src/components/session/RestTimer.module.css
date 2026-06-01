@@ -1,7 +1,7 @@
 /* ── Floating rest timer overlay ── */
 .overlay {
   position: fixed;
-  bottom: 80px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   left: var(--space-md);
   z-index: 1000;
   display: flex;
@@ -157,7 +157,7 @@
 /* ── Minimized pill ── */
 .minimized {
   position: fixed;
-  bottom: 80px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   left: var(--space-md);
   z-index: 1000;
   display: flex;
