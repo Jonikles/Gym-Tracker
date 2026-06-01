@@ -24,8 +24,6 @@ const History = lazy(() => import('./pages/History').then(m => ({ default: m.His
 const Progress = lazy(() => import('./pages/Progress').then(m => ({ default: m.Progress })));
 const Analytics = lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
-const Tools = lazy(() => import('./pages/Tools').then(m => ({ default: m.Tools })));
-const Measurements = lazy(() => import('./pages/Measurements').then(m => ({ default: m.Measurements })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 function PageLoader() {
@@ -103,8 +101,6 @@ function App() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/progress/:exerciseId" element={<Progress />} />
           <Route path="/analytics" element={<Analytics />} />
-          <Route path="/tools" element={<Tools />} />
-          <Route path="/body" element={<Measurements />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

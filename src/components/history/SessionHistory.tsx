@@ -798,7 +798,6 @@ export function SessionHistory() {
                     { value: 'none', label: 'No PR' },
                     { value: 'weight', label: 'Weight PR' },
                     { value: 'reps', label: 'Reps PR' },
-                    { value: 'e1rm', label: 'E1RM PR' },
                     { value: 'progression', label: 'Progression' },
                   ]}
                   placeholder="All"

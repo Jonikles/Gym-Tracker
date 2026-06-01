@@ -4,10 +4,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Card } from '../common';
 import { db } from '../../db';
 import { useSetting } from '../../hooks/useSettings';
-import { usePersistedState } from '../../hooks/usePersistedState';
 import {
   MALE_STANDARDS,
-  FEMALE_STANDARDS,
   STRENGTH_LEVELS,
   LEVEL_LABELS,
   LEVEL_COLORS,
@@ -18,8 +16,6 @@ import {
   type StrengthStandard,
 } from '../../data/strength-standards';
 import styles from './StrengthStandards.module.css';
-
-type Gender = 'male' | 'female';
 
 interface LiftData {
   lift: Big3Lift;
@@ -198,10 +194,9 @@ function LiftCardContent({ data, bodyweight, standards }: LiftCardProps) {
 export function StrengthStandards() {
   const navigate = useNavigate();
   const bodyweight = useSetting('bodyweight');
-  const [gender, setGender] = usePersistedState<Gender>('strength.gender', 'male');
   const big3Data = useBig3Data();
 
-  const standards = gender === 'male' ? MALE_STANDARDS : FEMALE_STANDARDS;
+  const standards = MALE_STANDARDS;
 
   const totalE1RM = big3Data.reduce((sum, d) => sum + d.e1rm, 0);
   const hasAnyData = big3Data.some((d) => d.e1rm > 0);
@@ -224,20 +219,6 @@ export function StrengthStandards() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2>Big 3 Standards</h2>
-        <div className={styles.genderToggle}>
-          <button
-            className={`${styles.genderBtn} ${gender === 'male' ? styles.genderBtnActive : ''}`}
-            onClick={() => setGender('male')}
-          >
-            Male
-          </button>
-          <button
-            className={`${styles.genderBtn} ${gender === 'female' ? styles.genderBtnActive : ''}`}
-            onClick={() => setGender('female')}
-          >
-            Female
-          </button>
-        </div>
       </div>
 
       {(!bodyweight || bodyweight <= 0) && (

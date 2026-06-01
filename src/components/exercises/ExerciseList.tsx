@@ -45,12 +45,13 @@ export function ExerciseList() {
   const [equipmentFilter, setEquipmentFilter] = usePersistedState('exercises.equipment', '');
   const [movementFilter, setMovementFilter] = usePersistedState('exercises.movement', '');
   const [sortOption, setSortOption] = usePersistedState<ExerciseSortOption>('exercises.sort', 'name-asc');
-  const [showArchived, setShowArchived] = usePersistedState('exercises.archived', false);
+  const [showArchived] = usePersistedState('exercises.archived', false);
   const [progressionFilter, setProgressionFilter] = usePersistedState('exercises.progression', '');
   const [selectedLevels, setSelectedLevels] = usePersistedState<number[]>('exercises.levels', []);
 
   const [showFavoritesOnly, setShowFavoritesOnly] = usePersistedState('exercises.favoritesOnly', false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isFiltersExpanded, setIsFiltersExpanded] = usePersistedState('exercises.filtersExpanded', false);
   const [isMuscleFilterExpanded, setIsMuscleFilterExpanded] = usePersistedState('exercises.muscleExpanded', false);
   const [isLevelFilterExpanded, setIsLevelFilterExpanded] = usePersistedState('exercises.levelExpanded', false);
 
@@ -160,6 +161,18 @@ export function ExerciseList() {
           />
         </div>
 
+        <button
+          className={styles.chipFilterToggle}
+          onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+        >
+          <span className={styles.chipFilterLabel}>
+            Filters{hasFilters ? ' (active)' : ''}
+          </span>
+          <span className={styles.chevron}>{isFiltersExpanded ? '▲' : '▼'}</span>
+        </button>
+
+        {isFiltersExpanded && (
+          <>
         <div className={styles.filterRow}>
           <Select
             value={equipmentFilter}
@@ -278,6 +291,8 @@ export function ExerciseList() {
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
 
       <div className={styles.toggleRow}>
@@ -287,14 +302,6 @@ export function ExerciseList() {
         >
           {showFavoritesOnly ? '★ Favorites' : '☆ Favorites'}
         </button>
-        <label className={styles.toggle}>
-          <input className={styles.toggleInput}
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          <span>Show archived</span>
-        </label>
         <span className={styles.count}>{filteredExercises.length} exercises</span>
       </div>
 

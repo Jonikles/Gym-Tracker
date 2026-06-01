@@ -94,12 +94,6 @@ export function ExerciseProgress({ exerciseId }: ExerciseProgressProps) {
               unit="kg"
               color="var(--color-success)"
             />
-            <ProgressChart
-              data={history.e1rmOverTime}
-              title="Estimated 1RM Over Time"
-              unit="kg"
-              color="var(--pr-e1rm)"
-            />
           </div>
 
           <PRHistory exerciseId={exerciseId} />

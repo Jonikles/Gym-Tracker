@@ -15,7 +15,8 @@ function formatDate(timestamp: number): string {
 }
 
 export function PRHistory({ exerciseId }: PRHistoryProps) {
-  const prs = usePRsForExercise(exerciseId) ?? [];
+  const allPrs = usePRsForExercise(exerciseId) ?? [];
+  const prs = allPrs.filter((pr) => pr.type !== 'e1rm');
 
   if (prs.length === 0) {
     return (

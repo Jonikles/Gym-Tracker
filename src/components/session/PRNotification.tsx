@@ -8,11 +8,12 @@ interface PRNotificationProps {
 }
 
 export function PRNotification({ prs }: PRNotificationProps) {
-  if (prs.length === 0) return null;
+  const visiblePRs = prs.filter((pr) => pr.type !== 'e1rm');
+  if (visiblePRs.length === 0) return null;
 
   return (
     <div className={styles.container}>
-      {prs.map((pr) => (
+      {visiblePRs.map((pr) => (
         <div key={pr.id} className={`${styles.pr} ${styles[pr.type]}`}>
           <span className={styles.badge}>
             {pr.type === 'progression' ? 'LVL UP' : 'PR'}

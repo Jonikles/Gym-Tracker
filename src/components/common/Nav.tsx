@@ -3,23 +3,12 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useActiveSession } from '../../hooks/useSessions';
 import styles from './Nav.module.css';
 
-/** Primary tabs shown in the bottom bar on mobile */
-const primaryLinks = [
-  { to: '/', label: 'Home', icon: '⌂' },
-  { to: '/workout', label: 'Workout', icon: '▶' },
-  { to: '/exercises', label: 'Exercises', icon: '◎' },
-  { to: '/history', label: 'History', icon: '☰' },
-  { to: '/progress', label: 'Progress', icon: '↗' },
-];
-
 /** Secondary links shown in the "More" sheet on mobile, and inline on desktop */
 const secondaryLinks = [
+  { to: '/exercises', label: 'Exercises' },
+  { to: '/routines', label: 'Routines' },
   { to: '/progressions', label: 'Progressions' },
   { to: '/templates', label: 'Templates' },
-  { to: '/routines', label: 'Routines' },
-  { to: '/analytics', label: 'Analytics' },
-  { to: '/tools', label: 'Tools' },
-  { to: '/body', label: 'Body' },
   { to: '/settings', label: 'Settings' },
 ];
 
@@ -32,8 +21,6 @@ const allLinks = [
   { to: '/history', label: 'History' },
   { to: '/progress', label: 'Progress' },
   { to: '/analytics', label: 'Analytics' },
-  { to: '/tools', label: 'Tools' },
-  { to: '/body', label: 'Body' },
   { to: '/settings', label: 'Settings' },
 ];
 
@@ -54,6 +41,11 @@ export function Nav() {
   const isOnSecondaryPage = secondaryLinks.some(
     (l) => location.pathname === l.to || location.pathname.startsWith(l.to + '/')
   );
+
+  // Home/Workout toggle: show Workout when session is active, Home otherwise
+  const homeWorkoutLink = activeSession
+    ? { to: '/workout', label: 'Workout', icon: '▶' }
+    : { to: '/', label: 'Home', icon: '⌂' };
 
   return (
     <>
@@ -86,25 +78,34 @@ export function Nav() {
 
       {/* ── Mobile bottom tab bar ── */}
       <nav className={styles.mobileNav}>
-        {primaryLinks.map((link) => {
-          // Special case: Workout tab shows active session indicator
-          const isWorkout = link.to === '/workout';
-          return (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `${styles.mobileTab} ${isActive ? styles.mobileTabActive : ''} ${
-                  isWorkout && activeSession ? styles.mobileTabLive : ''
-                }`
-              }
-              end={link.to === '/'}
-            >
-              <span className={styles.mobileTabIcon}>{link.icon}</span>
-              <span className={styles.mobileTabLabel}>{link.label}</span>
-            </NavLink>
-          );
-        })}
+        <NavLink
+          to={homeWorkoutLink.to}
+          className={({ isActive }) =>
+            `${styles.mobileTab} ${isActive ? styles.mobileTabActive : ''} ${
+              activeSession ? styles.mobileTabLive : ''
+            }`
+          }
+          end={homeWorkoutLink.to === '/'}
+        >
+          <span className={styles.mobileTabIcon}>{homeWorkoutLink.icon}</span>
+          <span className={styles.mobileTabLabel}>{homeWorkoutLink.label}</span>
+        </NavLink>
+
+        <NavLink to="/history" className={({ isActive }) => `${styles.mobileTab} ${isActive ? styles.mobileTabActive : ''}`}>
+          <span className={styles.mobileTabIcon}>☰</span>
+          <span className={styles.mobileTabLabel}>History</span>
+        </NavLink>
+
+        <NavLink to="/progress" className={({ isActive }) => `${styles.mobileTab} ${isActive ? styles.mobileTabActive : ''}`}>
+          <span className={styles.mobileTabIcon}>↗</span>
+          <span className={styles.mobileTabLabel}>Progress</span>
+        </NavLink>
+
+        <NavLink to="/analytics" className={({ isActive }) => `${styles.mobileTab} ${isActive ? styles.mobileTabActive : ''}`}>
+          <span className={styles.mobileTabIcon}>◧</span>
+          <span className={styles.mobileTabLabel}>Analytics</span>
+        </NavLink>
+
         {/* More button */}
         <button
           className={`${styles.mobileTab} ${isOnSecondaryPage || moreOpen ? styles.mobileTabActive : ''}`}
