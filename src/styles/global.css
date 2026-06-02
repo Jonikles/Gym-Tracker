@@ -152,6 +152,7 @@ h4 { font-size: var(--text-lg); }
   padding-top: calc(var(--space-lg) + env(safe-area-inset-top, 0px));
   max-width: 1200px;
   margin: 0 auto;
+  overflow-x: hidden;
 }
 
 /* Loading state */

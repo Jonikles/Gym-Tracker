@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { Button, Modal, ConfirmDialog, Select } from '../common';
 import { RoutineForm, type RoutineFormData } from './RoutineForm';
 import { RoutineCalendar } from './RoutineCalendar';
@@ -102,41 +102,17 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   // Local schedule state for editing
   const [localSchedule, setLocalSchedule] = useState<RoutineDay[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isInitialLoadRef = useRef(true);
 
   // Initialize local schedule when routine loads
   useEffect(() => {
     if (routine) {
       setLocalSchedule(routine.schedule);
       setHasChanges(false);
-      isInitialLoadRef.current = true;
     }
   }, [routine?.id]);
 
-  // Auto-save schedule changes to DB (debounced) so navigating away doesn't lose data
-  // Only saves when at least one template is assigned — never persists an invalid (all rest) state
-  useEffect(() => {
-    // Skip the initial load (when localSchedule is set from routine.schedule)
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      return;
-    }
-    if (!hasChanges) return;
-
-    // Don't persist a schedule with 0 templates — that's an invalid state
-    const hasTemplate = localSchedule.some((d) => d.templateId);
-    if (!hasTemplate) return;
-
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(async () => {
-      await updateRoutine(routineId, { schedule: localSchedule });
-    }, 500);
-
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    };
-  }, [localSchedule, hasChanges, routineId]);
+  // Block navigation when there are unsaved changes
+  const blocker = useBlocker(hasChanges);
 
   if (!routine) {
     return (
@@ -209,37 +185,34 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const isDraft = sessionStorage.getItem('draftRoutineId') === routineId;
   const hasAnyTemplate = localSchedule.some((d) => d.templateId);
 
+  const handleSaveSchedule = async () => {
+    await updateRoutine(routineId, { schedule: localSchedule });
+    setHasChanges(false);
+  };
+
   const handleBack = () => {
-    // If no templates assigned, warn the user regardless of draft status
     if (!hasAnyTemplate) {
       setShowIncompleteWarning(true);
       return;
     }
-
-    // Clear draft marker when leaving via back button
     sessionStorage.removeItem('draftRoutineId');
-    // Flush any pending auto-save immediately
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      updateRoutine(routineId, { schedule: localSchedule });
-    }
     navigate('/routines');
   };
 
   const handleConfirmIncomplete = async () => {
-    // Cancel any pending auto-save (shouldn't exist for 0-template state, but be safe)
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
-
     if (isDraft) {
-      // Draft with no templates — delete it
       sessionStorage.removeItem('draftRoutineId');
       await deleteRoutine(routineId);
     }
-    // Existing routine — DB still has the last valid state, just leave
+    setHasChanges(false);
     navigate('/routines');
+  };
+
+  const handleDiscardAndLeave = () => {
+    setHasChanges(false);
+    if (blocker.state === 'blocked') {
+      blocker.proceed();
+    }
   };
 
   // For fixed routines, sort days starting from weekStartDay
@@ -268,6 +241,11 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
                 </div>
             </div>
             <div className={styles.headerActions}>
+                {hasChanges && (
+                <Button onClick={handleSaveSchedule}>
+                    Save
+                </Button>
+                )}
                 {!isActive && (
                 <Button onClick={() => setShowSetActiveConfirm(true)}>
                     Set as Active
@@ -394,6 +372,17 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
             : `"${routine.name}" has no templates assigned. Your changes will be reverted. Are you sure?`
         }
         confirmLabel={isDraft ? 'Delete Routine' : 'Revert & Leave'}
+        variant="danger"
+      />
+
+      {/* Navigation blocker when unsaved changes */}
+      <ConfirmDialog
+        isOpen={blocker.state === 'blocked'}
+        onClose={() => blocker.reset?.()}
+        onConfirm={handleDiscardAndLeave}
+        title="Unsaved Changes"
+        message="You have unsaved schedule changes. Leave without saving?"
+        confirmLabel="Discard & Leave"
         variant="danger"
       />
     </div>

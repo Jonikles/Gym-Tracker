@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { Input, Button, ConfirmDialog } from '../common';
 import { ExercisePicker } from '../exercises';
 import { ProgressionPicker } from '../progressions/ProgressionPicker';
 import { TemplateExerciseList } from './TemplateExerciseList';
-import { createTemplate, updateTemplate, deleteTemplate } from '../../hooks/useTemplates';
+import { createTemplate, updateTemplate } from '../../hooks/useTemplates';
 import { getLowestLevelExercise } from '../../hooks/useProgressions';
 import type { Template, TemplateExercise, TemplateSet, Exercise } from '../../types';
 import styles from './TemplateForm.module.css';
@@ -23,88 +23,67 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isProgressionPickerOpen, setIsProgressionPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Track the DB id for this template (set immediately for edits, after first save for creates)
-  const [templateId, setTemplateId] = useState<string | undefined>(template?.id);
   const isEditing = !!template;
-
-  // Auto-save refs
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isInitialLoadRef = useRef(true);
-  const nameRef = useRef(name);
-  const exercisesRef = useRef(exercises);
-
-  // Keep refs in sync
-  nameRef.current = name;
-  exercisesRef.current = exercises;
 
   // Update state if template changes (e.g., navigating between templates)
   useEffect(() => {
     if (template) {
       setName(template.name);
       setExercises(template.exercises);
-      setTemplateId(template.id);
-      isInitialLoadRef.current = true;
+      setIsDirty(false);
     }
   }, [template?.id]);
 
-  // Auto-save to DB (debounced)
-  const flushSave = useCallback(async () => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
+  // Block navigation when dirty
+  const blocker = useBlocker(isDirty && !isSaving);
+
+  const markDirty = useCallback(() => {
+    setIsDirty(true);
+  }, []);
+
+  const handleSave = async () => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Template name is required');
+      return;
+    }
+    if (exercises.length === 0) {
+      setError('Add at least one exercise');
+      return;
     }
 
-    const currentName = nameRef.current.trim();
-    const currentExercises = exercisesRef.current;
-
-    // Can't save without a name or without any exercises
-    if (!currentName) return;
-    if (currentExercises.length === 0) return;
-
+    setIsSaving(true);
     try {
-      if (templateId) {
-        // Update existing
-        await updateTemplate(templateId, {
-          name: currentName,
-          exercises: currentExercises,
+      if (isEditing && template) {
+        await updateTemplate(template.id, {
+          name: trimmedName,
+          exercises,
         });
+        setIsDirty(false);
+        setIsSaving(false);
+        if (onSave) onSave();
       } else {
-        // Create new
         const id = await createTemplate({
-          name: currentName,
-          exercises: currentExercises,
+          name: trimmedName,
+          exercises,
         });
-        setTemplateId(id);
-        // Update URL to the new template's edit page (replace so back goes to list)
-        navigate(`/templates/${id}/edit`, { replace: true });
+        setIsDirty(false);
+        setIsSaving(false);
+        navigate(`/templates/${id}`, { replace: true });
       }
       setError(null);
     } catch (err) {
+      setIsSaving(false);
       setError(err instanceof Error ? err.message : 'Failed to save');
     }
-  }, [templateId, navigate]);
-
-  const scheduleAutoSave = useCallback(() => {
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(flushSave, 600);
-  }, [flushSave]);
-
-  // Trigger auto-save when name or exercises change
-  useEffect(() => {
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      return;
-    }
-    scheduleAutoSave();
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    };
-  }, [name, exercises, scheduleAutoSave]);
+  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
+    markDirty();
     if (error) setError(null);
   };
 
@@ -122,6 +101,7 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
       targetReps: '8-12',
     };
     setExercises([...exercises, newExercise]);
+    markDirty();
     setIsPickerOpen(false);
   };
 
@@ -132,7 +112,6 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
       { order: 2, isWarmup: false, intensityTechnique: 'standard' },
     ];
 
-    // Get the lowest-level exercise as default
     const lowestExercise = await getLowestLevelExercise(progressionId);
     if (!lowestExercise) return;
 
@@ -144,6 +123,7 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
       targetReps: '8-12',
     };
     setExercises([...exercises, newExercise]);
+    markDirty();
     setIsProgressionPickerOpen(false);
   };
 
@@ -160,6 +140,7 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         return e.exerciseId === exerciseId ? { ...e, ...updates } : e;
       })
     );
+    markDirty();
   };
 
   const handleRemoveExercise = (exerciseId: string, order?: number) => {
@@ -171,6 +152,7 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         })
         .map((e, index) => ({ ...e, order: index }))
     );
+    markDirty();
   };
 
   const handleReorder = (fromIndex: number, toIndex: number) => {
@@ -178,52 +160,22 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
     const [moved] = sorted.splice(fromIndex, 1);
     sorted.splice(toIndex, 0, moved);
     setExercises(sorted.map((e, index) => ({ ...e, order: index })));
+    markDirty();
   };
 
   const handleBack = () => {
-    // Check if template has no exercises — show warning
-    if (exercisesRef.current.length === 0) {
-      setShowIncompleteWarning(true);
-      return;
-    }
-
-    // Flush any pending save before navigating
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      // Fire-and-forget the final save
-      const currentName = nameRef.current.trim();
-      if (currentName && templateId) {
-        updateTemplate(templateId, {
-          name: currentName,
-          exercises: exercisesRef.current,
-        });
-      }
-    }
-    if (isEditing && onSave) {
-      onSave();
-    } else if (templateId) {
-      navigate(`/templates/${templateId}`);
+    if (isEditing && template) {
+      navigate(`/templates/${template.id}`);
     } else {
       navigate('/templates');
     }
   };
 
-  const handleConfirmIncomplete = async () => {
-    // Cancel any pending auto-save
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
-
-    if (!isEditing || !templateId) {
-      // New template with 0 exercises — delete if it was already saved
-      if (templateId) {
-        await deleteTemplate(templateId);
-      }
-      navigate('/templates');
-    } else {
-      // Existing template — revert (DB still has last valid state since we didn't save)
-      navigate(`/templates/${templateId}`);
+  const handleDiscardAndLeave = async () => {
+    // If this was a new unsaved template, nothing to clean up
+    setIsDirty(false);
+    if (blocker.state === 'blocked') {
+      blocker.proceed();
     }
   };
 
@@ -236,6 +188,9 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
           ← Back
         </Button>
         <h1 className={styles.headerTitle}>{isEditing ? 'Edit Template' : 'New Template'}</h1>
+        <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
+          {isSaving ? 'Saving...' : 'Save'}
+        </Button>
       </header>
 
       <div className={styles.field}>
@@ -244,7 +199,6 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
           placeholder="e.g., Push Day, Upper Body A"
           value={name}
           onChange={handleNameChange}
-          onBlur={flushSave}
           autoFocus={!isEditing}
         />
       </div>
@@ -280,17 +234,14 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
         onSelect={handleAddProgression}
       />
 
+      {/* Navigation blocker dialog */}
       <ConfirmDialog
-        isOpen={showIncompleteWarning}
-        onClose={() => setShowIncompleteWarning(false)}
-        onConfirm={handleConfirmIncomplete}
-        title="No Exercises"
-        message={
-          !isEditing
-            ? `"${name || 'This template'}" has no exercises. Going back will delete this template. Are you sure?`
-            : `"${name || 'This template'}" has no exercises. Your changes will be reverted. Are you sure?`
-        }
-        confirmLabel={!isEditing ? 'Delete Template' : 'Revert & Leave'}
+        isOpen={blocker.state === 'blocked'}
+        onClose={() => blocker.reset?.()}
+        onConfirm={handleDiscardAndLeave}
+        title="Unsaved Changes"
+        message="You have unsaved changes. Leave without saving?"
+        confirmLabel="Discard & Leave"
         variant="danger"
       />
     </div>
