@@ -186,14 +186,6 @@
   }
 }
 
-/* ════════════════════════════════════════
-   Page bottom padding (so content isn't hidden behind tab bar)
-   ════════════════════════════════════════ */
-@media (max-width: 768px) {
-  :global(.page) {
-    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
-  }
-}
 
 /* ════════════════════════════════════════
    Animations

@@ -150,9 +150,16 @@ h4 { font-size: var(--text-lg); }
 .page {
   padding: var(--space-lg);
   padding-top: calc(var(--space-lg) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--space-lg) + 80px + env(safe-area-inset-bottom, 0px));
   max-width: 1200px;
   margin: 0 auto;
   overflow-x: hidden;
+}
+
+@media (min-width: 769px) {
+  .page {
+    padding-bottom: var(--space-lg);
+  }
 }
 
 /* Loading state */
