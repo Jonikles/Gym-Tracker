@@ -10,6 +10,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
 }
 
 .header h1 {
@@ -26,6 +28,18 @@
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .headerRight {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 .viewToggle {
@@ -113,12 +127,13 @@
 
 .topRow {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   align-items: center;
 }
 
 .topRow > *:first-child {
-  flex: 2;
+  flex: 1 1 100%;
   min-width: 0;
 }
 

@@ -34,6 +34,16 @@ export function Nav() {
     setMoreOpen(false);
   }, [location.pathname]);
 
+  // Lock body scroll when more sheet is open
+  useEffect(() => {
+    if (moreOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [moreOpen]);
+
   const hiddenPaths = ['/', '/workout'];
   const showWorkoutButton = !!activeSession && !hiddenPaths.includes(location.pathname);
 
