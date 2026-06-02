@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { runMigrations, isFreshInstall } from './db/migrations';
 import { seedDatabase } from './db/seed';
 import { useThemeEffect } from './hooks/useTheme';
@@ -10,7 +10,7 @@ import { UndoProvider } from './context/UndoContext';
 import './styles/global.css';
 import './styles/theme.css';
 
-// Lazy-loaded pages — each becomes its own chunk
+// Lazy-loaded pages
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const Exercises = lazy(() => import('./pages/Exercises').then(m => ({ default: m.Exercises })));
 const ExerciseDetailPage = lazy(() => import('./pages/ExerciseDetail').then(m => ({ default: m.ExerciseDetailPage })));
@@ -34,8 +34,52 @@ function PageLoader() {
   );
 }
 
-function App() {
+/** Root layout — wraps all routes with providers, nav, error boundary */
+function RootLayout() {
   useThemeEffect();
+
+  return (
+    <SessionProvider>
+      <UndoProvider>
+        <Nav />
+        <ErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
+      </UndoProvider>
+    </SessionProvider>
+  );
+}
+
+const router = createBrowserRouter([
+  {
+    element: <RootLayout />,
+    children: [
+      { path: '/', element: <Home /> },
+      { path: '/exercises', element: <Exercises /> },
+      { path: '/exercises/:id', element: <ExerciseDetailPage /> },
+      { path: '/templates', element: <Templates /> },
+      { path: '/templates/:id', element: <TemplateDetailPage /> },
+      { path: '/templates/:id/edit', element: <TemplateEditPage /> },
+      { path: '/progressions', element: <Progressions /> },
+      { path: '/progressions/:progressionId', element: <Progressions /> },
+      { path: '/routines', element: <Routines /> },
+      { path: '/routines/:id', element: <Routines /> },
+      { path: '/workout', element: <Workout /> },
+      { path: '/history', element: <History /> },
+      { path: '/history/:id', element: <History /> },
+      { path: '/history/:id/:action', element: <History /> },
+      { path: '/progress', element: <Progress /> },
+      { path: '/progress/:exerciseId', element: <Progress /> },
+      { path: '/analytics', element: <Analytics /> },
+      { path: '/settings', element: <Settings /> },
+      { path: '*', element: <NotFound /> },
+    ],
+  },
+]);
+
+function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,39 +120,10 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <>
       <UpdatePrompt />
-      <SessionProvider>
-        <UndoProvider>
-        <Nav />
-        <ErrorBoundary>
-        <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/exercises" element={<Exercises />} />
-          <Route path="/exercises/:id" element={<ExerciseDetailPage />} />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="/templates/:id" element={<TemplateDetailPage />} />
-          <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
-          <Route path="/progressions" element={<Progressions />} />
-          <Route path="/progressions/:progressionId" element={<Progressions />} />
-          <Route path="/routines" element={<Routines />} />
-          <Route path="/routines/:id" element={<Routines />} />
-          <Route path="/workout" element={<Workout />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/history/:id" element={<History />} />
-          <Route path="/history/:id/:action" element={<History />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/progress/:exerciseId" element={<Progress />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        </Suspense>
-        </ErrorBoundary>
-        </UndoProvider>
-      </SessionProvider>
-    </BrowserRouter>
+      <RouterProvider router={router} />
+    </>
   );
 }
 
