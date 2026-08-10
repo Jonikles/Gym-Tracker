@@ -3,18 +3,17 @@ import { Input, Button } from '../common';
 import { PRNotification } from './PRNotification';
 import type { Set, IntensityTechnique, ExerciseField, PR, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, ClusterTechniqueData, PartialsTechniqueData } from '../../types';
 import { updateSet, deleteSet } from '../../hooks/useSets';
-import { detectPRsPreview } from '../../utils/pr';
-import { detectProgressionAdvancementsPreview } from '../../utils/progression';
 import styles from './SetRow.module.css';
 
 interface SetRowProps {
   set: Set;
   setNumber: number;
   defaultFields: ExerciseField[];
-  exerciseId: string;
   onDelete: () => void;
   showValidation?: boolean;
   onSetCompleted?: () => void;
+  /** PRs achieved by this specific set, computed by the parent across all sibling sets */
+  livePRs?: PR[];
 }
 
 
@@ -54,7 +53,7 @@ function isPartialsData(data: TechniqueData | undefined): data is PartialsTechni
 const filterDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
 const filterInteger = (v: string) => v.replace(/[^0-9]/g, '');
 
-export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, showValidation, onSetCompleted }: SetRowProps) {
+export function SetRow({ set, setNumber, defaultFields, onDelete, showValidation, onSetCompleted, livePRs }: SetRowProps) {
   const [weight, setWeight] = useState(set.weight?.toString() ?? '');
   const [reps, setReps] = useState(set.reps?.toString() ?? '');
   const [time, setTime] = useState(set.time?.toString() ?? '');
@@ -64,7 +63,6 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
   const [technique, setTechnique] = useState<IntensityTechnique>(set.intensityTechnique ?? 'standard');
   const [showTypePicker, setShowTypePicker] = useState(false);
   const typePickerRef = useRef<HTMLDivElement>(null);
-  const [detectedPRs, setDetectedPRs] = useState<PR[]>([]);
 
   // Technique-specific state
   // Myo Reps
@@ -100,8 +98,6 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
     isPartialsData(set.techniqueData) ? set.techniqueData.partialWeight.toString() : weight
   );
 
-  // Track if we've already checked for PRs with current values
-  const lastCheckedRef = useRef<string>('');
   // Track if we've already fired the rest timer for this set
   const restTimerFiredRef = useRef(false);
 
@@ -231,39 +227,6 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
         }
       }
 
-      // Check for PRs only if not warmup and values have changed
-      // Only for standard/failure/forcedreps (e1RM calculation)
-      // NOTE: PRs are only previewed here — actual saves happen on session completion
-      const checkKey = `${parsedWeight}-${parsedReps}-${isWarmup}-${technique}`;
-      const canCalculatePR = ['standard', 'failure', 'forcedreps'].includes(technique);
-      const allPRs: PR[] = [];
-
-      if (!isWarmup && parsedWeight && parsedReps && canCalculatePR && checkKey !== lastCheckedRef.current) {
-        lastCheckedRef.current = checkKey;
-
-        // Use the exact values that were just saved to DB for PR detection
-        const tempSet: Set = {
-          ...set,
-          weight: parsedWeight,
-          reps: parsedReps,
-          isWarmup,
-          intensityTechnique: technique,
-          techniqueData,
-        };
-
-        const prs = await detectPRsPreview(tempSet, exerciseId);
-        if (!cancelled) allPRs.push(...prs);
-      }
-
-      // Check for progression level-ups (any non-warmup set counts)
-      if (!isWarmup && (parsedWeight || parsedReps || parsedTime || parsedDistance)) {
-        const progressionPRs = await detectProgressionAdvancementsPreview(exerciseId, set.id);
-        if (!cancelled) allPRs.push(...progressionPRs);
-      }
-
-      if (!cancelled && allPRs.length > 0) {
-        setDetectedPRs(allPRs);
-      }
     }, 500);
 
     return () => {
@@ -273,7 +236,7 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
   // Note: `set` object excluded from deps — Dexie's useLiveQuery returns new references
   // on every render which would cause infinite re-render loops. Individual fields are tracked instead.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [set.id, weight, reps, time, distance, isWarmup, technique, exerciseId, myoActivationReps, myoMiniSets, drops, clusters, mainReps, partialReps, partialWeight]);
+  }, [set.id, weight, reps, time, distance, isWarmup, technique, myoActivationReps, myoMiniSets, drops, clusters, mainReps, partialReps, partialWeight]);
 
   const handleDelete = async () => {
     await deleteSet(set.id);
@@ -640,9 +603,9 @@ export function SetRow({ set, setNumber, defaultFields, exerciseId, onDelete, sh
       {technique === 'cluster' && renderClusterUI()}
       {technique === 'partials' && renderPartialsUI()}
 
-      {detectedPRs.length > 0 && (
+      {livePRs && livePRs.length > 0 && (
         <div className={styles.prNotification}>
-          <PRNotification prs={detectedPRs} />
+          <PRNotification prs={livePRs} />
         </div>
       )}
     </div>

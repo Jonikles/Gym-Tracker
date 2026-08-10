@@ -66,6 +66,9 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
   function ExportCard({ days, period }, ref) {
     const cardRef = useRef<HTMLDivElement>(null);
     const [exporting, setExporting] = useState(false);
+    // Body diagrams are expensive to render — skip them until the user actually
+    // requests an export instead of always mounting a hidden duplicate.
+    const [everRequested, setEverRequested] = useState(false);
     const stats = useOverallStats(days);
     const distribution = useMuscleDistribution(days);
     const theme = useSetting('theme');
@@ -113,6 +116,7 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
     const exportImage = useCallback(async () => {
       if (!cardRef.current || exporting) return;
       setExporting(true);
+      setEverRequested(true);
 
       try {
         // Make card visible for capture
@@ -229,8 +233,8 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
           </div>
         </div>
 
-        {/* Body heatmap */}
-        {tieredData.length > 0 && (
+        {/* Body heatmap — only mounted once an export is actually requested */}
+        {everRequested && tieredData.length > 0 && (
           <div className={styles.heatmap}>
             <div className={styles.heatmapView}>
               <Model

@@ -8,7 +8,9 @@ import { useSets, createSet, quickFillFromPrevious } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
 import { updateSessionExerciseNotes } from '../../hooks/useSessions';
 import { PROGRESSION_MAP } from '../../data/progressions';
-import type { SessionExercise as SessionExerciseType, ExerciseField, TemplateExercise, Exercise } from '../../types';
+import { previewExercisePRs } from '../../utils/pr';
+import { previewProgressionAdvancementsForSets } from '../../utils/progression';
+import type { SessionExercise as SessionExerciseType, ExerciseField, TemplateExercise, Exercise, PR, Set as SetType } from '../../types';
 import styles from './SessionExercise.module.css';
 
 interface SessionExerciseProps {
@@ -36,6 +38,7 @@ export function SessionExercise({
 }: SessionExerciseProps) {
   const exercise = useExercise(sessionExercise.exerciseId);
   const sets = useSets(sessionExercise.id) ?? [];
+  const [livePRsBySet, setLivePRsBySet] = useState<Map<string, PR[]>>(new Map());
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [quickFillMessage, setQuickFillMessage] = useState<string | null>(null);
   const [showNotes, setShowNotes] = useState(!!sessionExercise.notes);
@@ -64,6 +67,36 @@ export function SessionExercise({
   }, [notes]);
 
   const defaultFields: ExerciseField[] = exercise?.defaultFields ?? ['weight', 'reps'];
+
+  // Live PR preview across all sets of this exercise in the active session — a record
+  // is per exercise, not per set, so only the single best set gets flagged.
+  const setsDepKey = sets
+    .map((s: SetType) => `${s.id}:${s.weight}:${s.reps}:${s.time}:${s.distance}:${s.isWarmup}:${s.intensityTechnique}`)
+    .join('|');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const [prMap, progressionMap] = await Promise.all([
+        previewExercisePRs(sets, sessionExercise.exerciseId),
+        previewProgressionAdvancementsForSets(sets, sessionExercise.exerciseId),
+      ]);
+
+      if (cancelled) return;
+
+      const merged = new Map<string, PR[]>(prMap);
+      for (const [setId, prs] of progressionMap) {
+        merged.set(setId, [...(merged.get(setId) ?? []), ...prs]);
+      }
+      setLivePRsBySet(merged);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionExercise.exerciseId, setsDepKey]);
 
   const handleAddSet = useCallback(async () => {
     // User-added sets are always blank — template only defines initial sets
@@ -197,10 +230,10 @@ export function SessionExercise({
                   set={set}
                   setNumber={workingSetNumber}
                   defaultFields={defaultFields}
-                  exerciseId={sessionExercise.exerciseId}
                   onDelete={() => {}}
                   showValidation={showValidation}
                   onSetCompleted={undefined}
+                  livePRs={livePRsBySet.get(set.id)}
                 />
               );
             })}

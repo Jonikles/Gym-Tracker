@@ -3,126 +3,19 @@ import type { PR, PRType, Set } from '../types';
 import { calculateE1RM, isE1RMValid } from './e1rm';
 import { getPrimaryWeightAndReps, isE1RMEligible } from './volume';
 
-/**
- * Result of PR detection
- */
-export interface PRDetectionResult {
-  type: PRType;
-  value: number;
-  previousValue?: number;
-  improvement?: number;
-}
+/** The single best candidate value per PR type, and which set achieved it */
+type BestCandidates = Partial<Record<'weight' | 'reps' | 'e1rm', { value: number; setId: string }>>;
 
 /**
- * Detect PRs for a set
- * 
- * Returns array of PRs that were achieved (can be multiple types)
- * Only checks working sets (not warmups)
- * 
- * e1RM is only calculated for:
- * - standard, failure, forcedreps
- * - partials (using main set reps only)
- * 
- * e1RM is NOT calculated for:
- * - myoreps, dropset, cluster (too variable)
+ * Find, across a set of exercise sets, the single best candidate per PR type
+ * that beats the given existing maxes. Shared by the save and preview paths so
+ * "best set wins" logic can't drift between them.
  */
-export async function detectPRs(
-  set: Set,
-  exerciseId: string
-): Promise<PRDetectionResult[]> {
-  // Skip warmup sets
-  if (set.isWarmup) return [];
-
-  // Get primary weight/reps (for partials, uses main set only)
-  const { weight, reps } = getPrimaryWeightAndReps(set);
-
-  if (weight <= 0 && reps <= 0) return [];
-
-  const results: PRDetectionResult[] = [];
-
-  // Get existing PRs for this exercise
-  const existingPRs = await db.prs
-    .where('exerciseId')
-    .equals(exerciseId)
-    .toArray();
-
-  // Check weight PR
-  if (weight > 0) {
-    const weightPRs = existingPRs.filter((pr) => pr.type === 'weight');
-    const maxWeight = Math.max(0, ...weightPRs.map((pr) => pr.value));
-
-    if (weight > maxWeight) {
-      results.push({
-        type: 'weight',
-        value: weight,
-        previousValue: maxWeight > 0 ? maxWeight : undefined,
-        improvement: maxWeight > 0 ? weight - maxWeight : undefined,
-      });
-    }
-  }
-
-  // Check reps PR
-  if (reps > 0) {
-    const repsPRs = existingPRs.filter((pr) => pr.type === 'reps');
-    const maxReps = Math.max(0, ...repsPRs.map((pr) => pr.value));
-
-    if (reps > maxReps) {
-      results.push({
-        type: 'reps',
-        value: reps,
-        previousValue: maxReps > 0 ? maxReps : undefined,
-        improvement: maxReps > 0 ? reps - maxReps : undefined,
-      });
-    }
-  }
-
-  // Check e1RM PR (only for eligible techniques and reps ≤ 10)
-  // Skip e1RM for myoreps, dropset, cluster - too variable
-  if (weight > 0 && reps > 0 && isE1RMValid(reps) && isE1RMEligible(set.intensityTechnique)) {
-    const e1rm = calculateE1RM(weight, reps);
-    const e1rmPRs = existingPRs.filter((pr) => pr.type === 'e1rm');
-    const maxE1RM = Math.max(0, ...e1rmPRs.map((pr) => pr.value));
-
-    if (e1rm > maxE1RM) {
-      results.push({
-        type: 'e1rm',
-        value: e1rm,
-        previousValue: maxE1RM > 0 ? maxE1RM : undefined,
-        improvement: maxE1RM > 0 ? e1rm - maxE1RM : undefined,
-      });
-    }
-  }
-
-  return results;
-}
-
-/**
- * Detect and save PRs across every eligible set of an exercise within a single session.
- *
- * A record is per exercise, not per set: if multiple sets in the same session each
- * beat the previous record, only the single best (highest) set produces one PR row
- * per type — not one row per qualifying set.
- */
-export async function detectAndSaveExercisePRs(
+function findBestCandidates(
   sets: Set[],
-  exerciseId: string
-): Promise<PR[]> {
-  // Existing PRs, fetched once so later sets in this session don't compare
-  // against records this same session already broke.
-  const existingPRs = await db.prs
-    .where('exerciseId')
-    .equals(exerciseId)
-    .toArray();
-
-  const maxByType: Record<PRType, number> = {
-    weight: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'weight').map((pr) => pr.value)),
-    reps: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'reps').map((pr) => pr.value)),
-    e1rm: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'e1rm').map((pr) => pr.value)),
-    progression: 0,
-  };
-
-  // Track the best candidate per type across all sets in this session
-  const best: Partial<Record<PRType, { value: number; setId: string }>> = {};
+  maxByType: Record<'weight' | 'reps' | 'e1rm', number>
+): BestCandidates {
+  const best: BestCandidates = {};
 
   for (const set of sets) {
     if (set.isWarmup) continue;
@@ -145,6 +38,34 @@ export async function detectAndSaveExercisePRs(
       }
     }
   }
+
+  return best;
+}
+
+async function getMaxByType(exerciseId: string): Promise<Record<'weight' | 'reps' | 'e1rm', number>> {
+  const existingPRs = await db.prs.where('exerciseId').equals(exerciseId).toArray();
+  return {
+    weight: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'weight').map((pr) => pr.value)),
+    reps: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'reps').map((pr) => pr.value)),
+    e1rm: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'e1rm').map((pr) => pr.value)),
+  };
+}
+
+/**
+ * Detect and save PRs across every eligible set of an exercise within a single session.
+ *
+ * A record is per exercise, not per set: if multiple sets in the same session each
+ * beat the previous record, only the single best (highest) set produces one PR row
+ * per type — not one row per qualifying set.
+ */
+export async function detectAndSaveExercisePRs(
+  sets: Set[],
+  exerciseId: string
+): Promise<PR[]> {
+  // Existing PRs, fetched once so later sets in this session don't compare
+  // against records this same session already broke.
+  const maxByType = await getMaxByType(exerciseId);
+  const best = findBestCandidates(sets, maxByType);
 
   const now = Date.now();
   const savedPRs: PR[] = [];
@@ -173,27 +94,45 @@ export async function detectAndSaveExercisePRs(
 }
 
 /**
- * Detect PRs and return them as PR objects WITHOUT saving to DB.
- * Used during active workout to show live PR badges.
+ * Detect PRs across every set of an exercise currently being logged in an active
+ * session, WITHOUT saving to DB. Used to show live PR badges during a workout.
+ *
+ * Mirrors detectAndSaveExercisePRs' "best set wins" rule: if several sets in the
+ * session each beat the previous record, only the single best set is flagged —
+ * not every qualifying set.
  */
-export async function detectPRsPreview(
-  set: Set,
+export async function previewExercisePRs(
+  sets: Set[],
   exerciseId: string
-): Promise<PR[]> {
-  const results = await detectPRs(set, exerciseId);
-  if (results.length === 0) return [];
+): Promise<Map<string, PR[]>> {
+  const maxByType = await getMaxByType(exerciseId);
+  const best = findBestCandidates(sets, maxByType);
 
   const now = Date.now();
-  return results.map((result) => ({
-    id: `preview-${set.id}-${result.type}`,
-    exerciseId,
-    setId: set.id,
-    type: result.type,
-    value: result.value,
-    previousValue: result.previousValue,
-    achievedAt: now,
-    createdAt: now,
-  }));
+  const bySet = new Map<string, PR[]>();
+
+  for (const type of ['weight', 'reps', 'e1rm'] as const) {
+    const candidate = best[type];
+    if (!candidate) continue;
+
+    const previousValue = maxByType[type] > 0 ? maxByType[type] : undefined;
+    const pr: PR = {
+      id: `preview-${candidate.setId}-${type}`,
+      exerciseId,
+      setId: candidate.setId,
+      type,
+      value: candidate.value,
+      previousValue,
+      achievedAt: now,
+      createdAt: now,
+    };
+
+    const list = bySet.get(candidate.setId) ?? [];
+    list.push(pr);
+    bySet.set(candidate.setId, list);
+  }
+
+  return bySet;
 }
 
 /**

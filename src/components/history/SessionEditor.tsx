@@ -74,7 +74,6 @@ function EditableExercise({
               set={set}
               setNumber={workingSetNumber}
               defaultFields={defaultFields}
-              exerciseId={sessionExercise.exerciseId}
               onDelete={() => {}}
             />
           );

@@ -1,5 +1,5 @@
 import { db } from '../db';
-import type { PR } from '../types';
+import type { PR, Set } from '../types';
 import { PROGRESSION_MAP } from '../data/progressions';
 
 /**
@@ -132,21 +132,31 @@ export async function detectAndSaveProgressionAdvancements(
 }
 
 /**
- * Detect progression advancements and return as PR objects WITHOUT saving.
- * Used during active workout to show live level-up badges.
+ * Detect progression advancements across every set of an exercise currently being
+ * logged in an active session, WITHOUT saving to DB. Used to show live level-up badges.
+ *
+ * A level-up is an exercise-level event, not a per-set one: it's assigned to the
+ * single earliest set with data in this session, not repeated on every set.
  */
-export async function detectProgressionAdvancementsPreview(
-  exerciseId: string,
-  setId: string
-): Promise<PR[]> {
+export async function previewProgressionAdvancementsForSets(
+  sets: Set[],
+  exerciseId: string
+): Promise<Map<string, PR[]>> {
+  const bySet = new Map<string, PR[]>();
+
+  const firstSetWithData = sets.find(
+    (set) => !set.isWarmup && (set.weight || set.reps || set.time || set.distance)
+  );
+  if (!firstSetWithData) return bySet;
+
   const advancements = await detectProgressionAdvancements(exerciseId);
-  if (advancements.length === 0) return [];
+  if (advancements.length === 0) return bySet;
 
   const now = Date.now();
-  return advancements.map((advancement) => ({
-    id: `preview-prog-${setId}-${advancement.progressionId}`,
+  const prs: PR[] = advancements.map((advancement) => ({
+    id: `preview-prog-${firstSetWithData.id}-${advancement.progressionId}`,
     exerciseId,
-    setId,
+    setId: firstSetWithData.id,
     type: 'progression' as const,
     value: advancement.newLevel,
     previousValue: advancement.previousLevel > 0 ? advancement.previousLevel : undefined,
@@ -154,4 +164,7 @@ export async function detectProgressionAdvancementsPreview(
     achievedAt: now,
     createdAt: now,
   }));
+
+  bySet.set(firstSetWithData.id, prs);
+  return bySet;
 }
