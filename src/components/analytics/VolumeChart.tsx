@@ -59,6 +59,7 @@ export function VolumeChart({ days }: VolumeChartProps) {
               dataKey="totalVolume"
               fill="var(--color-accent)"
               radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
             />
           </BarChart>
         </ResponsiveContainer>

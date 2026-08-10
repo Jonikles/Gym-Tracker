@@ -71,6 +71,7 @@ export function MuscleChart({ days }: MuscleChartProps) {
               cx="50%"
               cy="50%"
               outerRadius={80}
+              isAnimationActive={false}
               label={(props) => {
                 const entry = chartData[props.index];
                 return entry && entry.percentage >= 5 ? `${entry.name} ${entry.percentage}%` : '';

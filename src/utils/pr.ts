@@ -10,12 +10,23 @@ type BestCandidates = Partial<Record<'weight' | 'reps' | 'e1rm', { value: number
  * Find, across a set of exercise sets, the single best candidate per PR type
  * that beats the given existing maxes. Shared by the save and preview paths so
  * "best set wins" logic can't drift between them.
+ *
+ * A reps PR only counts at your current top weight (historical max, or a new
+ * weight PR set within these same sets) — more reps at a lighter weight than
+ * your best isn't a meaningful record.
  */
 function findBestCandidates(
   sets: Set[],
   maxByType: Record<'weight' | 'reps' | 'e1rm', number>
 ): BestCandidates {
   const best: BestCandidates = {};
+
+  let topWeight = maxByType.weight;
+  for (const set of sets) {
+    if (set.isWarmup) continue;
+    const { weight } = getPrimaryWeightAndReps(set);
+    if (weight > topWeight) topWeight = weight;
+  }
 
   for (const set of sets) {
     if (set.isWarmup) continue;
@@ -27,7 +38,7 @@ function findBestCandidates(
       best.weight = { value: weight, setId: set.id };
     }
 
-    if (reps > maxByType.reps && (!best.reps || reps > best.reps.value)) {
+    if (weight >= topWeight && reps > maxByType.reps && (!best.reps || reps > best.reps.value)) {
       best.reps = { value: reps, setId: set.id };
     }
 

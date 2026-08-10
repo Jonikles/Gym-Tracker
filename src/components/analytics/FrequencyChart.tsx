@@ -82,6 +82,7 @@ export function FrequencyChart({ days }: FrequencyChartProps) {
               strokeWidth={2}
               dot={{ fill: 'var(--color-success)', strokeWidth: 0, r: 4 }}
               activeDot={{ fill: 'var(--color-success)', strokeWidth: 0, r: 6 }}
+              isAnimationActive={false}
             />
           </LineChart>
         </ResponsiveContainer>
