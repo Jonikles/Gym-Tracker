@@ -7,12 +7,11 @@ import {
   useExercise,
   useExerciseVariations,
   updateExercise,
-  archiveExercise,
-  restoreExercise,
   deleteExercise,
   duplicateExercise,
 } from '../../hooks/useExercises';
-import { useUndo } from '../../context/UndoContext';
+import { useCurrentPRs } from '../../hooks/usePRs';
+import { formatPRValue } from '../../utils/pr';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import { MuscleHighlighter } from './MuscleHighlighter';
 import { ExerciseImage } from './ExerciseImage';
@@ -38,8 +37,8 @@ export function ExerciseDetail() {
   const exercise = useExercise(id);
   const variations = useExerciseVariations(exercise?.id);
   const parentExercise = useExercise(exercise?.parentId);
+  const currentPRs = useCurrentPRs(exercise?.id);
 
-  const { showUndo } = useUndo();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -92,17 +91,6 @@ export function ExerciseDetail() {
     setIsEditing(false);
   };
 
-  const handleArchive = async () => {
-    const id = exercise.id;
-    await archiveExercise(id);
-    navigate('/exercises');
-    showUndo('Exercise archived', () => restoreExercise(id));
-  };
-
-  const handleRestore = async () => {
-    await restoreExercise(exercise.id);
-  };
-
   const handleDelete = async () => {
     await deleteExercise(exercise.id);
     setShowDeleteConfirm(false);
@@ -122,7 +110,7 @@ export function ExerciseDetail() {
             ← Back
           </Button>
           <div className={styles.actions}>
-            {!exercise.isPreset && !exercise.isArchived && (
+            {!exercise.isPreset && (
               <>
                 <Button variant="secondary" onClick={() => setIsEditing(true)}>
                   Edit
@@ -130,24 +118,9 @@ export function ExerciseDetail() {
                 <Button variant="ghost" onClick={handleDuplicate}>
                   Duplicate
                 </Button>
-                <Button variant="ghost" onClick={handleArchive}>
-                  Archive
-                </Button>
                 <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
                   Delete
                 </Button>
-              </>
-            )}
-            {exercise.isArchived && (
-              <>
-                <Button variant="secondary" onClick={handleRestore}>
-                  Restore
-                </Button>
-                {!exercise.isPreset && (
-                  <Button variant="ghost" onClick={() => setShowDeleteConfirm(true)}>
-                    Delete
-                  </Button>
-                )}
               </>
             )}
           </div>
@@ -157,8 +130,17 @@ export function ExerciseDetail() {
         <div className={styles.titleRow}>
           <h1 className={styles.name}>{exercise.name}</h1>
           <div className={styles.badges}>
+            {currentPRs?.weight && (
+              <span className={styles.prBadge} title="Current weight PR">
+                🏆 {formatPRValue('weight', currentPRs.weight.value)}
+              </span>
+            )}
+            {!currentPRs?.weight && currentPRs?.reps && (
+              <span className={styles.prBadge} title="Current reps PR">
+                🏆 {formatPRValue('reps', currentPRs.reps.value)}
+              </span>
+            )}
             {exercise.isPreset && <span className={styles.badge}>Preset</span>}
-            {exercise.isArchived && <span className={`${styles.badge} ${styles.archivedBadge}`}>Archived</span>}
           </div>
         </div>
 

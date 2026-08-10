@@ -54,9 +54,14 @@
   color: var(--color-text-muted);
 }
 
-.archivedBadge {
-  background-color: var(--color-warning);
-  color: var(--color-bg);
+.prBadge {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 4px 8px;
+  background-color: rgba(251, 191, 36, 0.15);
+  border-radius: var(--radius-sm);
+  color: #fbbf24;
+  white-space: nowrap;
 }
 
 .infoSection {

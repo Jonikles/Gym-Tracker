@@ -20,11 +20,6 @@
   color: var(--color-text-muted);
 }
 
-.archivedBadge {
-  background-color: var(--color-warning);
-  color: var(--color-bg);
-}
-
 .details {
   display: flex;
   flex-direction: column;

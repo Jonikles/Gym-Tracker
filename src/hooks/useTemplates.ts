@@ -5,17 +5,10 @@ import type { Template, TemplateExercise, Routine } from '../types';
 /**
  * Query all templates with optional filters
  */
-export function useTemplates(filters?: { includeArchived?: boolean; search?: string }) {
+export function useTemplates(filters?: { search?: string }) {
   return useLiveQuery(
     async () => {
-      let query = db.templates.toCollection();
-
-      // Filter archived
-      if (!filters?.includeArchived) {
-        query = query.filter((t) => !t.isArchived);
-      }
-
-      let templates = await query.toArray();
+      let templates = await db.templates.toArray();
 
       // Search filter
       if (filters?.search) {
@@ -28,7 +21,7 @@ export function useTemplates(filters?: { includeArchived?: boolean; search?: str
       // Sort by name
       return templates.sort((a, b) => a.name.localeCompare(b.name));
     },
-    [filters?.includeArchived, filters?.search]
+    [filters?.search]
   );
 }
 
@@ -49,13 +42,13 @@ export function useTemplate(id: string | undefined) {
  * Create a new template
  */
 export async function createTemplate(
-  input: Omit<Template, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>
+  input: Omit<Template, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> {
   // Check for duplicate name
   const existing = await db.templates
-    .filter((t) => t.name.toLowerCase() === input.name.trim().toLowerCase() && !t.isArchived)
+    .filter((t) => t.name.toLowerCase() === input.name.trim().toLowerCase())
     .first();
-  
+
   if (existing) {
     throw new Error('A template with this name already exists');
   }
@@ -67,7 +60,6 @@ export async function createTemplate(
     id,
     name: input.name.trim(),
     exercises: input.exercises,
-    isArchived: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -82,7 +74,7 @@ export async function createTemplate(
  */
 export async function updateTemplate(
   id: string,
-  input: Partial<Omit<Template, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>>
+  input: Partial<Omit<Template, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
   // v1.4.1: If name is being changed, check for duplicates
   if (input.name !== undefined) {
@@ -90,8 +82,7 @@ export async function updateTemplate(
       .filter(
         (t) =>
           t.id !== id &&
-          t.name.toLowerCase() === input.name!.trim().toLowerCase() &&
-          !t.isArchived
+          t.name.toLowerCase() === input.name!.trim().toLowerCase()
       )
       .first();
 
@@ -103,26 +94,6 @@ export async function updateTemplate(
   await db.templates.update(id, {
     ...input,
     name: input.name?.trim(),
-    updatedAt: Date.now(),
-  });
-}
-
-/**
- * Archive a template (soft delete)
- */
-export async function archiveTemplate(id: string): Promise<void> {
-  await db.templates.update(id, {
-    isArchived: true,
-    updatedAt: Date.now(),
-  });
-}
-
-/**
- * Restore an archived template
- */
-export async function restoreTemplate(id: string): Promise<void> {
-  await db.templates.update(id, {
-    isArchived: false,
     updatedAt: Date.now(),
   });
 }
@@ -141,7 +112,6 @@ export async function duplicateTemplate(id: string): Promise<string> {
     id: newId,
     name: `${template.name} (Copy)`,
     exercises: template.exercises.map((e) => ({ ...e })),
-    isArchived: false,
     createdAt: now,
     updatedAt: now,
   };

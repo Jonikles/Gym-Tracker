@@ -12,9 +12,7 @@ export function useProgressionExercises(progressionId: string | undefined) {
       if (!progressionId) return [];
       const exercises = await db.exercises
         .filter(
-          (e) =>
-            !e.isArchived &&
-            (e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false)
+          (e) => e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false
         )
         .toArray();
 
@@ -96,9 +94,7 @@ export async function getLastUsedExerciseForProgression(
   // that were used in any completed session
   const progressionExercises = await db.exercises
     .filter(
-      (e) =>
-        !e.isArchived &&
-        (e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false)
+      (e) => e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false
     )
     .toArray();
 
@@ -137,9 +133,7 @@ export async function getLowestLevelExercise(
 ): Promise<Exercise | undefined> {
   const exercises = await db.exercises
     .filter(
-      (e) =>
-        !e.isArchived &&
-        (e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false)
+      (e) => e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false
     )
     .toArray();
 
@@ -160,7 +154,7 @@ export async function getLowestLevelExercise(
 export function useActiveProgressions() {
   return useLiveQuery(async () => {
     const exercises = await db.exercises
-      .filter((e) => !e.isArchived && e.progressionMemberships !== undefined)
+      .filter((e) => e.progressionMemberships !== undefined)
       .toArray();
 
     const ids = new Set<string>();

@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Session, SessionExercise, Set, Template, TemplateExercise } from '../types';
 import { advanceRollingPosition } from './useRoutines';
-import { detectAndSavePRs } from '../utils/pr';
+import { detectAndSaveExercisePRs } from '../utils/pr';
 import { detectAndSaveProgressionAdvancements } from '../utils/progression';
 import { getLastUsedExerciseForProgression } from './useProgressions';
 
@@ -297,20 +297,22 @@ export async function completeSession(sessionId: string): Promise<void> {
       .equals(se.id)
       .toArray();
 
+    // Detect and save weight/reps/e1rm PRs — one row per type per exercise for
+    // the whole session, even if multiple sets in it beat the previous record.
+    const prEligibleSets = sets.filter(
+      (set) =>
+        !set.isWarmup &&
+        set.weight &&
+        set.reps &&
+        ['standard', 'failure', 'forcedreps'].includes(set.intensityTechnique ?? 'standard')
+    );
+    if (prEligibleSets.length > 0) {
+      await detectAndSaveExercisePRs(prEligibleSets, se.exerciseId);
+    }
+
+    // Detect and save progression level-ups
     for (const set of sets) {
       if (set.isWarmup) continue;
-
-      // Detect and save weight/reps/e1rm PRs
-      if (set.weight && set.reps) {
-        const canCalculatePR = ['standard', 'failure', 'forcedreps'].includes(
-          set.intensityTechnique ?? 'standard'
-        );
-        if (canCalculatePR) {
-          await detectAndSavePRs(set, se.exerciseId);
-        }
-      }
-
-      // Detect and save progression level-ups
       if (set.weight || set.reps || set.time || set.distance) {
         await detectAndSaveProgressionAdvancements(se.exerciseId, set.id);
       }

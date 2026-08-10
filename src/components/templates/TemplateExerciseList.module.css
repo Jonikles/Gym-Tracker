@@ -51,6 +51,11 @@
   font-weight: 500;
 }
 
+.progressionLevelSelect {
+  font-weight: 500;
+  max-width: 100%;
+}
+
 .progressionBadge {
   display: inline-flex;
   align-items: center;

@@ -102,6 +102,24 @@ export class GymTrackerDB extends Dexie {
     }).upgrade(async () => {
       console.log('Upgrading database to version 6 - body measurements...');
     });
+
+    // Version 7 - Removed archive feature (isArchived) entirely
+    this.version(7).stores({
+      exercises: 'id, name, parentId, *muscleGroups, equipment',
+      templates: 'id, name',
+      routines: 'id, name, type',
+      sessions: 'id, routineId, templateId, startedAt, completedAt',
+      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
+      sets: 'id, sessionExerciseId, order',
+      prs: 'id, exerciseId, type, achievedAt',
+      settings: 'key',
+      measurements: 'id, date',
+    }).upgrade(async (tx) => {
+      console.log('Upgrading database to version 7 - removing archive feature...');
+      await tx.table('exercises').toCollection().modify((e) => { delete e.isArchived; });
+      await tx.table('templates').toCollection().modify((t) => { delete t.isArchived; });
+      await tx.table('routines').toCollection().modify((r) => { delete r.isArchived; });
+    });
   }
 }
 

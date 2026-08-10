@@ -45,7 +45,6 @@ export function ExerciseList() {
   const [equipmentFilter, setEquipmentFilter] = usePersistedState('exercises.equipment', '');
   const [movementFilter, setMovementFilter] = usePersistedState('exercises.movement', '');
   const [sortOption, setSortOption] = usePersistedState<ExerciseSortOption>('exercises.sort', 'name-asc');
-  const [showArchived] = usePersistedState('exercises.archived', false);
   const [progressionFilter, setProgressionFilter] = usePersistedState('exercises.progression', '');
   const [selectedLevels, setSelectedLevels] = usePersistedState<number[]>('exercises.levels', []);
 
@@ -61,7 +60,6 @@ export function ExerciseList() {
     filterMode,
     equipment: equipmentFilter || undefined,
     movementPattern: movementFilter || undefined,
-    includeArchived: showArchived,
     sort: sortOption,
     progressionId: progressionFilter || undefined,
   };

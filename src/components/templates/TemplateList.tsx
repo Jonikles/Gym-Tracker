@@ -13,12 +13,10 @@ export function TemplateList() {
     const navigate = useNavigate();
     useScrollRestore();
     const [searchQuery, setSearchQuery] = usePersistedState('templates.search', '');
-    const [showArchived, setShowArchived] = usePersistedState('templates.archived', false);
     const [sortOrder, setSortOrder] = usePersistedState<SortOrder>('templates.sort', 'recent');
 
     const templates = useTemplates({
         search: searchQuery,
-        includeArchived: showArchived,
     }) ?? [];
 
     const sortedTemplates = useMemo(() => {
@@ -37,9 +35,6 @@ export function TemplateList() {
         }
         return list;
     }, [templates, sortOrder]);
-
-    const activeTemplates = sortedTemplates.filter((t) => !t.isArchived);
-    const archivedTemplates = sortedTemplates.filter((t) => t.isArchived);
 
     return (
         <div className={styles.container}>
@@ -67,22 +62,11 @@ export function TemplateList() {
                     ]}
                 />
             </div>
-            <div className={styles.toggleRow}>
-                <label className={styles.toggle}>
-                    <input className={styles.toggleInput}
-                        type="checkbox"
-                        checked={showArchived}
-                        onChange={(e) => setShowArchived(e.target.checked)}
-                    />
-                    <span>Show archived</span>
-                </label>
-            </div>
-
             <div className={styles.list}>
-                {activeTemplates.map((template) => (
+                {sortedTemplates.map((template) => (
                     <TemplateCard key={template.id} template={template} />
                 ))}
-                {activeTemplates.length === 0 && !showArchived && (
+                {sortedTemplates.length === 0 && (
                     <p className={styles.empty}>
                         {searchQuery
                             ? 'No templates match your search.'
@@ -90,17 +74,6 @@ export function TemplateList() {
                     </p>
                 )}
             </div>
-
-            {showArchived && archivedTemplates.length > 0 && (
-                <>
-                    <h2 className={styles.sectionTitle}>Archived</h2>
-                    <div className={styles.list}>
-                        {archivedTemplates.map((template) => (
-                            <TemplateCard key={template.id} template={template} />
-                        ))}
-                    </div>
-                </>
-            )}
         </div>
     );
 }

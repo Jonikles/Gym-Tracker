@@ -45,7 +45,6 @@ export interface Template {
   id: string;
   name: string;
   exercises: TemplateExercise[];
-  isArchived: boolean;
   createdAt: number;
   updatedAt: number;
 }

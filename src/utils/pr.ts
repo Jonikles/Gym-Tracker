@@ -97,24 +97,70 @@ export async function detectPRs(
 }
 
 /**
- * Save detected PRs to the database
+ * Detect and save PRs across every eligible set of an exercise within a single session.
+ *
+ * A record is per exercise, not per set: if multiple sets in the same session each
+ * beat the previous record, only the single best (highest) set produces one PR row
+ * per type — not one row per qualifying set.
  */
-export async function savePRs(
-  prResults: PRDetectionResult[],
-  exerciseId: string,
-  setId: string
+export async function detectAndSaveExercisePRs(
+  sets: Set[],
+  exerciseId: string
 ): Promise<PR[]> {
+  // Existing PRs, fetched once so later sets in this session don't compare
+  // against records this same session already broke.
+  const existingPRs = await db.prs
+    .where('exerciseId')
+    .equals(exerciseId)
+    .toArray();
+
+  const maxByType: Record<PRType, number> = {
+    weight: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'weight').map((pr) => pr.value)),
+    reps: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'reps').map((pr) => pr.value)),
+    e1rm: Math.max(0, ...existingPRs.filter((pr) => pr.type === 'e1rm').map((pr) => pr.value)),
+    progression: 0,
+  };
+
+  // Track the best candidate per type across all sets in this session
+  const best: Partial<Record<PRType, { value: number; setId: string }>> = {};
+
+  for (const set of sets) {
+    if (set.isWarmup) continue;
+
+    const { weight, reps } = getPrimaryWeightAndReps(set);
+    if (weight <= 0 && reps <= 0) continue;
+
+    if (weight > maxByType.weight && (!best.weight || weight > best.weight.value)) {
+      best.weight = { value: weight, setId: set.id };
+    }
+
+    if (reps > maxByType.reps && (!best.reps || reps > best.reps.value)) {
+      best.reps = { value: reps, setId: set.id };
+    }
+
+    if (weight > 0 && reps > 0 && isE1RMValid(reps) && isE1RMEligible(set.intensityTechnique)) {
+      const e1rm = calculateE1RM(weight, reps);
+      if (e1rm > maxByType.e1rm && (!best.e1rm || e1rm > best.e1rm.value)) {
+        best.e1rm = { value: e1rm, setId: set.id };
+      }
+    }
+  }
+
   const now = Date.now();
   const savedPRs: PR[] = [];
 
-  for (const result of prResults) {
+  for (const type of ['weight', 'reps', 'e1rm'] as const) {
+    const candidate = best[type];
+    if (!candidate) continue;
+
+    const previousValue = maxByType[type] > 0 ? maxByType[type] : undefined;
     const pr: PR = {
       id: crypto.randomUUID(),
       exerciseId,
-      setId,
-      type: result.type,
-      value: result.value,
-      previousValue: result.previousValue,
+      setId: candidate.setId,
+      type,
+      value: candidate.value,
+      previousValue,
       achievedAt: now,
       createdAt: now,
     };
@@ -124,18 +170,6 @@ export async function savePRs(
   }
 
   return savedPRs;
-}
-
-/**
- * Detect and save PRs in one operation
- */
-export async function detectAndSavePRs(
-  set: Set,
-  exerciseId: string
-): Promise<PR[]> {
-  const results = await detectPRs(set, exerciseId);
-  if (results.length === 0) return [];
-  return savePRs(results, exerciseId, set.id);
 }
 
 /**

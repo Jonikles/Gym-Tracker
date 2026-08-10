@@ -41,7 +41,6 @@ export function ExerciseCard({ exercise, onClick, showDetails = true, showProgre
     <Card onClick={onClick} interactive={!!onClick}>
       <div className={styles.header}>
         <h3 className={styles.name}>{exercise.name}</h3>
-        {exercise.isArchived && <span className={`${styles.badge} ${styles.archivedBadge}`}>Archived</span>}
         {headerExtra}
       </div>
       {showDetails && (

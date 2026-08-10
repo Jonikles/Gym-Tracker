@@ -90,6 +90,7 @@ interface MuscleHeatmapProps {
 export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
   const distribution = useMuscleDistribution(days);
   const [selectedMuscle, setSelectedMuscle] = useState<Muscle | null>(null);
+  const theme = useSetting('theme');
 
   // Get the app-level muscle groups for the selected library muscle
   const selectedMuscleGroups = selectedMuscle
@@ -164,7 +165,6 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
     return `${kg}`;
   };
 
-  const theme = useSetting('theme');
   const bodyColor = theme === 'light' ? '#c8c8c8' : '#3a3a3a';
 
   return (

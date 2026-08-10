@@ -19,7 +19,7 @@ interface ExerciseDefinition {
  * Preset exercise library - v1.1 with updated muscle groups
  * All exercises use the new specific muscle group keys
  */
-const presetExercises: ExerciseDefinition[] = [
+export const presetExercises: ExerciseDefinition[] = [
   // ============================================
   // CHEST - Barbell
   // ============================================
@@ -62,6 +62,7 @@ const presetExercises: ExerciseDefinition[] = [
   
   // BACK - Dumbbell
   { name: 'Dumbbell Row', muscleGroups: ['lats-upper', 'lats-lower', 'rhomboids', 'biceps'], movementPattern: 'horizontal-pull', equipment: 'dumbbell', defaultFields: ['weight', 'reps'] },
+  { name: 'Single-Arm Dumbbell Row', muscleGroups: ['lats-upper', 'lats-lower', 'rhomboids', 'biceps'], movementPattern: 'horizontal-pull', equipment: 'dumbbell', defaultFields: ['weight', 'reps'] },
   { name: 'Dumbbell Shrug', muscleGroups: ['traps'], movementPattern: 'vertical-pull', equipment: 'dumbbell', defaultFields: ['weight', 'reps'] },
   { name: 'Dumbbell Romanian Deadlift', muscleGroups: ['hamstrings', 'glutes', 'erector-spinae'], movementPattern: 'hinge', equipment: 'dumbbell', defaultFields: ['weight', 'reps'] },
   { name: 'Chest-Supported Dumbbell Row', muscleGroups: ['lats-upper', 'lats-lower', 'rhomboids', 'biceps'], movementPattern: 'horizontal-pull', equipment: 'dumbbell', defaultFields: ['weight', 'reps'] },
@@ -77,6 +78,7 @@ const presetExercises: ExerciseDefinition[] = [
   { name: 'Face Pull', muscleGroups: ['rear-delts', 'traps', 'rhomboids'], movementPattern: 'horizontal-pull', equipment: 'cable', defaultFields: ['weight', 'reps'] },
   { name: 'Straight-Arm Pulldown', muscleGroups: ['lats-upper', 'lats-lower'], movementPattern: 'horizontal-pull', equipment: 'cable', defaultFields: ['weight', 'reps'] },
   { name: 'Cable Shrug', muscleGroups: ['traps'], movementPattern: 'vertical-pull', equipment: 'cable', defaultFields: ['weight', 'reps'] },
+  { name: 'Kelso Shrug', muscleGroups: ['traps', 'rhomboids', 'rear-delts'], movementPattern: 'horizontal-pull', equipment: 'cable', defaultFields: ['weight', 'reps'] },
   
   // BACK - Machine
   { name: 'Machine Row', muscleGroups: ['lats-upper', 'lats-lower', 'rhomboids', 'biceps'], movementPattern: 'horizontal-pull', equipment: 'machine', defaultFields: ['weight', 'reps'] },
@@ -379,7 +381,6 @@ export async function seedDatabase(): Promise<void> {
       ...exercise,
       id: crypto.randomUUID(),
       isPreset: true,
-      isArchived: false,
       createdAt: now,
       updatedAt: now,
       ...(match ? {
@@ -403,7 +404,6 @@ export async function seedDatabase(): Promise<void> {
         progressionLevel: pe.progressionMemberships[0]?.level,
         progressionMemberships: pe.progressionMemberships,
         isPreset: true,
-        isArchived: false,
         createdAt: now,
         updatedAt: now,
       });

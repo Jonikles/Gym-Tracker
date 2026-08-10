@@ -30,14 +30,6 @@
   color: var(--color-text-secondary);
 }
 
-.archived {
-  padding: 2px 8px;
-  background-color: rgba(239, 68, 68, 0.15);
-  color: var(--color-error);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xs);
-}
-
 .actions {
   display: flex;
   gap: var(--space-sm);

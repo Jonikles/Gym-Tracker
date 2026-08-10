@@ -4,13 +4,10 @@ import { Button, ConfirmDialog, Modal } from '../common';
 import { useExercise } from '../../hooks/useExercises';
 import {
   useTemplate,
-  archiveTemplate,
-  restoreTemplate,
   duplicateTemplate,
   deleteTemplate,
   getRoutinesUsingTemplate,
 } from '../../hooks/useTemplates';
-import { useUndo } from '../../context/UndoContext';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import type { TemplateExercise, Routine } from '../../types';
 import styles from './TemplateDetail.module.css';
@@ -57,7 +54,6 @@ interface TemplateDetailProps {
 export function TemplateDetail({ templateId }: TemplateDetailProps) {
   const navigate = useNavigate();
   const template = useTemplate(templateId);
-  const { showUndo } = useUndo();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRoutineWarning, setShowRoutineWarning] = useState(false);
   const [affectedRoutines, setAffectedRoutines] = useState<Routine[]>([]);
@@ -73,16 +69,6 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
   const handleDuplicate = async () => {
     const newId = await duplicateTemplate(templateId);
     navigate(`/templates/${newId}`);
-  };
-
-  const handleArchive = async () => {
-    await archiveTemplate(templateId);
-    navigate('/templates');
-    showUndo('Template archived', () => restoreTemplate(templateId));
-  };
-
-  const handleRestore = async () => {
-    await restoreTemplate(templateId);
   };
 
   const handleDeleteClick = async () => {
@@ -116,39 +102,19 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
             <span>{template.exercises.length} exercises</span>
             <span>•</span>
             <span>{totalSets} total sets</span>
-            {template.isArchived && (
-              <span className={styles.archived}>Archived</span>
-            )}
           </div>
         </div>
 
         <div className={styles.actions}>
-            {!template.isArchived && (
-                <>
-                <Button variant="secondary" onClick={() => navigate(`/templates/${template.id}/edit`)}>
-                    Edit
-                </Button>
-                <Button variant="ghost" onClick={handleDuplicate}>
-                    Duplicate
-                </Button>
-                <Button variant="ghost" onClick={handleArchive}>
-                    Archive
-                </Button>
-                <Button variant="danger" onClick={handleDeleteClick}>
-                    Delete
-                </Button>
-                </>
-            )}
-            {template.isArchived && (
-                <>
-                <Button variant="secondary" onClick={handleRestore}>
-                    Restore
-                </Button>
-                <Button variant="danger" onClick={handleDeleteClick}>
-                    Delete
-                </Button>
-                </>
-            )}
+            <Button variant="secondary" onClick={() => navigate(`/templates/${template.id}/edit`)}>
+                Edit
+            </Button>
+            <Button variant="ghost" onClick={handleDuplicate}>
+                Duplicate
+            </Button>
+            <Button variant="danger" onClick={handleDeleteClick}>
+                Delete
+            </Button>
             </div>
       </header>
 

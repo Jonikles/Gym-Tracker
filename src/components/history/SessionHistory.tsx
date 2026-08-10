@@ -137,7 +137,7 @@ export function SessionHistory() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [visibleCount, setVisibleCount] = useState(30);
   const [showAdvancedFilters, setShowAdvancedFilters] = usePersistedState('history.advancedOpen', false);
-  const [showExportMenu, setShowExportMenu] = useState(false); // Don't persist dropdown
+  const [showMoreMenu, setShowMoreMenu] = useState(false); // Don't persist dropdown
 
   const routines = useRoutines();
   const weekStartDay = useSetting('weekStartDay') as number;
@@ -528,18 +528,18 @@ export function SessionHistory() {
     []
   );
 
-  // Close export dropdown on outside click
-  const exportRef = useRef<HTMLDivElement>(null);
+  // Close "more" menu on outside click
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!showExportMenu) return;
+    if (!showMoreMenu) return;
     const handler = (e: MouseEvent) => {
-      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
-        setShowExportMenu(false);
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [showExportMenu]);
+  }, [showMoreMenu]);
 
   // Custom range with no dates filled = no active date filter
   const hasDateFilter = dateFilter && (dateFilter !== 'custom' || dateFrom || dateTo);
@@ -591,50 +591,59 @@ export function SessionHistory() {
               { value: 'prs-desc', label: 'Most PRs first' },
             ]}
           />
-          <div className={styles.viewToggle}>
-            <button
-              className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
-              onClick={() => setViewMode('list')}
-            >
-              List
-            </button>
-            <button
-              className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.viewBtnActive : ''}`}
-              onClick={() => setViewMode('calendar')}
-            >
-              Cal
-            </button>
-          </div>
-          <div className={styles.exportWrapper} ref={exportRef}>
+          <div className={styles.moreMenuWrapper} ref={moreMenuRef}>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              title="Export sessions"
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              title="More options"
             >
-              Export
+              ⋮
             </Button>
-            {showExportMenu && (
-              <div className={styles.exportDropdown}>
-                <button className={styles.exportOption} onClick={() => { handleExport('csv'); setShowExportMenu(false); }}>
-                  CSV
+            {showMoreMenu && (
+              <div className={styles.moreMenuDropdown}>
+                <div className={styles.moreMenuSection}>
+                  <span className={styles.moreMenuLabel}>View</span>
+                  <div className={styles.viewToggle}>
+                    <button
+                      className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+                      onClick={() => { setViewMode('list'); setShowMoreMenu(false); }}
+                    >
+                      List
+                    </button>
+                    <button
+                      className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.viewBtnActive : ''}`}
+                      onClick={() => { setViewMode('calendar'); setShowMoreMenu(false); }}
+                    >
+                      Cal
+                    </button>
+                  </div>
+                </div>
+                <button
+                  className={styles.moreMenuOption}
+                  onClick={() => { handleExport('csv'); setShowMoreMenu(false); }}
+                >
+                  Export CSV
                 </button>
-                <button className={styles.exportOption} onClick={() => { handleExport('json'); setShowExportMenu(false); }}>
-                  JSON
+                <button
+                  className={styles.moreMenuOption}
+                  onClick={() => { handleExport('json'); setShowMoreMenu(false); }}
+                >
+                  Export JSON
+                </button>
+                <button
+                  className={styles.moreMenuOption}
+                  onClick={() => {
+                    setSelectionMode(!selectionMode);
+                    setSelectedIds(new Set());
+                    setShowMoreMenu(false);
+                  }}
+                >
+                  {selectionMode ? 'Cancel selection' : 'Select'}
                 </button>
               </div>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSelectionMode(!selectionMode);
-              setSelectedIds(new Set());
-            }}
-          >
-            {selectionMode ? 'Cancel' : 'Select'}
-          </Button>
         </div>
       </header>
 

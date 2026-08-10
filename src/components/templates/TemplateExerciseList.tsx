@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Input, Select } from '../common';
 import { useExercise } from '../../hooks/useExercises';
+import { useProgressionExercises } from '../../hooks/useProgressions';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import type { TemplateExercise, TemplateSet, IntensityTechnique } from '../../types';
 import styles from './TemplateExerciseList.module.css';
@@ -159,6 +160,7 @@ function TemplateExerciseRow({
   const [showNotes, setShowNotes] = useState(!!exercise.notes);
   const isProgression = !!exercise.progressionId;
   const progressionDef = isProgression ? PROGRESSION_MAP[exercise.progressionId!] : null;
+  const progressionExercises = useProgressionExercises(isProgression ? exercise.progressionId : undefined);
 
   const handleSetUpdate = (setIndex: number, updates: Partial<TemplateSet>) => {
     const newSets = [...exercise.sets];
@@ -199,11 +201,26 @@ function TemplateExerciseRow({
               {progressionDef.name}
             </span>
           )}
-          <span className={styles.exerciseName}>
-            {isProgression
-              ? `Default: ${exerciseData?.name ?? 'Loading...'}`
-              : exerciseData?.name ?? 'Loading...'}
-          </span>
+          {isProgression ? (
+            <Select
+              value={exercise.exerciseId}
+              onChange={(e) => onUpdate({ exerciseId: e.target.value })}
+              options={(progressionExercises ?? []).map((pe) => {
+                const level = pe.progressionMemberships?.find(
+                  (pm) => pm.progressionId === exercise.progressionId
+                )?.level;
+                return {
+                  value: pe.id,
+                  label: level !== undefined ? `Lvl ${level} — ${pe.name}` : pe.name,
+                };
+              })}
+              className={styles.progressionLevelSelect}
+            />
+          ) : (
+            <span className={styles.exerciseName}>
+              {exerciseData?.name ?? 'Loading...'}
+            </span>
+          )}
         </div>
         <Button variant="ghost" size="sm" onClick={onRemove} title="Remove exercise">
           ×

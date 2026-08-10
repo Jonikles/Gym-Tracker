@@ -171,9 +171,7 @@ export function useExerciseHistory(
  */
 export function useExercisesWithHistory() {
   return useLiveQuery(async () => {
-    const exercises = await db.exercises
-      .filter((e) => !e.isArchived)
-      .toArray();
+    const exercises = await db.exercises.toArray();
 
     const result = [];
 

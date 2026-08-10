@@ -17,6 +17,7 @@
 import { db } from './index';
 import type { Template, TemplateExercise, TemplateSet, Routine, RoutineDay, IntensityTechnique } from '../types';
 import { PROGRESSION_EXERCISES } from '../data/progression-exercises';
+import { presetExercises } from './seed';
 
 /**
  * Run any necessary migrations
@@ -32,14 +33,14 @@ export async function runMigrations(): Promise<void> {
   // Migrate templates to new set structure (v3)
   await migrateTemplateSets();
 
-  // Remove theme setting (v3)
-  await db.settings.delete('theme');
-
   // Migrate to progression exercises (v4)
   await migrateProgressionExercises();
 
   // Clean up any duplicate exercises from past bugs
   await deduplicateExercises();
+
+  // Add any new preset exercises that don't exist yet (e.g. added in later app versions)
+  await addNewPresetExercises();
 }
 
 /**
@@ -110,7 +111,6 @@ async function migrateRoutinesToTemplates(): Promise<void> {
         id: templateId,
         name: routine.name,
         exercises: templateExercises,
-        isArchived: false,
         createdAt: now,
         updatedAt: now,
       };
@@ -152,7 +152,6 @@ async function migrateRoutinesToTemplates(): Promise<void> {
         type: routine.type,
         schedule: schedule,
         currentPosition: routine.currentPosition ?? 0,
-        isArchived: routine.isArchived,
         createdAt: routine.createdAt,
         updatedAt: now,
       };
@@ -308,7 +307,6 @@ async function migrateProgressionExercises(): Promise<void> {
         progressionLevel: def.progressionMemberships[0]?.level,
         progressionMemberships: def.progressionMemberships,
         isPreset: true,
-        isArchived: false,
         createdAt: now,
         updatedAt: now,
       });
@@ -379,6 +377,38 @@ async function deduplicateExercises(): Promise<void> {
 
   if (removed > 0) {
     console.log(`Deduplication: removed ${removed} duplicate exercises`);
+  }
+}
+
+/**
+ * Add any preset exercises defined in seed.ts that don't exist in the DB yet.
+ * Lets new presets (e.g. Kelso Shrug) reach existing installs, not just fresh ones.
+ */
+async function addNewPresetExercises(): Promise<void> {
+  const exerciseCount = await db.exercises.count();
+  if (exerciseCount === 0) return; // fresh install — seed will handle it
+
+  const existing = await db.exercises.toArray();
+  const existingNames = new Set(existing.map((e) => e.name.toLowerCase()));
+
+  const now = Date.now();
+  const toAdd = presetExercises
+    .filter((def) => !existingNames.has(def.name.toLowerCase()))
+    .map((def) => ({
+      id: crypto.randomUUID(),
+      name: def.name,
+      muscleGroups: def.muscleGroups,
+      movementPattern: def.movementPattern,
+      equipment: def.equipment,
+      defaultFields: def.defaultFields,
+      isPreset: true,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+  if (toAdd.length > 0) {
+    await db.exercises.bulkAdd(toAdd);
+    console.log(`Added ${toAdd.length} new preset exercise(s): ${toAdd.map((e) => e.name).join(', ')}`);
   }
 }
 

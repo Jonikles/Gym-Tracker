@@ -23,7 +23,6 @@ export interface ExerciseFilters {
   filterMode?: FilterMode;
   equipment?: string;
   movementPattern?: string;
-  includeArchived?: boolean;
   searchQuery?: string;
   sort?: ExerciseSortOption;
   progressionId?: string;
@@ -64,11 +63,6 @@ export function useExercises(filters?: ExerciseFilters) {
     // Get all exercises first, then filter in memory
     // Dexie doesn't support complex compound queries well
     let results = await collection.toArray();
-
-    // Filter out archived unless explicitly requested
-    if (!filters?.includeArchived) {
-      results = results.filter((e) => !e.isArchived);
-    }
 
     // Filter by muscle groups (supports multi-select with ANY/ALL modes)
     if (filters?.muscleGroups && filters.muscleGroups.length > 0) {
@@ -128,7 +122,6 @@ export function useExercises(filters?: ExerciseFilters) {
     filters?.filterMode,
     filters?.equipment,
     filters?.movementPattern,
-    filters?.includeArchived,
     filters?.searchQuery,
     filters?.sort,
     filters?.progressionId,
@@ -160,7 +153,6 @@ export function useExerciseVariations(parentId: string | undefined) {
       return db.exercises
         .where('parentId')
         .equals(parentId)
-        .filter((e) => !e.isArchived)
         .toArray();
     },
     [parentId]
@@ -172,9 +164,7 @@ export function useExerciseVariations(parentId: string | undefined) {
  */
 export function useUniqueMuscleGroups() {
   return useLiveQuery(async () => {
-    const exercises = await db.exercises
-      .filter((e) => !e.isArchived)
-      .toArray();
+    const exercises = await db.exercises.toArray();
     const muscleGroups = new Set<MuscleGroup>();
     exercises.forEach((e) => {
       e.muscleGroups?.forEach((mg) => muscleGroups.add(mg));
@@ -188,9 +178,7 @@ export function useUniqueMuscleGroups() {
  */
 export function useUniqueEquipment() {
   return useLiveQuery(async () => {
-    const exercises = await db.exercises
-      .filter((e) => !e.isArchived)
-      .toArray();
+    const exercises = await db.exercises.toArray();
     const equipment = new Set<string>();
     exercises.forEach((e) => {
       if (e.equipment) equipment.add(e.equipment);
@@ -204,9 +192,7 @@ export function useUniqueEquipment() {
  */
 export function useUniqueMovementPatterns() {
   return useLiveQuery(async () => {
-    const exercises = await db.exercises
-      .filter((e) => !e.isArchived)
-      .toArray();
+    const exercises = await db.exercises.toArray();
     const patterns = new Set<string>();
     exercises.forEach((e) => {
       if (e.movementPattern) patterns.add(e.movementPattern);
@@ -219,9 +205,9 @@ export function useUniqueMovementPatterns() {
  * Create a new exercise
  */
 export async function createExercise(input: CreateExerciseInput): Promise<string> {
-  // Check for duplicate name (case-insensitive, excluding archived)
+  // Check for duplicate name (case-insensitive)
   const existing = await db.exercises
-    .filter((e) => e.name.toLowerCase() === input.name.trim().toLowerCase() && !e.isArchived)
+    .filter((e) => e.name.toLowerCase() === input.name.trim().toLowerCase())
     .first();
   if (existing) {
     throw new Error('An exercise with this name already exists');
@@ -237,7 +223,6 @@ export async function createExercise(input: CreateExerciseInput): Promise<string
     equipment: input.equipment,
     defaultFields: input.defaultFields ?? ['weight', 'reps'],
     isPreset: false,
-    isArchived: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -258,9 +243,9 @@ export async function updateExercise(
   };
 
   if (input.name !== undefined) {
-    // Check for duplicate name (case-insensitive, excluding self and archived)
+    // Check for duplicate name (case-insensitive, excluding self)
     const existing = await db.exercises
-      .filter((e) => e.id !== id && e.name.toLowerCase() === input.name!.trim().toLowerCase() && !e.isArchived)
+      .filter((e) => e.id !== id && e.name.toLowerCase() === input.name!.trim().toLowerCase())
       .first();
     if (existing) {
       throw new Error('An exercise with this name already exists');
@@ -280,26 +265,6 @@ export async function updateExercise(
   }
 
   await db.exercises.update(id, updates);
-}
-
-/**
- * Archive an exercise (soft delete)
- */
-export async function archiveExercise(id: string): Promise<void> {
-  await db.exercises.update(id, {
-    isArchived: true,
-    updatedAt: Date.now(),
-  });
-}
-
-/**
- * Restore an archived exercise
- */
-export async function restoreExercise(id: string): Promise<void> {
-  await db.exercises.update(id, {
-    isArchived: false,
-    updatedAt: Date.now(),
-  });
 }
 
 /**
@@ -348,7 +313,7 @@ export async function deleteExercise(id: string): Promise<void> {
 
   if (sessionRefs > 0 || templateRefs > 0) {
     throw new Error(
-      `Cannot delete "${exercise.name}" — it is used in ${sessionRefs} session(s) and ${templateRefs} template(s). Archive it instead.`
+      `Cannot delete "${exercise.name}" — it is used in ${sessionRefs} session(s) and ${templateRefs} template(s).`
     );
   }
 
@@ -410,7 +375,7 @@ export function useRecentExercises(limit = 10) {
 
     // Fetch the actual exercises
     const exercises = await db.exercises.bulkGet(recentExerciseIds);
-    return exercises.filter((e): e is Exercise => e !== undefined && !e.isArchived);
+    return exercises.filter((e): e is Exercise => e !== undefined);
   }, [limit]);
 }
 
@@ -420,7 +385,7 @@ export function useRecentExercises(limit = 10) {
 export function useFavoriteExercises() {
   return useLiveQuery(async () => {
     const favorites = await db.exercises
-      .filter((e) => !!e.isFavorite && !e.isArchived)
+      .filter((e) => !!e.isFavorite)
       .toArray();
     return favorites.sort((a, b) => a.name.localeCompare(b.name));
   }, []);

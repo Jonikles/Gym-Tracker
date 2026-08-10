@@ -57,9 +57,7 @@ export async function detectProgressionAdvancements(
     // (for cases where no PR was recorded yet but user has used exercises)
     const progressionExercises = await db.exercises
       .filter(
-        (e) =>
-          !e.isArchived &&
-          (e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false)
+        (e) => e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false
       )
       .toArray();
 

@@ -119,7 +119,6 @@ export interface Exercise {
   progressionMemberships?: ProgressionMembership[];
   isFavorite?: boolean;
   isPreset: boolean;
-  isArchived: boolean;
   createdAt: number;
   updatedAt: number;
 }

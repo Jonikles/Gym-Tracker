@@ -24,7 +24,6 @@ export function RoutineList() {
   const activeRoutineId = useSetting('activeRoutineId');
   const [searchQuery, setSearchQuery] = usePersistedState('routines.search', '');
   const [typeFilter, setTypeFilter] = usePersistedState<RoutineType | ''>('routines.type', '');
-  const [showArchived, setShowArchived] = usePersistedState('routines.archived', false);
   const [sortOrder, setSortOrder] = usePersistedState<SortOrder>('routines.sort', 'recent');
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -33,7 +32,6 @@ export function RoutineList() {
   const filters: RoutineFilters = {
     searchQuery,
     type: typeFilter || undefined,
-    includeArchived: showArchived,
   };
 
   const routines = useRoutines(filters);
@@ -128,14 +126,6 @@ export function RoutineList() {
       </div>
 
       <div className={styles.toggleRow}>
-        <label className={styles.toggle}>
-          <input className={styles.toggleInput}
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-          />
-          <span>Show archived</span>
-        </label>
         <span className={styles.count}>{routines.length} routines</span>
       </div>
 

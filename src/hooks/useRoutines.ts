@@ -8,7 +8,6 @@ import { matchesAllWords } from '../utils/search';
  */
 export interface RoutineFilters {
   type?: RoutineType;
-  includeArchived?: boolean;
   searchQuery?: string;
 }
 
@@ -38,11 +37,6 @@ export function useRoutines(filters?: RoutineFilters) {
   const routines = useLiveQuery(async () => {
     let results = await db.routines.toArray();
 
-    // Filter out archived unless explicitly requested
-    if (!filters?.includeArchived) {
-      results = results.filter((r) => !r.isArchived);
-    }
-
     // Filter by type
     if (filters?.type) {
       results = results.filter((r) => r.type === filters.type);
@@ -57,7 +51,7 @@ export function useRoutines(filters?: RoutineFilters) {
     results.sort((a, b) => a.name.localeCompare(b.name));
 
     return results;
-  }, [filters?.type, filters?.includeArchived, filters?.searchQuery]);
+  }, [filters?.type, filters?.searchQuery]);
 
   return routines ?? [];
 }
@@ -86,14 +80,14 @@ export function useTodaysTemplate(weekStartDay: number = 0) {
 
     // Check fixed routines first
     const fixedRoutines = await db.routines
-      .filter((r) => r.type === 'fixed' && !r.isArchived)
+      .filter((r) => r.type === 'fixed')
       .toArray();
 
     for (const routine of fixedRoutines) {
       const todaySchedule = routine.schedule.find((s) => s.dayIndex === dayOfWeek);
       if (todaySchedule?.templateId) {
         const template = await db.templates.get(todaySchedule.templateId);
-        if (template && !template.isArchived) {
+        if (template) {
           return { routine, template, scheduleDay: todaySchedule };
         }
       }
@@ -101,7 +95,7 @@ export function useTodaysTemplate(weekStartDay: number = 0) {
 
     // Check rolling routines
     const rollingRoutines = await db.routines
-      .filter((r) => r.type === 'rolling' && !r.isArchived)
+      .filter((r) => r.type === 'rolling')
       .toArray();
 
     if (rollingRoutines.length > 0) {
@@ -112,7 +106,7 @@ export function useTodaysTemplate(weekStartDay: number = 0) {
 
       if (scheduleDay?.templateId) {
         const template = await db.templates.get(scheduleDay.templateId);
-        if (template && !template.isArchived) {
+        if (template) {
           return { routine, template, scheduleDay };
         }
       }
@@ -128,7 +122,7 @@ export function useTodaysTemplate(weekStartDay: number = 0) {
 export function useScheduleForDay(dayOfWeek: number) {
   return useLiveQuery(async () => {
     const fixedRoutines = await db.routines
-      .filter((r) => r.type === 'fixed' && !r.isArchived)
+      .filter((r) => r.type === 'fixed')
       .toArray();
 
     const results: Array<{ routine: Routine; scheduleDay: RoutineDay; templateName?: string }> = [];
@@ -155,7 +149,7 @@ export function useScheduleForDay(dayOfWeek: number) {
 export async function createRoutine(input: CreateRoutineInput): Promise<string> {
   // Check for duplicate name
   const existing = await db.routines
-    .filter((r) => r.name.toLowerCase() === input.name.trim().toLowerCase() && !r.isArchived)
+    .filter((r) => r.name.toLowerCase() === input.name.trim().toLowerCase())
     .first();
   
   if (existing) {
@@ -182,7 +176,6 @@ export async function createRoutine(input: CreateRoutineInput): Promise<string> 
     type: input.type,
     schedule,
     currentPosition: input.type === 'rolling' ? 0 : undefined,
-    isArchived: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -205,8 +198,7 @@ export async function updateRoutine(
       .filter(
         (r) =>
           r.id !== id &&
-          r.name.toLowerCase() === input.name!.trim().toLowerCase() &&
-          !r.isArchived
+          r.name.toLowerCase() === input.name!.trim().toLowerCase()
       )
       .first();
 
@@ -303,26 +295,6 @@ export async function removeScheduleDay(
 }
 
 /**
- * Archive a routine (soft delete)
- */
-export async function archiveRoutine(id: string): Promise<void> {
-  await db.routines.update(id, {
-    isArchived: true,
-    updatedAt: Date.now(),
-  });
-}
-
-/**
- * Restore an archived routine
- */
-export async function restoreRoutine(id: string): Promise<void> {
-  await db.routines.update(id, {
-    isArchived: false,
-    updatedAt: Date.now(),
-  });
-}
-
-/**
  * Duplicate a routine
  */
 export async function duplicateRoutine(id: string): Promise<string> {
@@ -336,7 +308,6 @@ export async function duplicateRoutine(id: string): Promise<string> {
     id: crypto.randomUUID(),
     name: `${original.name} (Copy)`,
     currentPosition: original.type === 'rolling' ? 0 : undefined,
-    isArchived: false,
     createdAt: now,
     updatedAt: now,
   };

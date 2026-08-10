@@ -21,7 +21,6 @@ export interface Routine {
   type: RoutineType;
   schedule: RoutineDay[]; // 7 slots for fixed, N slots for rolling
   currentPosition?: number; // For rolling: which day is next (0-indexed)
-  isArchived: boolean;
   createdAt: number;
   updatedAt: number;
 }
