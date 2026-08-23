@@ -8,10 +8,6 @@
   gap: var(--space-sm);
 }
 
-.container.dragging {
-  opacity: 0.5;
-}
-
 .container.grouped {
   border-left: 3px solid var(--color-accent);
 }
@@ -22,15 +18,36 @@
   gap: var(--space-sm);
 }
 
-.dragHandle {
-  cursor: grab;
-  color: var(--color-text-muted);
-  user-select: none;
-  padding: var(--space-xs);
+.moveButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.dragHandle:active {
-  cursor: grabbing;
+.moveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.moveBtn:hover:not(:disabled) {
+  color: var(--color-text);
+  background-color: var(--color-bg-tertiary);
+}
+
+.moveBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .titleRow {

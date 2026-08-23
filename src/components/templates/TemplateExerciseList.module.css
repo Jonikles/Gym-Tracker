@@ -20,23 +20,36 @@
   gap: var(--space-sm);
 }
 
-.dragHandle {
-  cursor: grab;
-  font-size: var(--text-lg);
+.moveButtons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moveBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
   color: var(--color-text-muted);
-  user-select: none;
-  padding: 0 var(--space-xs);
-  line-height: 1;
-  letter-spacing: 2px;
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.dragHandle:active {
-  cursor: grabbing;
+.moveBtn:hover:not(:disabled) {
+  color: var(--color-text);
+  background-color: var(--color-bg-tertiary);
 }
 
-.dragging {
-  opacity: 0.5;
-  border-style: dashed;
+.moveBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .exerciseNameGroup {

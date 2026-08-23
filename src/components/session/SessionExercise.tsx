@@ -18,10 +18,10 @@ interface SessionExerciseProps {
   templateExercise?: TemplateExercise;
   onRemove: () => void;
   onSwitchProgression?: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
-  isDragging?: boolean;
-  onDragStart?: () => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   showValidation?: boolean;
 }
 
@@ -30,10 +30,10 @@ export function SessionExercise({
   templateExercise,
   onRemove,
   onSwitchProgression,
-  isDragging,
-  onDragStart,
-  onDragOver,
-  onDrop,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
   showValidation,
 }: SessionExerciseProps) {
   const exercise = useExercise(sessionExercise.exerciseId);
@@ -148,14 +148,31 @@ export function SessionExercise({
 
   return (
     <div
-      className={`${styles.container} ${isDragging ? styles.dragging : ''} ${sessionExercise.groupId ? styles.grouped : ''}`}
-      draggable={!!onDragStart}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      className={`${styles.container} ${sessionExercise.groupId ? styles.grouped : ''}`}
     >
       <div className={styles.header}>
-        {onDragStart && <span className={styles.dragHandle}>⋮⋮</span>}
+        {(onMoveUp || onMoveDown) && (
+          <div className={styles.moveButtons}>
+            <button
+              type="button"
+              className={styles.moveBtn}
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              title="Move up"
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              className={styles.moveBtn}
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              title="Move down"
+            >
+              ▼
+            </button>
+          </div>
+        )}
         <div className={styles.titleRow} onClick={() => setIsCollapsed(!isCollapsed)}>
           <div className={styles.titleGroup}>
             {isProgression && progressionDef && (

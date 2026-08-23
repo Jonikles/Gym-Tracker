@@ -141,20 +141,20 @@ interface TemplateExerciseRowProps {
   exercise: TemplateExercise;
   onUpdate: (updates: Partial<TemplateExercise>) => void;
   onRemove: () => void;
-  isDragging?: boolean;
-  onDragStart?: () => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
 function TemplateExerciseRow({
   exercise,
   onUpdate,
   onRemove,
-  isDragging,
-  onDragStart,
-  onDragOver,
-  onDrop,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: TemplateExerciseRowProps) {
   const exerciseData = useExercise(exercise.exerciseId);
   const [showNotes, setShowNotes] = useState(!!exercise.notes);
@@ -186,15 +186,30 @@ function TemplateExerciseRow({
   };
 
   return (
-    <div
-      className={`${styles.exerciseRow} ${isDragging ? styles.dragging : ''}`}
-      draggable={!!onDragStart}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-    >
+    <div className={styles.exerciseRow}>
       <div className={styles.exerciseHeader}>
-        {onDragStart && <span className={styles.dragHandle}>⋮⋮</span>}
+        {(onMoveUp || onMoveDown) && (
+          <div className={styles.moveButtons}>
+            <button
+              type="button"
+              className={styles.moveBtn}
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              title="Move up"
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              className={styles.moveBtn}
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              title="Move down"
+            >
+              ▼
+            </button>
+          </div>
+        )}
         <div className={styles.exerciseNameGroup}>
           {isProgression && progressionDef && (
             <span className={styles.progressionBadge}>
@@ -323,7 +338,6 @@ export function TemplateExerciseList({
   onAddClick,
   onAddProgressionClick,
 }: TemplateExerciseListProps) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const sortedExercises = [...exercises].sort((a, b) => a.order - b.order);
@@ -361,32 +375,17 @@ export function TemplateExerciseList({
     setIsSelectMode(false);
   };
 
-  const handleDragStart = (index: number) => {
-    setDragIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    // Reorder live as user drags
-    if (dragIndex !== null && dragIndex !== index) {
-      onReorder(dragIndex, index);
-      setDragIndex(index);
-    }
-  };
-
-  const handleDrop = () => {
-    setDragIndex(null);
-  };
-
-  const handleDragEnd = () => {
-    setDragIndex(null);
+  const moveExercise = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= sortedExercises.length) return;
+    onReorder(index, targetIndex);
   };
 
   // Identify groups for rendering group wrappers
   const processedGroupIds = new Set<string>();
 
   return (
-    <div className={styles.list} onDragEnd={handleDragEnd}>
+    <div className={styles.list}>
       {/* Select mode toolbar */}
       {isSelectMode && (
         <div className={styles.selectToolbar}>
@@ -447,10 +446,10 @@ export function TemplateExerciseList({
                         exercise={gm}
                         onUpdate={(updates) => onUpdate(gm.exerciseId, updates, gm.progressionId ? gm.order : undefined)}
                         onRemove={() => onRemove(gm.exerciseId, gm.progressionId ? gm.order : undefined)}
-                        isDragging={dragIndex === gIndex}
-                        onDragStart={() => handleDragStart(gIndex)}
-                        onDragOver={(e) => handleDragOver(e, gIndex)}
-                        onDrop={handleDrop}
+                        onMoveUp={() => moveExercise(gIndex, -1)}
+                        onMoveDown={() => moveExercise(gIndex, 1)}
+                        canMoveUp={gIndex > 0}
+                        canMoveDown={gIndex < sortedExercises.length - 1}
                       />
                     );
                   })}
@@ -486,10 +485,10 @@ export function TemplateExerciseList({
                 exercise={exercise}
                 onUpdate={(updates) => onUpdate(exercise.exerciseId, updates, exercise.progressionId ? exercise.order : undefined)}
                 onRemove={() => onRemove(exercise.exerciseId, exercise.progressionId ? exercise.order : undefined)}
-                isDragging={dragIndex === index}
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDrop={handleDrop}
+                onMoveUp={() => moveExercise(index, -1)}
+                onMoveDown={() => moveExercise(index, 1)}
+                canMoveUp={index > 0}
+                canMoveDown={index < sortedExercises.length - 1}
               />
             );
           })}

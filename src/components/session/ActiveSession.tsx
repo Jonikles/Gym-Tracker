@@ -86,7 +86,6 @@ export function ActiveSession() {
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [notes, setNotes] = useState(activeSession?.notes ?? '');
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -224,41 +223,27 @@ export function ActiveSession() {
     return groups;
   }, [sessionExercises]);
 
-  const handleDragStart = useCallback((id: string) => {
-    setDraggedId(id);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
-
-  const handleDrop = useCallback(
-    (targetId: string) => {
-      if (!draggedId || draggedId === targetId) {
-        setDraggedId(null);
-        return;
-      }
-
-      const currentOrder = sessionExercises
-        .filter((e) => !e.groupId) // Only reorder non-grouped exercises for now
+  // Only non-grouped exercises can be reordered (groups aren't reorderable yet)
+  const standaloneOrder = useMemo(
+    () =>
+      sessionExercises
+        .filter((e) => !e.groupId)
         .sort((a, b) => a.order - b.order)
-        .map((e) => e.id);
+        .map((e) => e.id),
+    [sessionExercises]
+  );
 
-      const draggedIndex = currentOrder.indexOf(draggedId);
-      const targetIndex = currentOrder.indexOf(targetId);
+  const handleMoveExercise = useCallback(
+    (id: string, direction: -1 | 1) => {
+      const index = standaloneOrder.indexOf(id);
+      const targetIndex = index + direction;
+      if (index === -1 || targetIndex < 0 || targetIndex >= standaloneOrder.length) return;
 
-      if (draggedIndex === -1 || targetIndex === -1) {
-        setDraggedId(null);
-        return;
-      }
-
-      currentOrder.splice(draggedIndex, 1);
-      currentOrder.splice(targetIndex, 0, draggedId);
-
-      reorderExercises(currentOrder);
-      setDraggedId(null);
+      const newOrder = [...standaloneOrder];
+      [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
+      reorderExercises(newOrder);
     },
-    [draggedId, sessionExercises, reorderExercises]
+    [standaloneOrder, reorderExercises]
   );
 
   // Selection mode handlers for superset/circuit grouping
@@ -467,6 +452,8 @@ export function ActiveSession() {
             );
           }
 
+          const standaloneIndex = exercise.groupId ? -1 : standaloneOrder.indexOf(exercise.id);
+
           return (
             <SessionExercise
               key={exercise.id}
@@ -474,10 +461,10 @@ export function ActiveSession() {
               templateExercise={templateExercise}
               onRemove={() => handleRemoveExercise(exercise.id)}
               onSwitchProgression={switchProgressionLevel}
-              isDragging={draggedId === exercise.id}
-              onDragStart={() => handleDragStart(exercise.id)}
-              onDragOver={handleDragOver}
-              onDrop={() => handleDrop(exercise.id)}
+              onMoveUp={standaloneIndex > -1 ? () => handleMoveExercise(exercise.id, -1) : undefined}
+              onMoveDown={standaloneIndex > -1 ? () => handleMoveExercise(exercise.id, 1) : undefined}
+              canMoveUp={standaloneIndex > 0}
+              canMoveDown={standaloneIndex > -1 && standaloneIndex < standaloneOrder.length - 1}
               showValidation={showValidation}
             />
           );
