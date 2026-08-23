@@ -7,17 +7,30 @@
 .header {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
-.headerTitle {
-  font-size: var(--text-xl);
+.nameInput {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-lg);
   font-weight: 600;
-  margin: 0;
+  font-family: inherit;
+  color: var(--color-text);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-xs) 2px;
 }
 
-.field {
-  max-width: 400px;
+.nameInput::placeholder {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.nameInput:focus {
+  outline: none;
+  border-bottom-color: var(--color-accent);
 }
 
 .section {

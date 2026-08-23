@@ -242,27 +242,13 @@ function TemplateExerciseRow({
         </Button>
       </div>
 
-      {/* Exercise-level settings: Target Reps + Weight */}
+      {/* Exercise-level settings: Target Reps */}
       <div className={styles.exerciseSettings}>
         <div className={styles.settingField}>
           <label className={styles.settingLabel}>Target Reps</label>
           <TargetRepsInput
             value={exercise.targetReps}
             onChange={(val) => onUpdate({ targetReps: val })}
-          />
-        </div>
-        <div className={styles.settingField}>
-          <label className={styles.settingLabel}>Target Weight (optional)</label>
-          <Input
-            type="number"
-            placeholder="kg"
-            value={exercise.weight !== undefined ? String(exercise.weight) : ''}
-            onChange={(e) =>
-              onUpdate({
-                weight: e.target.value ? parseFloat(e.target.value) : undefined,
-              })
-            }
-            className={styles.weightInput}
           />
         </div>
       </div>

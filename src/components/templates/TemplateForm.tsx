@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useBlocker } from 'react-router-dom';
-import { Input, Button, ConfirmDialog } from '../common';
+import { Button, ConfirmDialog } from '../common';
 import { ExercisePicker } from '../exercises';
 import { ProgressionPicker } from '../progressions/ProgressionPicker';
 import { TemplateExerciseList } from './TemplateExerciseList';
@@ -184,24 +184,20 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
   return (
     <div className={styles.form}>
       <header className={styles.header}>
-        <Button variant="ghost" onClick={handleBack}>
+        <Button variant="ghost" size="sm" onClick={handleBack}>
           ← Back
         </Button>
-        <h1 className={styles.headerTitle}>{isEditing ? 'Edit Template' : 'New Template'}</h1>
-        <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
-      </header>
-
-      <div className={styles.field}>
-        <Input
-          label="Template Name"
+        <input
+          className={styles.nameInput}
           placeholder="e.g., Push Day, Upper Body A"
           value={name}
           onChange={handleNameChange}
           autoFocus={!isEditing}
         />
-      </div>
+        <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
+          {isSaving ? 'Saving...' : 'Save'}
+        </Button>
+      </header>
 
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
