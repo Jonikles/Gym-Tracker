@@ -26,8 +26,11 @@ function daysBetween(a: number, b: number): number {
 
 export function useStreaks(): StreakData | undefined {
   return useLiveQuery(async () => {
+    // Skipped/sick days don't count as a workout — they aren't a gap either,
+    // they're a hard break: a day of them present isn't in the "worked out" set,
+    // so the streak walk below naturally stops there instead of jumping over it.
     const sessions = await db.sessions
-      .filter((s) => s.completedAt != null)
+      .filter((s) => s.completedAt != null && s.status !== 'skipped' && s.status !== 'sick')
       .toArray();
 
     if (sessions.length === 0) {

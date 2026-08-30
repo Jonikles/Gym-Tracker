@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { getSetVolume } from '../utils/volume';
+import type { Session } from '../types';
 
 /**
  * Weekly volume data for charts
@@ -295,9 +296,12 @@ export function useOverallStats(days: number) {
       : 0;
 
     // Streak calculation (always computed from present, regardless of period)
+    // Skipped/sick days aren't workouts — excluding them means a skipped day
+    // is a hard gap that breaks the streak, same as a day with nothing logged.
+    const isStreakEligible = (s: Session) => !!s.completedAt && s.status !== 'skipped' && s.status !== 'sick';
     const allSessions = days > 0
-      ? await db.sessions.filter((s) => !!s.completedAt).toArray()
-      : sessions;
+      ? await db.sessions.filter(isStreakEligible).toArray()
+      : sessions.filter(isStreakEligible);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

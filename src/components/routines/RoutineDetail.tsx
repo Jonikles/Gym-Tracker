@@ -155,6 +155,9 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
 
   const handleSetAsActive = async () => {
     await updateSetting('activeRoutineId', routineId);
+    // Auto-skip should never backfill days from before this routine became active
+    await updateSetting('activeRoutineSetAt', Date.now());
+    await updateSetting('lastAutoSkipCheckAt', null);
     setShowSetActiveConfirm(false);
   };
 

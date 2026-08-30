@@ -16,6 +16,8 @@ export const defaultSettings: SettingsMap = {
   restTimerVibrate: true,
   bodyweight: 0, // 0 = not set
   theme: 'dark',
+  activeRoutineSetAt: null,
+  lastAutoSkipCheckAt: null,
 };
 
 /**

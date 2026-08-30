@@ -18,6 +18,7 @@ import { db } from './index';
 import type { Template, TemplateExercise, TemplateSet, Routine, RoutineDay, IntensityTechnique } from '../types';
 import { PROGRESSION_EXERCISES } from '../data/progression-exercises';
 import { presetExercises } from './seed';
+import { autoSkipMissedWorkouts } from '../utils/autoSkip';
 
 /**
  * Run any necessary migrations
@@ -41,6 +42,9 @@ export async function runMigrations(): Promise<void> {
 
   // Add any new preset exercises that don't exist yet (e.g. added in later app versions)
   await addNewPresetExercises();
+
+  // Auto-skip scheduled workout days that passed with nothing logged
+  await autoSkipMissedWorkouts();
 }
 
 /**

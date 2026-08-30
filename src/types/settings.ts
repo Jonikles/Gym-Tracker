@@ -23,4 +23,6 @@ export interface SettingsMap {
   restTimerVibrate: boolean; // Vibrate when timer completes
   bodyweight: number; // User's bodyweight in kg for strength standards
   theme: 'dark' | 'light'; // UI theme
+  activeRoutineSetAt: number | null; // When activeRoutineId was last changed — auto-skip never backfills before this
+  lastAutoSkipCheckAt: number | null; // Start-of-day timestamp through which missed scheduled days have been auto-skipped
 }
