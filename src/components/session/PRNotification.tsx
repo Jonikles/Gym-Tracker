@@ -17,7 +17,8 @@ export function PRNotification({ prs }: PRNotificationProps) {
   for (const pr of recordPRs) parts.push(formatPRValue(pr.type, pr.value));
   for (const pr of levelUps) {
     const name = pr.progressionId ? PROGRESSION_MAP[pr.progressionId]?.name : undefined;
-    parts.push(name ? `LVL UP ${name}` : 'LVL UP');
+    const level = `Lvl ${pr.value}`;
+    parts.push(name ? `LVL UP · ${name} ${level}` : `LVL UP · ${level}`);
   }
 
   return (

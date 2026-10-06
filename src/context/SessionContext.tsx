@@ -98,8 +98,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await switchExerciseVariantFn(sessionExerciseId, newExerciseId);
   }, []);
 
-  const groupExercises = useCallback(async (sessionExerciseIds: string[], groupType: 'superset' | 'circuit') => {
-    await groupSessionExercises(sessionExerciseIds, groupType);
+  const groupExercises = useCallback(async (sessionExerciseIds: string[]) => {
+    await groupSessionExercises(sessionExerciseIds);
   }, []);
 
   const ungroupAll = useCallback(async (groupId: string) => {

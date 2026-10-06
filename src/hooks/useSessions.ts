@@ -475,19 +475,16 @@ export async function removeExerciseFromSession(
 }
 
 /**
- * Group exercises into a superset or circuit
+ * Group exercises into a superset
  */
-export async function groupSessionExercises(
-  sessionExerciseIds: string[],
-  groupType: 'superset' | 'circuit'
-): Promise<void> {
+export async function groupSessionExercises(sessionExerciseIds: string[]): Promise<void> {
   if (sessionExerciseIds.length < 2) return;
   const groupId = crypto.randomUUID();
 
   const updates = sessionExerciseIds.map((id, index) =>
     db.sessionExercises.update(id, {
       groupId,
-      groupType,
+      groupType: 'superset',
       groupOrder: index,
     })
   );

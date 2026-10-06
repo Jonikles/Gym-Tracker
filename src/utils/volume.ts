@@ -1,4 +1,4 @@
-import type { Set, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, ClusterTechniqueData, PartialsTechniqueData } from '../types';
+import type { Set, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, PartialsTechniqueData } from '../types';
 
 /**
  * Type guards for technique data
@@ -9,10 +9,6 @@ function isMyoRepsData(data: TechniqueData): data is MyoRepsTechniqueData {
 
 function isDropSetData(data: TechniqueData): data is DropSetTechniqueData {
   return 'drops' in data;
-}
-
-function isClusterData(data: TechniqueData): data is ClusterTechniqueData {
-  return 'clusters' in data;
 }
 
 function isPartialsData(data: TechniqueData): data is PartialsTechniqueData {
@@ -26,7 +22,6 @@ function isPartialsData(data: TechniqueData): data is PartialsTechniqueData {
  * - Standard/Failure/ForcedReps: weight × reps
  * - Myo Reps: weight × (activationReps + sum(miniSets))
  * - Drop Set: sum(drops.map(d => d.weight × d.reps))
- * - Cluster: weight × sum(clusters)
  * - Partials: (weight × mainReps) + (partialWeight × partialReps)
  */
 export function getSetVolume(set: Set): number {
@@ -54,14 +49,6 @@ export function getSetVolume(set: Set): number {
           (sum, drop) => sum + drop.weight * drop.reps,
           0
         );
-      }
-      return weight * reps;
-    }
-
-    case 'cluster': {
-      if (isClusterData(set.techniqueData)) {
-        const totalClusterReps = set.techniqueData.clusters.reduce((sum, r) => sum + r, 0);
-        return weight * totalClusterReps;
       }
       return weight * reps;
     }

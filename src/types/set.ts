@@ -21,13 +21,6 @@ export interface DropSetTechniqueData {
 }
 
 /**
- * Technique-specific data for cluster sets
- */
-export interface ClusterTechniqueData {
-  clusters: number[]; // Reps per cluster
-}
-
-/**
  * Technique-specific data for partials (LLP)
  */
 export interface PartialsTechniqueData {
@@ -42,7 +35,6 @@ export interface PartialsTechniqueData {
 export type TechniqueData =
   | MyoRepsTechniqueData
   | DropSetTechniqueData
-  | ClusterTechniqueData
   | PartialsTechniqueData;
 
 /**

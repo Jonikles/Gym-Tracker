@@ -6,7 +6,6 @@ import styles from './ExerciseGroup.module.css';
 
 interface ExerciseGroupProps {
   groupId: string;
-  groupType: 'superset' | 'circuit';
   exercises: SessionExerciseType[];
   onRemoveExercise: (sessionExerciseId: string) => void;
   onSwitchProgression?: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
@@ -19,7 +18,6 @@ interface ExerciseGroupProps {
 
 export const ExerciseGroup = memo(function ExerciseGroup({
   groupId,
-  groupType,
   exercises,
   onRemoveExercise,
   onSwitchProgression,
@@ -36,7 +34,7 @@ export const ExerciseGroup = memo(function ExerciseGroup({
     <div className={styles.container}>
       <div className={styles.header}>
         <div className={`chip chip-accent ${styles.label}`}>
-          {groupType === 'superset' ? 'Superset' : 'Circuit'}
+          Superset
         </div>
         {onUngroup && (
           <Button variant="ghost" onClick={() => onUngroup(groupId)} className={styles.ungroupBtn}>

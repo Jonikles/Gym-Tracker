@@ -198,9 +198,6 @@ export const SessionExercise = memo(function SessionExercise({
               )}
             </span>
           </span>
-          {sessionExercise.groupType && (
-            <span className={`chip chip-accent ${styles.groupBadge}`}>{sessionExercise.groupType}</span>
-          )}
         </button>
         <div className={styles.headerActions}>
           {onMove && (

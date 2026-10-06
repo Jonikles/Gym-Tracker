@@ -25,7 +25,6 @@ const FAILURE_TECHNIQUES: { value: IntensityTechnique; label: string }[] = [
   { value: 'dropset', label: 'Drop Set' },
   { value: 'forcedreps', label: 'Forced Reps' },
   { value: 'partials', label: 'Partials (LLP)' },
-  { value: 'cluster', label: 'Cluster Set' },
 ];
 
 // Helper to get set type from template set
@@ -313,7 +312,7 @@ function TemplateExerciseRow({
 
       {exercise.groupId && (
         <div className={`chip chip-accent ${styles.groupBadge}`}>
-          {exercise.groupType === 'superset' ? '🔗 Superset' : '🔄 Circuit'}
+          🔗 Superset
         </div>
       )}
     </div>
@@ -369,13 +368,13 @@ export function TemplateExerciseList({
     });
   };
 
-  const handleGroupTemplate = (groupType: 'superset' | 'circuit') => {
+  const handleGroupTemplate = () => {
     if (selectedIndices.size < 2) return;
     const groupId = crypto.randomUUID();
     const indices = [...selectedIndices].sort((a, b) => a - b);
     for (let i = 0; i < indices.length; i++) {
       const ex = sortedExercises[indices[i]];
-      onUpdate(ex.exerciseId, { groupId, groupType, groupOrder: i }, ex.order);
+      onUpdate(ex.exerciseId, { groupId, groupType: 'superset', groupOrder: i }, ex.order);
     }
     setSelectedIndices(new Set());
     setIsSelectMode(false);
@@ -410,11 +409,8 @@ export function TemplateExerciseList({
         <div className={styles.selectToolbar}>
           <span className={styles.selectCount}>{selectedIndices.size} selected</span>
           <div className={styles.selectActions}>
-            <Button variant="secondary" size="sm" onClick={() => handleGroupTemplate('superset')} disabled={selectedIndices.size < 2}>
+            <Button variant="secondary" size="sm" onClick={handleGroupTemplate} disabled={selectedIndices.size < 2}>
               Superset
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => handleGroupTemplate('circuit')} disabled={selectedIndices.size < 2}>
-              Circuit
             </Button>
             <Button variant="ghost" size="sm" onClick={cancelSelect}>
               Cancel
@@ -448,7 +444,7 @@ export function TemplateExerciseList({
                 <div key={`group-${exercise.groupId}`} className={styles.groupWrapper}>
                   <div className={styles.groupHeader}>
                     <span className={`chip chip-accent ${styles.groupLabel}`}>
-                      {exercise.groupType === 'superset' ? 'Superset' : 'Circuit'}
+                      Superset
                     </span>
                     <button
                       className={styles.ungroupBtn}
@@ -526,7 +522,7 @@ export function TemplateExerciseList({
             )}
             {!isSelectMode && sortedExercises.filter((e) => !e.groupId).length >= 2 && (
               <Button variant="ghost" onClick={() => setIsSelectMode(true)} className={styles.addExerciseButton}>
-                Link Superset / Circuit
+                Link Superset
               </Button>
             )}
           </div>

@@ -5,6 +5,11 @@ export function setHasEmptyRequiredField(set: Set, fields: ExerciseField[]): boo
   return fields.some((field) => set[field] === undefined || set[field] === null);
 }
 
+/** True when none of the exercise's required fields has a value (an untouched set) */
+export function setIsCompletelyEmpty(set: Set, fields: ExerciseField[]): boolean {
+  return fields.every((field) => set[field] === undefined || set[field] === null);
+}
+
 /** Group sets by their sessionExerciseId (single pass) */
 export function groupSetsBySessionExercise(sets: Set[]): Map<string, Set[]> {
   const map = new Map<string, Set[]>();

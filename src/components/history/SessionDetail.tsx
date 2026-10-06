@@ -34,6 +34,23 @@ function formatDistance(meters: number): string {
 }
 
 /** Build a readable string for a set's data based on what fields are populated */
+/** Extra detail for technique sets, e.g. drops "→ 80kg × 6", myo mini-sets "+ 4 + 3" */
+function formatTechniqueDetail(set: Set): string | null {
+  const td = set.techniqueData;
+  if (!td) return null;
+  if (set.intensityTechnique === 'dropset' && 'drops' in td && td.drops.length > 1) {
+    return td.drops.slice(1).map((d) => `→ ${d.weight}kg × ${d.reps}`).join(' ');
+  }
+  if (set.intensityTechnique === 'myoreps' && 'miniSets' in td && td.miniSets.length > 0) {
+    return td.miniSets.map((r) => `+ ${r}`).join(' ');
+  }
+  if (set.intensityTechnique === 'partials' && 'partialReps' in td && td.partialReps > 0) {
+    const atWeight = td.partialWeight && td.partialWeight !== set.weight ? ` @ ${td.partialWeight}kg` : '';
+    return `+ ${td.partialReps} partials${atWeight}`;
+  }
+  return null;
+}
+
 function formatSetData(set: Set): string {
   const parts: string[] = [];
 
@@ -142,6 +159,7 @@ function SetDisplay({ set, prs, setNumber }: { set: Set; prs: PR[]; setNumber: n
       </span>
       <span className={`num ${styles.setData}`}>
         {formatSetData(set)}
+        {formatTechniqueDetail(set) && <> {formatTechniqueDetail(set)}</>}
         {set.intensityTechnique && set.intensityTechnique !== 'standard' && (
           <span className={styles.technique}> ({set.intensityTechnique})</span>
         )}

@@ -256,25 +256,6 @@
   color: var(--color-text-muted);
 }
 
-/* Cluster */
-.clusterSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.clusterGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}
-
-.clusterItem {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
 /* Partials */
 .partialsSection {
   display: flex;

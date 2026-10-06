@@ -21,8 +21,8 @@ export interface SessionContextValue {
   /** Swap a family exercise to another variant (e.g. Incline Dumbbell Bench Press); keeps its sets */
   switchExerciseVariant: (sessionExerciseId: string, newExerciseId: string) => Promise<void>;
 
-  // Grouping actions (superset/circuit)
-  groupExercises: (sessionExerciseIds: string[], groupType: 'superset' | 'circuit') => Promise<void>;
+  // Grouping actions (supersets)
+  groupExercises: (sessionExerciseIds: string[]) => Promise<void>;
   ungroupAll: (groupId: string) => Promise<void>;
 }
 

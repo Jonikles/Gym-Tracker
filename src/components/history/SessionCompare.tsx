@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db';
 import { Button, Card } from '../common';
 import { useSession, useSessionExercises } from '../../hooks/useSessions';
 import { useRoutine } from '../../hooks/useRoutines';
@@ -130,6 +132,13 @@ export function SessionCompare({ sessionIdA, sessionIdB }: SessionCompareProps) 
   const exercisesB = useSessionExercises(sessionIdB) ?? NO_EXERCISES;
   const routineA = useRoutine(sessionA?.routineId);
   const routineB = useRoutine(sessionB?.routineId);
+  // Show the template (e.g. "Push Day") when there is one — that's what tells sessions apart
+  const templateNames = useLiveQuery(async () => {
+    const [a, b] = await db.templates.bulkGet([sessionA?.templateId ?? '', sessionB?.templateId ?? '']);
+    return [a?.name, b?.name];
+  }, [sessionA?.templateId, sessionB?.templateId]);
+  const titleA = templateNames?.[0] ?? routineA?.name ?? 'Workout';
+  const titleB = templateNames?.[1] ?? routineB?.name ?? 'Workout';
 
   // Match exercises by exerciseId
   const matched = useMemo(() => {
@@ -169,13 +178,13 @@ export function SessionCompare({ sessionIdA, sessionIdB }: SessionCompareProps) 
 
       <div className={styles.sessionHeaders}>
         <div className={styles.sessionLabel}>
-          <strong>{routineA?.name ?? 'Workout'}</strong>
+          <strong>{titleA}</strong>
           <span className={styles.sessionDate}>{formatDate(sessionA.startedAt)}</span>
           <span className={`num ${styles.sessionDuration}`}>{formatDuration(sessionA.startedAt, sessionA.completedAt)}</span>
         </div>
         <div className={styles.vsLabel}>vs</div>
         <div className={styles.sessionLabel}>
-          <strong>{routineB?.name ?? 'Workout'}</strong>
+          <strong>{titleB}</strong>
           <span className={styles.sessionDate}>{formatDate(sessionB.startedAt)}</span>
           <span className={`num ${styles.sessionDuration}`}>{formatDuration(sessionB.startedAt, sessionB.completedAt)}</span>
         </div>

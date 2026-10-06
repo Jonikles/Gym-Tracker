@@ -30,11 +30,10 @@
   --pr-reps: #34d399;
   --pr-e1rm: #a5b4fc;
 
-  /* Intensity techniques (standard, failure, myoreps, dropset, forcedreps, partials, cluster) */
+  /* Intensity techniques (standard, failure, myoreps, dropset, forcedreps, partials) */
   --tag-failure: #f87171;
   --tag-dropset: #fb7185;
   --tag-myoreps: #a78bfa;
   --tag-forcedreps: #fb923c;
   --tag-partials: #4ade80;
-  --tag-cluster: #22d3ee;
 }

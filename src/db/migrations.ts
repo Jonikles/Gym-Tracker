@@ -38,6 +38,9 @@ async function runMigrations(): Promise<void> {
   // Migrate templates to new set structure (v3)
   await migrateTemplateSets();
 
+  // Cluster sets and circuits were removed as features
+  await migrateRemovedClusterAndCircuit();
+
   // Exercise-library maintenance runs in one readwrite transaction so concurrent
   // callers (StrictMode double effects, multiple tabs) serialize instead of each
   // inserting their own copy of a "missing" exercise.
@@ -77,6 +80,41 @@ export function initializeDatabase(): Promise<void> {
     });
   }
   return initPromise;
+}
+
+/**
+ * One-time cleanup after the cluster-set technique and circuit grouping were removed:
+ * cluster sets become standard sets (their primary reps are already in `reps`),
+ * and circuits become supersets. Runs once, tracked by a settings flag.
+ */
+async function migrateRemovedClusterAndCircuit(): Promise<void> {
+  const FLAG = 'migration:removedClusterCircuit';
+  if (await db.settings.get(FLAG)) return;
+
+  await db.transaction('rw', [db.sets, db.sessionExercises, db.templates, db.settings], async () => {
+    await db.sets
+      .filter((s) => (s.intensityTechnique as string) === 'cluster')
+      .modify((s) => {
+        s.intensityTechnique = 'standard';
+        delete s.techniqueData;
+      });
+
+    await db.sessionExercises
+      .filter((se) => (se.groupType as string) === 'circuit')
+      .modify((se) => { se.groupType = 'superset'; });
+
+    await db.templates.toCollection().modify((t) => {
+      t.exercises = t.exercises.map((e) => ({
+        ...e,
+        groupType: e.groupType ? 'superset' : undefined,
+        sets: e.sets.map((s) =>
+          (s.intensityTechnique as string) === 'cluster' ? { ...s, intensityTechnique: 'standard' } : s
+        ),
+      }));
+    });
+
+    await db.settings.put({ key: FLAG, value: true, updatedAt: Date.now() });
+  });
 }
 
 /**
@@ -137,7 +175,7 @@ async function migrateRoutinesToTemplates(): Promise<void> {
           targetReps: targetReps, // Now at exercise level
           weight: ex.defaultWeight,
           groupId: ex.groupId,
-          groupType: ex.groupType,
+          groupType: ex.groupType ? 'superset' : undefined,
           groupOrder: ex.groupOrder,
           notes: ex.notes,
         };
@@ -247,7 +285,7 @@ async function migrateTemplateSets(): Promise<void> {
           targetReps: targetReps,
           weight: oldExercise.weight,
           groupId: oldExercise.groupId,
-          groupType: oldExercise.groupType,
+          groupType: oldExercise.groupType ? 'superset' : undefined,
           groupOrder: oldExercise.groupOrder,
           notes: oldExercise.notes,
         } as TemplateExercise;
@@ -272,7 +310,7 @@ async function migrateTemplateSets(): Promise<void> {
             targetReps: targetReps,
             weight: oldExercise.weight,
             groupId: oldExercise.groupId,
-            groupType: oldExercise.groupType,
+            groupType: oldExercise.groupType ? 'superset' : undefined,
             groupOrder: oldExercise.groupOrder,
             notes: oldExercise.notes,
           } as TemplateExercise;

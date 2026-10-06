@@ -7,14 +7,13 @@ import { SessionExercise } from './SessionExercise';
 import { ExerciseGroup } from './ExerciseGroup';
 import { PlateCalculator } from './PlateCalculator';
 import { flushPendingSaves } from './pendingSaves';
-import { groupSetsBySessionExercise, setHasEmptyRequiredField } from './setValidation';
+import { groupSetsBySessionExercise, setHasEmptyRequiredField, setIsCompletelyEmpty } from './setValidation';
 import { formatElapsed, formatTime } from '../common/format';
 import { useSessionContext } from '../../context/useSessionContext';
 import { useUndo } from '../../context/useUndo';
-import { useExercise } from '../../hooks/useExercises';
 import { useRoutine } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
-import { useSessionSets } from '../../hooks/useSets';
+import { useSessionSets, deleteSet } from '../../hooks/useSets';
 import { updateSessionNotes } from '../../hooks/useSessions';
 import { findFamilyForExerciseName } from '../../data/exercise-families';
 import type { TemplateExercise, ExerciseField, SessionExercise as SessionExerciseType, Set as SetType } from '../../types';
@@ -38,8 +37,16 @@ function ElapsedTimer({ startedAt }: { startedAt: number }) {
 
 /** Lightweight name-only label for select mode */
 function ExerciseNameLabel({ exerciseId }: { exerciseId: string }) {
-  const exercise = useExercise(exerciseId);
-  return <span className={styles.selectExerciseName}>{exercise?.name ?? 'Loading...'}</span>;
+  // null = not in the DB (vs undefined = still loading)
+  const exercise = useLiveQuery(
+    () => db.exercises.get(exerciseId).then((e) => e ?? null),
+    [exerciseId]
+  );
+  return (
+    <span className={styles.selectExerciseName}>
+      {exercise === undefined ? 'Loading...' : exercise?.name ?? 'Exercise missing'}
+    </span>
+  );
 }
 
 type ValidationType = 'no-exercises' | 'no-sets' | 'empty-fields';
@@ -122,6 +129,8 @@ export function ActiveSession() {
   const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
   const [isPlateCalcOpen, setIsPlateCalcOpen] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  // Untouched sets found on Complete — offered for removal instead of blocking
+  const [emptyCleanup, setEmptyCleanup] = useState<{ setIds: string[]; exerciseIds: string[] } | null>(null);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [notes, setNotes] = useState(activeSession?.notes ?? '');
@@ -221,7 +230,7 @@ export function ActiveSession() {
   // Group exercises for rendering
   const groupedExercises = useMemo(() => {
     const sorted = [...sessionExercises].sort((a, b) => a.order - b.order);
-    const groups: { type: 'single' | 'group'; exercises: typeof sorted; groupId?: string; groupType?: 'superset' | 'circuit' }[] = [];
+    const groups: { type: 'single' | 'group'; exercises: typeof sorted; groupId?: string }[] = [];
     const processedGroupIds = new Set<string>();
 
     for (const exercise of sorted) {
@@ -232,7 +241,6 @@ export function ActiveSession() {
           type: 'group',
           exercises: sorted.filter((e) => e.groupId === exercise.groupId),
           groupId: exercise.groupId,
-          groupType: exercise.groupType,
         });
       } else {
         groups.push({ type: 'single', exercises: [exercise] });
@@ -272,7 +280,7 @@ export function ActiveSession() {
     [reorderExercises]
   );
 
-  // Selection mode handlers for superset/circuit grouping
+  // Selection mode handlers for superset grouping
   const toggleSelect = useCallback((sessionExerciseId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -282,9 +290,9 @@ export function ActiveSession() {
     });
   }, []);
 
-  const handleGroup = useCallback(async (groupType: 'superset' | 'circuit') => {
+  const handleGroup = useCallback(async () => {
     if (selectedIds.size < 2) return;
-    await groupExercises([...selectedIds], groupType);
+    await groupExercises([...selectedIds]);
     setSelectedIds(new Set());
     setIsSelectMode(false);
   }, [selectedIds, groupExercises]);
@@ -314,7 +322,34 @@ export function ActiveSession() {
       const fieldsMap = new Map<string, ExerciseField[]>();
       for (const ex of exercises) if (ex) fieldsMap.set(ex.id, ex.defaultFields ?? DEFAULT_FIELDS);
 
-      const problem = validateWorkout(sessionExercises, groupSetsBySessionExercise(freshSets), fieldsMap);
+      const setsBySE = groupSetsBySessionExercise(freshSets);
+      const problem = validateWorkout(sessionExercises, setsBySE, fieldsMap);
+
+      if (problem === 'empty-fields') {
+        // Only untouched sets are offered for removal; a half-filled set still
+        // blocks (with the banner) so nothing the user typed is ever thrown away.
+        const fieldsFor = (seId: string) => {
+          const se = sessionExercises.find((x) => x.id === seId);
+          return (se && fieldsMap.get(se.exerciseId)) ?? DEFAULT_FIELDS;
+        };
+        const partial = freshSets.some((s) => {
+          const f = fieldsFor(s.sessionExerciseId);
+          return setHasEmptyRequiredField(s, f) && !setIsCompletelyEmpty(s, f);
+        });
+        if (!partial) {
+          const setIds = freshSets
+            .filter((s) => setIsCompletelyEmpty(s, fieldsFor(s.sessionExerciseId)))
+            .map((s) => s.id);
+          const emptyIdSet = new Set(setIds);
+          const exerciseIds = sessionExercises
+            .filter((se) => (setsBySE.get(se.id) ?? []).every((s) => emptyIdSet.has(s.id)))
+            .map((se) => se.id);
+          setValidationType(null);
+          setEmptyCleanup({ setIds, exerciseIds });
+          return;
+        }
+      }
+
       setValidationType(problem);
       if (!problem) setShowCompleteConfirm(true);
     } finally {
@@ -327,6 +362,14 @@ export function ActiveSession() {
     await flushPendingSaves();
     await complete();
   }, [complete]);
+
+  const handleRemoveEmptyAndComplete = useCallback(async () => {
+    if (!emptyCleanup) return;
+    for (const id of emptyCleanup.setIds) await deleteSet(id);
+    for (const id of emptyCleanup.exerciseIds) await removeExercise(id);
+    setEmptyCleanup(null);
+    await complete();
+  }, [emptyCleanup, removeExercise, complete]);
 
   const handleOpenNotes = useCallback(() => {
     setNotes(activeSession?.notes ?? '');
@@ -421,12 +464,11 @@ export function ActiveSession() {
 
       <div className={styles.exercises}>
         {groupedExercises.map((group) => {
-          if (group.type === 'group' && group.groupType && group.groupId) {
+          if (group.type === 'group' && group.groupId) {
             return (
               <ExerciseGroup
                 key={group.groupId}
                 groupId={group.groupId}
-                groupType={group.groupType}
                 exercises={group.exercises}
                 findTemplateExercise={findTemplateExercise}
                 onRemoveExercise={handleRemoveExercise}
@@ -486,18 +528,10 @@ export function ActiveSession() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => handleGroup('superset')}
+              onClick={handleGroup}
               disabled={selectedIds.size < 2}
             >
               Superset
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleGroup('circuit')}
-              disabled={selectedIds.size < 2}
-            >
-              Circuit
             </Button>
             <Button variant="ghost" size="sm" onClick={cancelSelectMode}>
               Cancel
@@ -521,7 +555,7 @@ export function ActiveSession() {
             onClick={() => setIsSelectMode(true)}
             className={styles.addButton}
           >
-            Link Superset / Circuit
+            Link Superset
           </Button>
         )}
         {/* Import Template button - only show for blank workouts without a template */}
@@ -579,6 +613,20 @@ export function ActiveSession() {
         title="Complete Workout"
         message="Mark this workout as complete? This will save all your sets."
         confirmLabel="Complete"
+      />
+
+      <ConfirmDialog
+        isOpen={!!emptyCleanup}
+        onClose={() => setEmptyCleanup(null)}
+        onConfirm={handleRemoveEmptyAndComplete}
+        title={`${emptyCleanup?.setIds.length ?? 0} empty set${emptyCleanup?.setIds.length === 1 ? '' : 's'}`}
+        message={
+          emptyCleanup && emptyCleanup.exerciseIds.length > 0
+            ? `Remove the empty sets (and ${emptyCleanup.exerciseIds.length} exercise${emptyCleanup.exerciseIds.length === 1 ? '' : 's'} with nothing logged) and finish the workout?`
+            : 'Remove the empty sets and finish the workout?'
+        }
+        confirmLabel="Remove & Finish"
+        cancelLabel="Keep logging"
       />
 
       <ConfirmDialog

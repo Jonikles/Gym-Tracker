@@ -7,8 +7,7 @@ export type IntensityTechnique =
   | 'myoreps'
   | 'dropset'
   | 'forcedreps'
-  | 'partials'
-  | 'cluster';
+  | 'partials';
 
 /**
  * Individual set definition within a template exercise
@@ -32,8 +31,8 @@ export interface TemplateExercise {
   sets: TemplateSet[]; // Array of set definitions
   targetReps: string; // e.g., "8-12" or "5" - applies to all working sets
   weight?: number; // Optional target weight
-  groupId?: string; // Groups exercises together (superset/circuit)
-  groupType?: 'superset' | 'circuit';
+  groupId?: string; // Groups exercises together into a superset
+  groupType?: 'superset';
   groupOrder?: number; // Position within group
   notes?: string;
 }

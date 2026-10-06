@@ -28,7 +28,7 @@ export interface SessionExercise {
   progressionId?: string; // Tracks that this came from a progression slot
   order: number;
   groupId?: string;
-  groupType?: 'superset' | 'circuit';
+  groupType?: 'superset';
   groupOrder?: number;
   notes?: string;
   createdAt: number;

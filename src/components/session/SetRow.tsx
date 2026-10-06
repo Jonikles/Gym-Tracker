@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useClickOutside } from './useClickOutside';
 import { Input, Button } from '../common';
 import { PRNotification } from './PRNotification';
-import type { Set, IntensityTechnique, ExerciseField, PR, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, ClusterTechniqueData, PartialsTechniqueData } from '../../types';
+import type { Set, IntensityTechnique, ExerciseField, PR, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, PartialsTechniqueData } from '../../types';
 import { updateSet, deleteSet, type UpdateSetInput } from '../../hooks/useSets';
 import { useUndo } from '../../context/useUndo';
 import { db } from '../../db';
@@ -29,7 +29,6 @@ const SET_TYPES: { value: string; label: string; short: string }[] = [
   { value: 'myoreps', label: 'Myo Reps', short: 'MR' },
   { value: 'forcedreps', label: 'Forced Reps', short: 'FR' },
   { value: 'partials', label: 'Partials', short: 'PT' },
-  { value: 'cluster', label: 'Cluster', short: 'CL' },
 ];
 
 function isMyoRepsData(data: TechniqueData | undefined): data is MyoRepsTechniqueData {
@@ -40,10 +39,6 @@ function isDropSetData(data: TechniqueData | undefined): data is DropSetTechniqu
   return data !== undefined && 'drops' in data;
 }
 
-function isClusterData(data: TechniqueData | undefined): data is ClusterTechniqueData {
-  return data !== undefined && 'clusters' in data;
-}
-
 function isPartialsData(data: TechniqueData | undefined): data is PartialsTechniqueData {
   return data !== undefined && 'mainReps' in data && 'partialReps' in data;
 }
@@ -52,7 +47,7 @@ function isPartialsData(data: TechniqueData | undefined): data is PartialsTechni
 const filterDecimal = (v: string) => v.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
 const filterInteger = (v: string) => v.replace(/[^0-9]/g, '');
 
-// Stable ids for dynamic sub-lists (mini-sets, drops, clusters)
+// Stable ids for dynamic sub-lists (mini-sets, drops)
 let uidCounter = 0;
 const uid = () => `i${++uidCounter}`;
 
@@ -86,11 +81,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
       ? set.techniqueData.drops.map((d) => ({ id: uid(), weight: d.weight.toString(), reps: d.reps.toString() }))
       : [{ id: uid(), weight: toStr(set.weight), reps: toStr(set.reps) }]
   );
-  const [clusters, setClusters] = useState<ListItem[]>(() =>
-    isClusterData(set.techniqueData)
-      ? set.techniqueData.clusters.map((n) => ({ id: uid(), value: String(n) }))
-      : [{ id: uid(), value: toStr(set.reps) }]
-  );
   const [mainReps, setMainReps] = useState<string>(
     isPartialsData(set.techniqueData) ? set.techniqueData.mainReps.toString() : toStr(set.reps)
   );
@@ -121,7 +111,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
   const getPrimaryReps = (): string => {
     if (technique === 'myoreps' && myoActivationReps) return myoActivationReps;
     if (technique === 'dropset' && drops[0]?.reps) return drops[0].reps;
-    if (technique === 'cluster' && clusters[0]?.value) return clusters[0].value;
     if (technique === 'partials' && mainReps) return mainReps;
     return reps;
   };
@@ -138,7 +127,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
     setMyoActivationReps(currentReps);
     setMyoMiniSets([]);
     setDrops([{ id: uid(), weight: currentWeight, reps: currentReps }]);
-    setClusters([{ id: uid(), value: currentReps }]);
     setMainReps(currentReps);
     setPartialReps('');
     setPartialWeight(currentWeight);
@@ -165,10 +153,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
           .filter((d) => !isNaN(d.weight) && !isNaN(d.reps));
         return validDrops.length > 0 ? { drops: validDrops } : undefined;
       }
-      case 'cluster': {
-        const clusterReps = clusters.map((c) => parseInt(c.value, 10)).filter((n) => !isNaN(n));
-        return clusterReps.length > 0 ? { clusters: clusterReps } : undefined;
-      }
       case 'partials': {
         const main = parseInt(mainReps, 10);
         const partial = parseInt(partialReps, 10);
@@ -194,7 +178,7 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
       techniqueData: buildTechniqueData(),
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setId, weight, reps, time, distance, isWarmup, technique, myoActivationReps, myoMiniSets, drops, clusters, mainReps, partialReps, partialWeight]);
+  }, [setId, weight, reps, time, distance, isWarmup, technique, myoActivationReps, myoMiniSets, drops, mainReps, partialReps, partialWeight]);
 
   const handleDelete = async () => {
     await flush();
@@ -231,7 +215,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
       if (technique === 'myoreps' && !myoActivationReps) setMyoActivationReps(r);
       if (technique === 'partials' && !mainReps) setMainReps(r);
       if (technique === 'dropset' && !drops[0]?.reps) setDrops((d) => d.map((x, i) => (i === 0 ? { ...x, reps: r } : x)));
-      if (technique === 'cluster' && !clusters[0]?.value) setClusters((c) => c.map((x, i) => (i === 0 ? { ...x, value: r } : x)));
     }
     if (!time && previousSet.time !== undefined) setTime(String(previousSet.time));
     if (!distance && previousSet.distance !== undefined) setDistance(String(previousSet.distance));
@@ -255,7 +238,8 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
   const addDrop = () => {
     markDirty();
     const lastDrop = drops[drops.length - 1];
-    const suggestedWeight = lastDrop?.weight ? (parseFloat(lastDrop.weight) * 0.8).toFixed(1) : '';
+    // ~20% lighter, rounded to the nearest 0.5kg ("80", not "80.0")
+    const suggestedWeight = lastDrop?.weight ? String(Math.round(parseFloat(lastDrop.weight) * 0.8 * 2) / 2) : '';
     setDrops([...drops, { id: uid(), weight: suggestedWeight, reps: '' }]);
   };
   const updateDrop = (index: number, field: 'weight' | 'reps', value: string) => {
@@ -271,19 +255,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
     if (drops.length <= 1) return;
     markDirty();
     setDrops((d) => d.filter((x) => x.id !== id));
-  };
-
-  // Cluster
-  const addCluster = () => { markDirty(); setClusters((c) => [...c, { id: uid(), value: '' }]); };
-  const updateCluster = (index: number, value: string) => {
-    markDirty();
-    setClusters((c) => c.map((x, i) => (i === index ? { ...x, value } : x)));
-    if (index === 0) setReps(value);
-  };
-  const removeCluster = (id: string) => {
-    if (clusters.length <= 1) return;
-    markDirty();
-    setClusters((c) => c.filter((x) => x.id !== id));
   };
 
   const getInputClass = (isEmpty: boolean) =>
@@ -413,40 +384,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
     </div>
   );
 
-  const renderClusterUI = () => (
-    <div className={styles.techniqueUI}>
-      <div className={styles.techniqueInputRow}>
-        {renderField(weight, changeWeight, 'kg', prevPlaceholder(previousSet?.weight, ''), 'decimal', 'Weight in kg')}
-        <span className={styles.techniqueLabel}>Weight (all clusters)</span>
-      </div>
-
-      <div className={styles.clusterSection}>
-        <span className={styles.techniqueSubLabel}>Clusters:</span>
-        <div className={styles.clusterGrid}>
-          {clusters.map((cluster, index) => (
-            <div key={cluster.id} className={styles.clusterItem}>
-              <Input
-                type="text"
-                inputMode="numeric"
-                value={cluster.value}
-                onChange={(e) => updateCluster(index, filterInteger(e.target.value))}
-                placeholder={`#${index + 1}`}
-                className={getMiniInputClass(!cluster.value)}
-              />
-              {clusters.length > 1 && (
-                <button type="button" className={styles.iconBtn} onClick={() => removeCluster(cluster.id)} aria-label="Remove cluster">×</button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <Button variant="secondary" size="sm" onClick={addCluster} className={styles.addButton}>
-        + Add Cluster
-      </Button>
-    </div>
-  );
-
   const renderPartialsUI = () => (
     <div className={styles.techniqueUI}>
       <div className={styles.partialsSection}>
@@ -480,7 +417,7 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
             inputMode="decimal"
             value={partialWeight}
             onChange={(e) => { markDirty(); setPartialWeight(filterDecimal(e.target.value)); }}
-            placeholder="kg"
+            placeholder={weight || 'kg'}
             className={styles.miniInput}
           />
           <span className={styles.timesSign}>×</span>
@@ -557,7 +494,6 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
 
       {technique === 'myoreps' && renderMyoRepsUI()}
       {technique === 'dropset' && renderDropSetUI()}
-      {technique === 'cluster' && renderClusterUI()}
       {technique === 'partials' && renderPartialsUI()}
 
       {livePRs && livePRs.length > 0 && <PRNotification prs={livePRs} />}
