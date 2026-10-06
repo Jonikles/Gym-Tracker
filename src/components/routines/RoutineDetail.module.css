@@ -1,136 +1,127 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-md);
 }
 
+/* Header: "← Back" top-left, actions + ⋮ top-right, eyebrow + title below */
 .header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 
 .headerTop {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
-.title {
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  margin: 0;
-}
-
-.meta {
-  display: flex;
-  gap: var(--space-md);
-  margin-top: var(--space-xs);
+.backBtn {
+  min-height: 44px;
+  margin-left: calc(-1 * var(--space-sm));
+  padding-left: var(--space-sm);
+  padding-right: var(--space-sm);
 }
 
 .headerActions {
   display: flex;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
   align-items: center;
 }
 
-.activeBadge {
-    display: inline-block;
-    padding: 2px 8px;
-    background-color: var(--color-success);
-    color: white;
-    font-size: var(--text-xs);
-    font-weight: 600;
-    border-radius: var(--radius-sm);
+.headerBtn {
+  min-height: 36px;
+  white-space: nowrap;
 }
 
-.moreMenuWrapper {
-  position: relative;
-}
-
-.moreMenuDropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  z-index: 10;
-  min-width: 140px;
+.titleBlock {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
-.moreMenuOption {
-  display: block;
-  width: 100%;
-  min-height: 44px;
-  padding: var(--space-sm) var(--space-md);
-  font-family: inherit;
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  transition: background var(--transition-fast);
-}
-
-.moreMenuOption:hover {
-  background: var(--color-bg-tertiary);
-}
-
-.moreMenuOption:not(:last-child) {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.moreMenuDanger {
-  color: var(--color-error);
-}
-.tabs {
+.titleRow {
   display: flex;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
-  background-color: var(--color-bg-secondary);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.metaValue {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.actionError {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: var(--text-sm);
+}
+
+/* Segmented control */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--color-bg);
   border-radius: var(--radius-md);
-  width: fit-content;
+  box-shadow: inset 0 0 0 1px var(--color-border);
 }
 
 .tab {
   min-height: 40px;
-  padding: var(--space-sm) var(--space-md);
+  padding: 0 var(--space-md);
   font-size: var(--text-sm);
   font-family: inherit;
-  font-weight: 500;
+  font-weight: 600;
   background: none;
   border: none;
   border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .tab:hover {
   color: var(--color-text);
-  background-color: var(--color-bg-tertiary);
 }
 
 .tab.activeTab {
-  background-color: var(--color-accent);
-  color: var(--color-bg);
+  background-color: var(--color-surface-3);
+  color: var(--color-accent);
+  box-shadow: var(--shadow-sm), var(--highlight-top);
+}
+
+@media (min-width: 769px) {
+  .tabs {
+    width: 320px;
+  }
 }
 
 .calendarSection {
-  margin-top: var(--space-md);
+  display: flex;
+  flex-direction: column;
 }
 
+/* Schedule */
 .scheduleSection {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .scheduleHeader {
@@ -140,8 +131,6 @@
 }
 
 .scheduleHeader h2 {
-  font-size: var(--text-lg);
-  font-weight: 600;
   margin: 0;
 }
 
@@ -154,22 +143,61 @@
 .scheduleRow {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-md);
-  background-color: var(--color-bg-secondary);
+  gap: var(--space-sm);
+  padding: 12px;
+  background-color: var(--color-surface-1);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), var(--highlight-top);
+}
+
+.workoutRow {
+  box-shadow: inset 3px 0 0 var(--color-accent), var(--shadow-sm);
+}
+
+.restRow {
+  background-color: rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+}
+
+.dayHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 0 2px;
 }
 
 .dayLabel {
-  font-weight: 600;
-  font-size: var(--text-sm);
+  min-width: 0;
+  font-weight: 700;
+  font-size: var(--text-base);
+}
+
+.restRow .dayLabel {
+  color: var(--color-text-secondary);
 }
 
 .daySubLabel {
-  font-weight: 400;
+  font-weight: 450;
   color: var(--color-text-muted);
   margin-left: var(--space-xs);
+}
+
+.templatePreview {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.restTag {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
 .dayControls {
@@ -179,75 +207,54 @@
 }
 
 .dayControls > *:first-child {
-  flex: 1;
-  max-width: 250px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .labelInput {
-  flex: 1;
-  max-width: 150px;
-  padding: var(--space-sm) var(--space-md);
-  font-size: var(--text-sm);
+  flex: 0 1 132px;
+  min-width: 0;
+  min-height: 46px;
+  padding: var(--space-sm) 12px;
+  font-size: 16px; /* ≥16px: no iOS zoom */
   font-family: inherit;
-  background-color: var(--color-bg);
+  background-color: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
   color: var(--color-text);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .labelInput:focus {
   outline: none;
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 
 .labelInput::placeholder {
   color: var(--color-text-muted);
 }
 
-.templatePreview {
-  font-size: var(--text-xs);
+.removeDayBtn.removeDayBtn {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: var(--text-xl);
   color: var(--color-text-muted);
 }
 
 .currentPosition {
-  padding: var(--space-md);
-  background-color: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 12px var(--space-md);
+  background-color: var(--color-accent-soft);
   border-radius: var(--radius-md);
+  box-shadow: inset 2px 0 0 var(--color-accent);
   font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--color-accent);
-}
-
-@media (max-width: 600px) {
-  .dayControls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .dayControls > * {
-    max-width: none !important;
-  }
-}
-
-.moreBtn {
-  min-width: 44px;
-  min-height: 44px;
-  font-size: var(--text-xl);
-  line-height: 1;
-}
-
-.removeDayBtn {
-  min-width: 44px;
-  min-height: 44px;
 }
 
 .notFound {
   color: var(--color-text-muted);
-}
-
-.actionError {
-  color: var(--color-error);
-  font-size: var(--text-sm);
-  margin-top: calc(-1 * var(--space-md));
 }

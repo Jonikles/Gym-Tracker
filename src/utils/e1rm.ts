@@ -17,9 +17,3 @@ export function isE1RMValid(reps: number): boolean {
   return reps > 0 && reps <= 10;
 }
 
-/**
- * Format e1RM for display
- */
-export function formatE1RM(e1rm: number): string {
-  return e1rm.toFixed(1);
-}

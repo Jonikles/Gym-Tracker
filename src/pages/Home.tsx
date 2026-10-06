@@ -9,13 +9,14 @@ import {
   markSick,
   useTodaysSession,
 } from '../hooks/useSessions';
-import { useSessionContext } from '../context/SessionContext';
+import { useSessionContext } from '../context/useSessionContext';
 import { useSetting } from '../hooks/useSettings';
 import { useStreaks } from '../hooks/useStreaks';
 import { useToday } from '../hooks/useToday';
 import { db } from '../db';
 import { isRealWorkout, startOfLocalDay } from '../utils/session';
 import type { Routine, Session, Template, Set as WorkoutSet } from '../types';
+import { formatShortDate, formatTime } from '../components/common/format';
 import styles from './Home.module.css';
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -34,11 +35,8 @@ function greetingFor(date: Date): string {
   return 'Good evening';
 }
 
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDuration(ms: number): string {
+/** Elapsed ms as "45 min" / "1h 5m" (rounded; Home-card style) */
+function formatDurationMs(ms: number): string {
   const min = Math.max(0, Math.round(ms / 60000));
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60);
@@ -52,7 +50,7 @@ function formatRelativeDay(ts: number, today: number): string {
   if (diffDays <= 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return WEEKDAY_LONG[new Date(ts).getDay()];
-  return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  return formatShortDate(ts);
 }
 
 function formatTopSet(set: WorkoutSet): string | null {
@@ -507,7 +505,7 @@ export function Home() {
         </h2>
         {status === 'completed' && todaysSession.completedAt && (
           <p className={styles.heroText}>
-            Finished in <span className="num">{formatDuration(todaysSession.completedAt - todaysSession.startedAt)}</span>
+            Finished in <span className="num">{formatDurationMs(todaysSession.completedAt - todaysSession.startedAt)}</span>
             {' '}· nice work.
           </p>
         )}
@@ -637,7 +635,7 @@ export function Home() {
               <span className={styles.lastName}>{lastWorkout.name}</span>
               <span className={styles.lastMeta}>
                 {formatRelativeDay(lastWorkout.startedAt, today)}
-                {lastWorkout.duration != null && <> · <span className="num">{formatDuration(lastWorkout.duration)}</span></>}
+                {lastWorkout.duration != null && <> · <span className="num">{formatDurationMs(lastWorkout.duration)}</span></>}
                 {lastWorkout.exerciseCount > 0 && (
                   <> · <span className="num">{lastWorkout.exerciseCount}</span> exercise{lastWorkout.exerciseCount === 1 ? '' : 's'}</>
                 )}

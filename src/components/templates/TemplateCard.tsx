@@ -30,20 +30,24 @@ export function TemplateCard({ template }: { template: Template }) {
       <div className={styles.content}>
         <h3 className={styles.name}>{template.name}</h3>
         <div className={styles.stats}>
-          <span>{exerciseCount} exercises</span>
-          <span>•</span>
-          <span>{totalSets} sets</span>
+          <span>
+            <span className={`num ${styles.statValue}`}>{exerciseCount}</span> exercises
+          </span>
+          <span>
+            <span className={`num ${styles.statValue}`}>{totalSets}</span> sets
+          </span>
         </div>
         {hasSpecialTechniques && (
           <div className={styles.techniques}>
             {Object.entries(techniqueCounts).map(([technique, count]) => (
-              <span key={technique} className={styles.technique}>
+              <span key={technique} className={`chip num ${styles.technique}`}>
                 {technique} ({count})
               </span>
             ))}
           </div>
         )}
       </div>
+      <span className={styles.chevron} aria-hidden="true">›</span>
     </Card>
   );
 }

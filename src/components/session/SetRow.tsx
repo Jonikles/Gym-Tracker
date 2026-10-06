@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useClickOutside } from './useClickOutside';
 import { Input, Button } from '../common';
 import { PRNotification } from './PRNotification';
 import type { Set, IntensityTechnique, ExerciseField, PR, TechniqueData, MyoRepsTechniqueData, DropSetTechniqueData, ClusterTechniqueData, PartialsTechniqueData } from '../../types';
 import { updateSet, deleteSet, type UpdateSetInput } from '../../hooks/useSets';
-import { useUndo } from '../../context/UndoContext';
+import { useUndo } from '../../context/useUndo';
 import { db } from '../../db';
 import { useDebouncedSave } from './useDebouncedSave';
 import styles from './SetRow.module.css';
@@ -113,16 +114,8 @@ export function SetRow({ set, setNumber, defaultFields, showValidation, livePRs,
   const markDirty = () => { dirtyRef.current = true; };
 
   // Close type picker when clicking outside
-  useEffect(() => {
-    if (!showTypePicker) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (typePickerRef.current && !typePickerRef.current.contains(e.target as Node)) {
-        setShowTypePicker(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showTypePicker]);
+  const closeTypePicker = useCallback(() => setShowTypePicker(false), []);
+  useClickOutside(typePickerRef, showTypePicker, closeTypePicker);
 
   /** Primary reps as currently shown, accounting for the active technique UI */
   const getPrimaryReps = (): string => {

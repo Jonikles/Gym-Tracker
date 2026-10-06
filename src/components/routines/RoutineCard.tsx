@@ -7,11 +7,13 @@ interface RoutineCardProps {
   onClick?: () => void;
   /** templateId → name, batch-fetched by the parent list */
   templateNames?: Map<string, string>;
+  /** The user's current routine — gets an "Active" chip and accent glow */
+  isActive?: boolean;
 }
 
 const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function RoutineCard({ routine, onClick, templateNames }: RoutineCardProps) {
+export function RoutineCard({ routine, onClick, templateNames, isActive }: RoutineCardProps) {
   const activeDays = routine.schedule.filter((s) => s.templateId);
   const restDays = routine.schedule.filter((s) => !s.templateId);
 
@@ -22,14 +24,24 @@ export function RoutineCard({ routine, onClick, templateNames }: RoutineCardProp
     : undefined;
 
   return (
-    <Card onClick={onClick} interactive={!!onClick}>
+    <Card
+      onClick={onClick}
+      interactive={!!onClick}
+      className={`${styles.card} ${isActive ? styles.activeCard : ''}`}
+    >
       <div className={styles.header}>
         <h3 className={styles.name}>{routine.name}</h3>
+        {isActive && <span className="chip chip-accent">Active</span>}
       </div>
       <div className={styles.details}>
         <span className={styles.count}>
-          {activeDays.length} workout{activeDays.length !== 1 ? 's' : ''}
-          {restDays.length > 0 && `, ${restDays.length} rest`}
+          <span className={`num ${styles.countValue}`}>{activeDays.length}</span> workout{activeDays.length !== 1 ? 's' : ''}
+          {restDays.length > 0 && (
+            <>
+              {' · '}
+              <span className={`num ${styles.countValue}`}>{restDays.length}</span> rest
+            </>
+          )}
         </span>
         {routine.type === 'fixed' && (
           <div className={styles.schedule}>
@@ -49,7 +61,7 @@ export function RoutineCard({ routine, onClick, templateNames }: RoutineCardProp
           </div>
         )}
         {routine.type === 'rolling' && (
-          <span className={styles.next}>
+          <span className={`chip chip-accent ${styles.next}`}>
             Next: {currentDayLabel || `Day ${(routine.currentPosition ?? 0) + 1}`}
           </span>
         )}

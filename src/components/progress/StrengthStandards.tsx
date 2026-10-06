@@ -1,19 +1,18 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Card } from '../common';
 import { db } from '../../db';
 import { useSetting } from '../../hooks/useSettings';
 import {
   MALE_STANDARDS,
   STRENGTH_LEVELS,
   LEVEL_LABELS,
-  LEVEL_COLORS,
   BIG3_EXERCISES,
   BIG3_LABELS,
   getStrengthLevel,
   type Big3Lift,
   type StrengthStandard,
+  type StrengthLevel,
 } from '../../data/strength-standards';
 import styles from './StrengthStandards.module.css';
 
@@ -77,6 +76,15 @@ function useBig3Data(): LiftData[] {
   ];
 }
 
+/** Level → global chip variant (token colors, not the data file's literal palette) */
+const LEVEL_CHIP: Record<StrengthLevel, string> = {
+  beginner: 'chip',
+  novice: 'chip chip-accent',
+  intermediate: 'chip chip-success',
+  advanced: 'chip chip-warning',
+  elite: 'chip chip-pr',
+};
+
 interface LiftCardProps {
   data: LiftData;
   bodyweight: number;
@@ -86,6 +94,7 @@ interface LiftCardProps {
 function LiftCardContent({ data, bodyweight, standards }: LiftCardProps) {
   const [showStandards, setShowStandards] = useState(false);
   const { level, ratio } = getStrengthLevel(data.e1rm, bodyweight, standards);
+  const hasLevel = data.e1rm > 0 && bodyweight > 0;
 
   // Calculate progress bar fill percentage across all levels
   const totalProgress = useMemo(() => {
@@ -104,44 +113,40 @@ function LiftCardContent({ data, bodyweight, standards }: LiftCardProps) {
   }, [standards]);
 
   return (
-    <Card className={styles.liftCard}>
+    <div className={`surface ${styles.liftCard}`}>
       <div className={styles.liftHeader}>
-        <span className={styles.liftName}>{BIG3_LABELS[data.lift]}</span>
+        <div className={styles.liftTitle}>
+          <span className={styles.liftName}>{BIG3_LABELS[data.lift]}</span>
+          {hasLevel && <span className={LEVEL_CHIP[level]}>{LEVEL_LABELS[level]}</span>}
+        </div>
         {data.e1rm > 0 ? (
           <div className={styles.liftValue}>
-            <span className={styles.liftE1rm}>{Math.round(data.e1rm)} kg</span>
-            <span className={styles.liftRatio}>{ratio.toFixed(2)}x BW</span>
+            <span className={styles.liftE1rm}>
+              <span className="num">{Math.round(data.e1rm)}</span>
+              <span className={styles.unit}>kg</span>
+            </span>
+            {bodyweight > 0 && (
+              <span className={styles.liftRatio}>
+                <span className="num">{ratio.toFixed(2)}</span>× BW
+              </span>
+            )}
           </div>
         ) : (
           <span className={styles.noData}>No data yet</span>
         )}
       </div>
 
-      {data.e1rm > 0 && bodyweight > 0 && (
+      {hasLevel && (
         <div className={styles.progressSection}>
           <div className={styles.progressBar}>
-            <div
-              className={styles.progressFill}
-              style={{
-                width: `${totalProgress}%`,
-                backgroundColor: LEVEL_COLORS[level],
-              }}
-            />
+            <div className={styles.progressFill} style={{ width: `${totalProgress}%` }} />
             {markers.map((m) => (
-              <div
-                key={m.level}
-                className={styles.progressMarker}
-                style={{ left: `${m.position}%` }}
-              />
+              <div key={m.level} className={styles.progressMarker} style={{ left: `${m.position}%` }} />
             ))}
           </div>
           <div className={styles.levelLabels}>
             {STRENGTH_LEVELS.map((lvl) => (
-              <span
-                key={lvl}
-                className={`${styles.levelLabel} ${lvl === level ? styles.levelLabelActive : ''}`}
-                style={lvl === level ? { color: LEVEL_COLORS[lvl] } : undefined}
-              >
+              <span key={lvl} className={`${styles.levelLabel} ${lvl === level ? styles.levelLabelActive : ''}`}>
                 {LEVEL_LABELS[lvl]}
               </span>
             ))}
@@ -149,43 +154,28 @@ function LiftCardContent({ data, bodyweight, standards }: LiftCardProps) {
         </div>
       )}
 
-      {data.e1rm > 0 && bodyweight > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span
-            className={styles.levelBadge}
-            style={{
-              backgroundColor: `${LEVEL_COLORS[level]}20`,
-              color: LEVEL_COLORS[level],
-            }}
-          >
-            {LEVEL_LABELS[level]}
-          </span>
-          <button
-            className={styles.standardsToggle}
-            onClick={() => setShowStandards(!showStandards)}
-          >
-            {showStandards ? 'Hide targets' : 'Show targets'}
-          </button>
-        </div>
+      {hasLevel && (
+        <button
+          type="button"
+          className={styles.standardsToggle}
+          onClick={() => setShowStandards(!showStandards)}
+          aria-expanded={showStandards}
+        >
+          {showStandards ? 'Hide targets (kg) ▴' : 'Show targets (kg) ▾'}
+        </button>
       )}
 
       {showStandards && bodyweight > 0 && (
         <div className={styles.standardsGrid}>
           {STRENGTH_LEVELS.map((lvl) => (
-            <div
-              key={lvl}
-              className={`${styles.standardCell} ${lvl === level ? styles.standardCellActive : ''}`}
-              style={lvl === level ? { color: LEVEL_COLORS[lvl] } : undefined}
-            >
+            <div key={lvl} className={`${styles.standardCell} ${lvl === level ? styles.standardCellActive : ''}`}>
               <span className={styles.standardCellLabel}>{LEVEL_LABELS[lvl]}</span>
-              <span className={styles.standardCellValue}>
-                {Math.round(standards[lvl] * bodyweight)} kg
-              </span>
+              <span className={`num ${styles.standardCellValue}`}>{Math.round(standards[lvl] * bodyweight)}</span>
             </div>
           ))}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -214,41 +204,33 @@ export function StrengthStandards() {
   }, [totalE1RM, bodyweight, standards]);
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2>Big 3 Standards</h2>
-      </div>
+    <section className={styles.container} aria-label="Big 3 standards">
+      <h2 className="section-title">Big 3 standards</h2>
 
       {(!bodyweight || bodyweight <= 0) && (
-        <Card>
-          <p className={styles.setupPrompt}>
-            Set your bodyweight in{' '}
-            <button className={styles.setupLink} onClick={() => navigate('/settings')}>
-              Settings
-            </button>{' '}
-            to see how you compare.
-          </p>
-        </Card>
+        <div className={`surface ${styles.setupPrompt}`}>
+          Set your bodyweight in{' '}
+          <button type="button" className={styles.setupLink} onClick={() => navigate('/settings')}>
+            Settings
+          </button>{' '}
+          to see how you compare.
+        </div>
       )}
 
       {bodyweight > 0 && hasAnyData && totalStandard && (
-        <Card className={styles.totalCard}>
-          <span className={styles.totalLabel}>Estimated Total</span>
-          <span className={styles.totalValue} style={{ color: LEVEL_COLORS[totalStandard.level] }}>
-            {Math.round(totalE1RM)}
-            <span className={styles.totalUnit}> kg</span>
-          </span>
-          <span className={styles.totalRatio}>{totalStandard.ratio.toFixed(2)}x bodyweight</span>
-          <span
-            className={styles.levelBadge}
-            style={{
-              backgroundColor: `${LEVEL_COLORS[totalStandard.level]}20`,
-              color: LEVEL_COLORS[totalStandard.level],
-            }}
-          >
-            {LEVEL_LABELS[totalStandard.level]}
-          </span>
-        </Card>
+        <div className={`surface-hero ${styles.totalCard}`}>
+          <div className={styles.totalMain}>
+            <span className="eyebrow">Estimated total</span>
+            <span className={styles.totalValue}>
+              <span className="stat-value">{Math.round(totalE1RM)}</span>
+              <span className={styles.totalUnit}>kg</span>
+            </span>
+            <span className={styles.totalRatio}>
+              <span className="num">{totalStandard.ratio.toFixed(2)}</span>× bodyweight
+            </span>
+          </div>
+          <span className={LEVEL_CHIP[totalStandard.level]}>{LEVEL_LABELS[totalStandard.level]}</span>
+        </div>
       )}
 
       <div className={styles.lifts}>
@@ -261,6 +243,6 @@ export function StrengthStandards() {
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 }

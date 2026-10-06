@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Button, Input, Select } from '../common';
-import { formatMuscleGroup } from '../common/format';
+import { formatLabel, formatMuscleGroup } from '../common/format';
 import type { Exercise, ExerciseField, MuscleGroup } from '../../types';
 import { MUSCLE_GROUP_CATEGORIES } from '../../types/exercise';
 import { useExercises } from '../../hooks/useExercises';
@@ -128,7 +128,7 @@ export function ExerciseForm({ exercise, onSubmit, onCancel }: ExerciseFormProps
         label="Movement Pattern"
         value={movementPattern}
         onChange={(e) => setMovementPattern(e.target.value)}
-        options={MOVEMENT_PATTERNS.map((p) => ({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) }))}
+        options={MOVEMENT_PATTERNS.map((p) => ({ value: p, label: formatLabel(p) }))}
         placeholder="Select movement..."
       />
 
@@ -136,7 +136,7 @@ export function ExerciseForm({ exercise, onSubmit, onCancel }: ExerciseFormProps
         label="Equipment"
         value={equipment}
         onChange={(e) => setEquipment(e.target.value)}
-        options={EQUIPMENT_TYPES.map((e) => ({ value: e, label: e.charAt(0).toUpperCase() + e.slice(1) }))}
+        options={EQUIPMENT_TYPES.map((e) => ({ value: e, label: formatLabel(e) }))}
         placeholder="Select equipment..."
       />
 

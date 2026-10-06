@@ -22,7 +22,7 @@ const PR_ELIGIBLE_TECHNIQUES = ['standard', 'failure', 'forcedreps'];
  * with both weight and reps, using a technique whose numbers are comparable.
  * Shared by the save path, the live preview and the historical comparison.
  */
-export function isPREligibleSet(set: Set): boolean {
+function isPREligibleSet(set: Set): boolean {
   return (
     !set.isWarmup &&
     !!set.weight &&

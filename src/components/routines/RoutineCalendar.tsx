@@ -113,13 +113,13 @@ export function RoutineCalendar({ routine }: RoutineCalendarProps) {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Button variant="ghost" size="sm" onClick={handlePrevMonth} className={styles.navBtn} aria-label="Previous month">
+        <Button variant="ghost" onClick={handlePrevMonth} className={styles.navBtn} aria-label="Previous month">
           ←
         </Button>
         <h3 className={styles.monthTitle}>
           {MONTH_NAMES[month]} {year}
         </h3>
-        <Button variant="ghost" size="sm" onClick={handleNextMonth} className={styles.navBtn} aria-label="Next month">
+        <Button variant="ghost" onClick={handleNextMonth} className={styles.navBtn} aria-label="Next month">
           →
         </Button>
       </div>

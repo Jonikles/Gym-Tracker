@@ -1,63 +1,84 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
-}
-
-.header {
-  display: flex;
-  align-items: flex-start;
   gap: var(--space-md);
 }
 
-.headerContent {
-  flex: 1;
+/* Standard page header: "← Back" top-left, Delete top-right, eyebrow + title */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.backBtn {
+  min-height: 44px;
+  margin-left: calc(-1 * var(--space-sm));
+  padding-left: var(--space-sm);
+  padding-right: var(--space-sm);
+}
+
+.deleteBtn {
+  min-height: 36px;
 }
 
 .title {
-  font-size: var(--text-xl);
-  font-weight: 600;
   margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Times + notes grouped on one surface */
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--space-md);
 }
 
 .timeSection {
   display: flex;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .timeField {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   flex: 1;
+  min-width: 0;
 }
 
 .timeLabel {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding-left: 2px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
 }
 
 .notesSection {
-  padding: var(--space-md);
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
 }
 
 .exercises {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 12px;
 }
 
 .exerciseCard {
-  padding: var(--space-md);
-  background-color: var(--color-bg-secondary);
+  padding: 6px var(--space-sm) var(--space-sm);
+  background-color: var(--color-surface-1);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), var(--highlight-top);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -67,18 +88,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding-left: 4px;
 }
 
 .exerciseName {
-  font-size: var(--text-base);
-  font-weight: 600;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .sets {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 6px;
 }
 
 .addSet,
@@ -86,20 +112,19 @@
   min-height: 44px;
 }
 
+.removeBtn.removeBtn {
+  color: var(--color-danger-text);
+}
+
 .addSet {
-  align-self: flex-start;
+  width: 100%;
 }
 
 .addExercise {
-  align-self: center;
-  min-width: 200px;
+  width: 100%;
 }
 
 @media (max-width: 600px) {
-  .header {
-    flex-direction: column;
-  }
-
   .timeSection {
     flex-direction: column;
   }

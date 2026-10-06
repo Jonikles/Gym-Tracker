@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Input, Select, Card } from '../common';
-import { formatMuscleGroup } from '../common/format';
+import { Input, Select } from '../common';
+import { formatLabel, formatMuscleGroup } from '../common/format';
 import { StrengthStandards } from './StrengthStandards';
 import { useExercisesWithHistory } from '../../hooks/useAnalytics';
 import { useUniqueMuscleGroups, useUniqueEquipment } from '../../hooks/useExercises';
@@ -88,26 +88,26 @@ function useLatestBestSets() {
 }
 
 function ExerciseItem({ exercise, sessionCount, latestBest, onClick }: ExerciseItemProps) {
+  const muscles = exercise.muscleGroups?.slice(0, 2).map(formatMuscleGroup).join(', ');
+  const meta = [exercise.equipment && formatLabel(exercise.equipment), muscles].filter(Boolean).join(' · ');
   return (
-    <Card onClick={onClick} interactive>
-      <div className={styles.exerciseItem}>
-        <div className={styles.exerciseInfo}>
-          <span className={styles.exerciseName}>{exercise.name}</span>
-          <span className={styles.exerciseMeta}>
-            {exercise.equipment}
-            {exercise.muscleGroups && exercise.muscleGroups.length > 0 && (
-              <> · {exercise.muscleGroups.slice(0, 2).map(formatMuscleGroup).join(', ')}</>
-            )}
-          </span>
-        </div>
-        <div className={styles.itemRight}>
-          {latestBest && <span className={styles.latestBest}>{latestBest}</span>}
-          <span className={styles.sessionCount}>
-            {sessionCount} {sessionCount === 1 ? 'session' : 'sessions'}
-          </span>
-        </div>
+    <button type="button" className={`surface ${styles.item}`} onClick={onClick}>
+      <div className={styles.exerciseInfo}>
+        <span className={styles.exerciseName}>{exercise.name}</span>
+        {meta && <span className={styles.exerciseMeta}>{meta}</span>}
       </div>
-    </Card>
+      <div className={styles.itemRight}>
+        {latestBest && <span className={`num ${styles.latestBest}`}>{latestBest}</span>}
+        <span className={styles.sessionCount}>
+          <span className="num">{sessionCount}</span> {sessionCount === 1 ? 'session' : 'sessions'}
+        </span>
+      </div>
+      <span className={styles.chevron} aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m9 6 6 6-6 6" />
+        </svg>
+      </span>
+    </button>
   );
 }
 
@@ -147,57 +147,71 @@ export function ProgressList() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Progress</h1>
+        <h1 className="page-title">Progress</h1>
       </header>
 
       <StrengthStandards />
 
-      <h2 className={styles.sectionTitle}>Exercise Progress</h2>
+      <section className={styles.section} aria-label="Exercise progress">
+        <div className={styles.sectionHeader}>
+          <h2 className="section-title">Exercises</h2>
+          {exercisesWithHistory.length > 0 && (
+            <span className={styles.sectionMeta}>
+              <span className="num">{filteredExercises.length}</span> tracked
+            </span>
+          )}
+        </div>
 
-      <div className={styles.filters}>
-        <Input
-          placeholder="Search exercises..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <Select
-          value={muscleFilter}
-          onChange={(e) => setMuscleFilter(e.target.value as MuscleGroup | '')}
-          options={muscleGroups.map((mg) => ({ value: mg, label: formatMuscleGroup(mg) }))}
-          placeholder="All muscles"
-        />
-        <Select
-          value={equipmentFilter}
-          onChange={(e) => setEquipmentFilter(e.target.value)}
-          options={equipment.map((eq) => ({ value: eq, label: eq }))}
-          placeholder="All equipment"
-        />
-      </div>
-
-      {hasFilters && (
-        <button className={styles.clearFilters} onClick={clearFilters}>
-          Clear filters
-        </button>
-      )}
-
-      <div className={styles.list}>
-        {filteredExercises.map(({ exercise, sessionCount }) => (
-          <ExerciseItem
-            key={exercise.id}
-            exercise={exercise}
-            sessionCount={sessionCount}
-            latestBest={latestBestSets?.get(exercise.id)}
-            onClick={() => navigate(`/progress/${exercise.id}`)}
+        <div className={styles.filters}>
+          <Input
+            type="search"
+            placeholder="Search exercises…"
+            aria-label="Search exercises"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        ))}
-        {filteredExercises.length === 0 && (
-          <p className={styles.empty}>
-            {exercisesWithHistory.length === 0
-              ? 'Complete some workouts to see progress data.'
-              : 'No exercises match your filters.'}
-          </p>
-        )}
-      </div>
+          <div className={styles.filterRow}>
+            <Select
+              aria-label="Filter by muscle"
+              value={muscleFilter}
+              onChange={(e) => setMuscleFilter(e.target.value as MuscleGroup | '')}
+              options={muscleGroups.map((mg) => ({ value: mg, label: formatMuscleGroup(mg) }))}
+              placeholder="All muscles"
+            />
+            <Select
+              aria-label="Filter by equipment"
+              value={equipmentFilter}
+              onChange={(e) => setEquipmentFilter(e.target.value)}
+              options={equipment.map((eq) => ({ value: eq, label: formatLabel(eq) }))}
+              placeholder="All equipment"
+            />
+          </div>
+          {hasFilters && (
+            <button type="button" className={styles.clearFilters} onClick={clearFilters}>
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        <div className={styles.list}>
+          {filteredExercises.map(({ exercise, sessionCount }) => (
+            <ExerciseItem
+              key={exercise.id}
+              exercise={exercise}
+              sessionCount={sessionCount}
+              latestBest={latestBestSets?.get(exercise.id)}
+              onClick={() => navigate(`/progress/${exercise.id}`)}
+            />
+          ))}
+          {filteredExercises.length === 0 && (
+            <p className={styles.empty}>
+              {exercisesWithHistory.length === 0
+                ? 'Complete some workouts to see progress data.'
+                : 'No exercises match your filters.'}
+            </p>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

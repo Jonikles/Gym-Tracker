@@ -1,54 +1,46 @@
 import { usePRsForExercise } from '../../hooks/usePRs';
 import { formatPRType, formatPRValue } from '../../utils/pr';
+import { formatMediumDate } from '../common/format';
 import styles from './PRHistory.module.css';
 
 interface PRHistoryProps {
   exerciseId: string;
 }
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
 export function PRHistory({ exerciseId }: PRHistoryProps) {
   const allPrs = usePRsForExercise(exerciseId) ?? [];
   const prs = allPrs.filter((pr) => pr.type !== 'e1rm');
 
-  if (prs.length === 0) {
-    return (
-      <div className={styles.container}>
-        <h3 className={styles.title}>Personal Records</h3>
-        <p className={styles.empty}>No PRs yet</p>
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.container}>
-      <h3 className={styles.title}>Personal Records</h3>
-      <div className={styles.list}>
-        {prs.map((pr) => (
-          <div key={pr.id} className={`${styles.pr} ${styles[pr.type]}`}>
-            <div className={styles.prHeader}>
-              <span className={styles.prType}>{formatPRType(pr.type)}</span>
-              <span className={styles.prDate}>{formatDate(pr.achievedAt)}</span>
-            </div>
-            <div className={styles.prValue}>{formatPRValue(pr.type, pr.value)}</div>
-            {pr.previousValue !== undefined && (
-              <div className={styles.prPrevious}>
-                Previous: {formatPRValue(pr.type, pr.previousValue)}
-                <span className={styles.improvement}>
-                  (+{formatPRValue(pr.type, pr.value - pr.previousValue)})
+    <section className={styles.container} aria-label="Personal records">
+      <h2 className="section-title">Personal records</h2>
+      {prs.length === 0 ? (
+        <p className={`surface ${styles.empty}`}>No PRs yet</p>
+      ) : (
+        <ul className={`surface ${styles.list}`}>
+          {prs.map((pr) => (
+            <li key={pr.id} className={styles.pr}>
+              <div className={styles.prMain}>
+                <span className={styles.prValue}>
+                  <span className="num">{formatPRValue(pr.type, pr.value)}</span>
                 </span>
+                {pr.previousValue !== undefined && (
+                  <span className={styles.prPrevious}>
+                    was <span className="num">{formatPRValue(pr.type, pr.previousValue)}</span>
+                    <span className={styles.improvement}>
+                      +<span className="num">{formatPRValue(pr.type, pr.value - pr.previousValue)}</span>
+                    </span>
+                  </span>
+                )}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+              <div className={styles.prSide}>
+                <span className="chip chip-pr">{formatPRType(pr.type)}</span>
+                <span className={styles.prDate}>{formatMediumDate(pr.achievedAt)}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

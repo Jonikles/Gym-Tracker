@@ -51,33 +51,6 @@ export const MALE_STANDARDS: Record<string, StrengthStandard> = {
   },
 };
 
-/**
- * Female strength standards (1RM / bodyweight ratios)
- */
-export const FEMALE_STANDARDS: Record<string, StrengthStandard> = {
-  squat: {
-    beginner: 0.5,
-    novice: 0.75,
-    intermediate: 1.25,
-    advanced: 1.75,
-    elite: 2.25,
-  },
-  bench: {
-    beginner: 0.25,
-    novice: 0.5,
-    intermediate: 0.75,
-    advanced: 1.0,
-    elite: 1.5,
-  },
-  deadlift: {
-    beginner: 0.75,
-    novice: 1.0,
-    intermediate: 1.5,
-    advanced: 2.0,
-    elite: 2.5,
-  },
-};
-
 export const STRENGTH_LEVELS: StrengthLevel[] = [
   'beginner',
   'novice',
@@ -92,14 +65,6 @@ export const LEVEL_LABELS: Record<StrengthLevel, string> = {
   intermediate: 'Intermediate',
   advanced: 'Advanced',
   elite: 'Elite',
-};
-
-export const LEVEL_COLORS: Record<StrengthLevel, string> = {
-  beginner: '#6b7280',    // gray
-  novice: '#3b82f6',      // blue
-  intermediate: '#22c55e', // green
-  advanced: '#f59e0b',    // amber
-  elite: '#ef4444',       // red
 };
 
 /**
@@ -149,10 +114,4 @@ export const BIG3_LABELS: Record<Big3Lift, string> = {
   squat: 'Squat',
   bench: 'Bench Press',
   deadlift: 'Deadlift',
-};
-
-export const BIG3_EMOJI: Record<Big3Lift, string> = {
-  squat: '',
-  bench: '',
-  deadlift: '',
 };

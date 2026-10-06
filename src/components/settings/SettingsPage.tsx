@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Input, Select, Button, ConfirmDialog, Card } from '../common';
+import { Input, Select, Button, ConfirmDialog } from '../common';
 import {
   useSettings,
   updateSetting,
@@ -180,81 +180,80 @@ export function SettingsPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Settings</h1>
+        <h1 className="page-title">Settings</h1>
       </header>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Workout Defaults</h2>
-        <Card>
+      <section className={styles.section} aria-labelledby="settings-training">
+        <h2 id="settings-training" className="eyebrow">Training</h2>
+        <div className={`surface ${styles.group}`}>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Weight Increment</span>
-              <span className={styles.settingDesc}>Default weight step for progressive overload suggestions</span>
+              <span className={styles.settingLabel}>Weight increment</span>
+              <span className={styles.settingDesc}>Step for progressive overload suggestions</span>
             </div>
-            <DecimalSettingInput
-              value={settings.weightIncrement}
-              onCommit={(v) => updateSetting('weightIncrement', v)}
-              allowZero={false}
-              ariaLabel="Weight increment (kg)"
-            />
+            <div className={styles.control}>
+              <DecimalSettingInput
+                value={settings.weightIncrement}
+                onCommit={(v) => updateSetting('weightIncrement', v)}
+                allowZero={false}
+                ariaLabel="Weight increment (kg)"
+              />
+              <span className={styles.suffix}>kg</span>
+            </div>
           </div>
-        </Card>
-      </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Body</h2>
-        <Card>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Bodyweight (kg)</span>
-              <span className={styles.settingDesc}>Used for strength standards and relative strength calculations</span>
+              <span className={styles.settingLabel}>Bodyweight</span>
+              <span className={styles.settingDesc}>For strength standards and relative strength</span>
             </div>
-            <DecimalSettingInput
-              value={settings.bodyweight}
-              onCommit={(v) => updateSetting('bodyweight', v)}
-              placeholder="0"
-              ariaLabel="Bodyweight (kg)"
-            />
+            <div className={styles.control}>
+              <DecimalSettingInput
+                value={settings.bodyweight}
+                onCommit={(v) => updateSetting('bodyweight', v)}
+                placeholder="0"
+                ariaLabel="Bodyweight (kg)"
+              />
+              <span className={styles.suffix}>kg</span>
+            </div>
           </div>
-        </Card>
-      </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Display</h2>
-        <Card>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Week Start Day</span>
-              <span className={styles.settingDesc}>First day of the week for routine schedules</span>
+              <span className={styles.settingLabel}>Week starts on</span>
+              <span className={styles.settingDesc}>For routine schedules and the week strip</span>
             </div>
-            <Select
-              value={String(settings.weekStartDay)}
-              onChange={(e) => updateSetting('weekStartDay', parseInt(e.target.value, 10))}
-              options={DAYS_OF_WEEK.map((d) => ({ value: String(d.value), label: d.label }))}
-            />
+            <div className={`${styles.control} ${styles.selectControl}`}>
+              <Select
+                aria-label="Week start day"
+                value={String(settings.weekStartDay)}
+                onChange={(e) => updateSetting('weekStartDay', parseInt(e.target.value, 10))}
+                options={DAYS_OF_WEEK.map((d) => ({ value: String(d.value), label: d.label }))}
+              />
+            </div>
           </div>
-        </Card>
+        </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Data Management</h2>
-        <Card>
-          <div className={styles.dataRow}>
+      <section className={styles.section} aria-labelledby="settings-data">
+        <h2 id="settings-data" className="eyebrow">Backup</h2>
+        <div className={`surface ${styles.group}`}>
+          <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Export Data</span>
-              <span className={styles.settingDesc}>Download all data as JSON backup</span>
+              <span className={styles.settingLabel}>Export data</span>
+              <span className={styles.settingDesc}>Download everything as a JSON backup</span>
             </div>
-            <Button variant="secondary" onClick={handleExport}>
+            <Button variant="secondary" size="sm" onClick={handleExport} className={styles.rowButton}>
               Export
             </Button>
           </div>
 
-          <div className={styles.dataRow}>
+          <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Import Data</span>
-              <span className={styles.settingDesc}>Restore from JSON backup (replaces all data)</span>
+              <span className={styles.settingLabel}>Import data</span>
+              <span className={styles.settingDesc}>Restore a JSON backup (replaces all data)</span>
             </div>
-            <Button variant="secondary" onClick={handleImportClick}>
+            <Button variant="secondary" size="sm" onClick={handleImportClick} className={styles.rowButton}>
               Import
             </Button>
             <input
@@ -262,12 +261,13 @@ export function SettingsPage() {
               type="file"
               accept=".json"
               onChange={handleFileChange}
-              style={{ display: 'none' }}
+              hidden
             />
           </div>
 
           {importMessage && (
             <div
+              role="status"
               className={`${styles.message} ${
                 importMessage.type === 'success' ? styles.success : styles.error
               }`}
@@ -275,45 +275,47 @@ export function SettingsPage() {
               {importMessage.text}
             </div>
           )}
-        </Card>
+        </div>
       </section>
 
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Reset</h2>
-        <Card className={styles.dangerZone}>
-          <div className={styles.dataRow}>
+      <section className={styles.section} aria-labelledby="settings-danger">
+        <h2 id="settings-danger" className={`eyebrow ${styles.dangerTitle}`}>Danger zone</h2>
+        <div className={`surface ${styles.group} ${styles.dangerZone}`}>
+          <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Reset Settings</span>
+              <span className={styles.settingLabel}>Reset settings</span>
               <span className={styles.settingDesc}>Restore all settings to defaults</span>
             </div>
-            <Button variant="ghost" onClick={() => setConfirmAction('resetSettings')}>
+            <Button variant="danger" size="sm" onClick={() => setConfirmAction('resetSettings')} className={styles.rowButton}>
               Reset
             </Button>
           </div>
 
-          <div className={styles.dataRow}>
+          <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Clear Workout Data</span>
-              <span className={styles.settingDesc}>Delete sessions, sets, and PRs</span>
+              <span className={styles.settingLabel}>Clear workout data</span>
+              <span className={styles.settingDesc}>Delete sessions, sets and PRs</span>
             </div>
-            <Button variant="danger" onClick={() => setConfirmAction('clearData')}>
+            <Button variant="danger" size="sm" onClick={() => setConfirmAction('clearData')} className={styles.rowButton}>
               Clear
             </Button>
           </div>
 
-          <div className={styles.dataRow}>
+          <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Factory Reset</span>
+              <span className={styles.settingLabel}>Factory reset</span>
               <span className={styles.settingDesc}>Delete everything and start fresh</span>
             </div>
-            <Button variant="danger" onClick={() => setConfirmAction('factoryReset')}>
-              Reset All
+            <Button variant="danger" size="sm" onClick={() => setConfirmAction('factoryReset')} className={styles.rowButton}>
+              Reset all
             </Button>
           </div>
-        </Card>
+        </div>
       </section>
 
-      <p className={styles.version}>v{__APP_VERSION__}</p>
+      <p className={styles.version}>
+        Gym Tracker <span className="num">v{__APP_VERSION__}</span>
+      </p>
 
       <ConfirmDialog
         isOpen={!!confirmAction}

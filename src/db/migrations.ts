@@ -5,7 +5,7 @@
  * This file contains upgrade logic for data migrations when schema changes,
  * plus the app's single startup entry point, initializeDatabase().
  *
- * Current schema version: 8
+ * Current schema version: SCHEMA_VERSION in db/index.ts
  *
  * Migration history:
  * - v1: Initial schema with exercises, routines, sessions, sessionExercises, sets, prs, settings
@@ -13,9 +13,9 @@
  * - v3: Templates now define individual sets (TemplateSet[]), removed theme setting
  * - v4: Added progressionMemberships to exercises (Overcoming Gravity progressions)
  * - v5: Added progressionId index to sessionExercises (progression slots in templates)
- * - v6: Added body measurements table
+ * - v6: Added body measurements table (dropped again in v8)
  * - v7: Removed archive feature (isArchived) from exercises, templates, routines
- * - v8: Added setId index to prs (PR lookup/cleanup by set)
+ * - v8: Added setId index to prs (PR lookup/cleanup by set), dropped measurements table
  */
 
 import { db } from './index';
@@ -28,7 +28,7 @@ import { autoSkipMissedWorkouts } from '../utils/autoSkip';
  * Run any necessary migrations
  * Called on app startup (via initializeDatabase) before rendering
  */
-export async function runMigrations(): Promise<void> {
+async function runMigrations(): Promise<void> {
   // Ensure database is open
   await db.open();
 
@@ -486,7 +486,7 @@ async function addNewPresetExercises(): Promise<void> {
  * Check if this is a fresh install (no data)
  * Opens the DB if not already open.
  */
-export async function isFreshInstall(): Promise<boolean> {
+async function isFreshInstall(): Promise<boolean> {
   await db.open();
   const exerciseCount = await db.exercises.count();
   return exerciseCount === 0;

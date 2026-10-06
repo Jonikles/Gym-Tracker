@@ -558,14 +558,6 @@ function getNameIndex() {
 }
 
 /** True if the concrete exercise name belongs to some family. Case-insensitive. */
-export function isFamilyExerciseName(name: string): boolean {
-  return getNameIndex().has(name.toLowerCase());
-}
-
-export function getFamilyById(id: string): ExerciseFamily | undefined {
-  return EXERCISE_FAMILIES.find((f) => f.id === id);
-}
-
 /** Find the family (and the params) a concrete exercise belongs to. Case-insensitive. */
 export function findFamilyForExerciseName(
   name: string,

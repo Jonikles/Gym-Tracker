@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import type { Session, SessionExercise, Set, Template, TemplateExercise } from '../types';
+import type { Session, SessionExercise, Set, Template } from '../types';
 import { advanceRollingPosition } from './useRoutines';
 import { detectAndSaveExercisePRs } from '../utils/pr';
 import { detectAndSaveProgressionAdvancements } from '../utils/progression';
@@ -106,66 +106,16 @@ export function useActiveSession() {
 }
 
 /**
- * Get the last session that included a specific exercise
+ * Copy a template's exercises into a session as session exercises, with sets
+ * pre-created from the template set definitions. Progression slots resolve to
+ * the last-used level. New exercises are ordered after `startOrder`.
  */
-export async function getLastSessionForExercise(
-  exerciseId: string
-): Promise<{ session: Session; sessionExercise: SessionExercise } | undefined> {
-  // Find all session exercises for this exercise
-  const sessionExercises = await db.sessionExercises
-    .where('exerciseId')
-    .equals(exerciseId)
-    .toArray();
-
-  if (sessionExercises.length === 0) return undefined;
-
-  // Get the sessions and find the most recent completed one
-  const sessionIds = [...new Set(sessionExercises.map((se) => se.sessionId))];
-  const sessions = await db.sessions.bulkGet(sessionIds);
-
-  const completedSessions = sessions
-    .filter((s): s is Session => s != null && s.completedAt != null)
-    .sort((a, b) => b.startedAt - a.startedAt);
-
-  if (completedSessions.length === 0) return undefined;
-
-  const lastSession = completedSessions[0];
-  const lastSessionExercise = sessionExercises.find(
-    (se) => se.sessionId === lastSession.id
-  );
-
-  return lastSessionExercise
-    ? { session: lastSession, sessionExercise: lastSessionExercise }
-    : undefined;
-}
-
-/**
- * Start a new session from a template
- * v1.2: Pre-creates sets from template definition
- */
-export async function startSessionFromTemplate(
-  templateId: string,
-  routineId?: string
-): Promise<string> {
-  const template = await db.templates.get(templateId);
-  if (!template) throw new Error('Template not found');
-
-  const now = Date.now();
-  const sessionId = crypto.randomUUID();
-
-  // Create the session
-  const session: Session = {
-    id: sessionId,
-    templateId,
-    routineId,
-    startedAt: now,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await db.sessions.add(session);
-
-  // Copy template exercises to session exercises and pre-create sets
+async function copyTemplateExercisesIntoSession(
+  sessionId: string,
+  template: Template,
+  startOrder: number,
+  now: number
+): Promise<void> {
   const sessionExercises: SessionExercise[] = [];
   const setsToCreate: Set[] = [];
 
@@ -184,13 +134,12 @@ export async function startSessionFromTemplate(
       }
     }
 
-    // Create session exercise
     sessionExercises.push({
       id: sessionExerciseId,
       sessionId,
       exerciseId: resolvedExerciseId,
       progressionId: te.progressionId,
-      order: i + 1,
+      order: startOrder + i + 1,
       groupId: te.groupId,
       groupType: te.groupType,
       groupOrder: te.groupOrder,
@@ -218,48 +167,35 @@ export async function startSessionFromTemplate(
 
   await db.sessionExercises.bulkAdd(sessionExercises);
   await db.sets.bulkAdd(setsToCreate);
-
-  return sessionId;
 }
 
 /**
- * Start a new session from a routine (uses today's scheduled template)
+ * Start a new session from a template, pre-creating sets from its definition
  */
-export async function startSessionFromRoutine(routineId: string): Promise<string> {
-  const routine = await db.routines.get(routineId);
-  if (!routine) throw new Error('Routine not found');
+export async function startSessionFromTemplate(
+  templateId: string,
+  routineId?: string
+): Promise<string> {
+  const template = await db.templates.get(templateId);
+  if (!template) throw new Error('Template not found');
 
-  let templateId: string | undefined;
+  const now = Date.now();
+  const sessionId = crypto.randomUUID();
 
-  if (routine.type === 'fixed') {
-    // Find today's template
-    const dayOfWeek = new Date().getDay();
-    const todaySchedule = routine.schedule.find((s) => s.dayIndex === dayOfWeek);
-    templateId = todaySchedule?.templateId;
-  } else {
-    // Rolling: use current position
-    const currentPos = routine.currentPosition ?? 0;
-    templateId = routine.schedule[currentPos]?.templateId;
-  }
+  // Create the session
+  const session: Session = {
+    id: sessionId,
+    templateId,
+    routineId,
+    startedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
 
-  if (!templateId) {
-    // No template scheduled - start blank session with routine reference
-    const now = Date.now();
-    const sessionId = crypto.randomUUID();
+  await db.sessions.add(session);
+  await copyTemplateExercisesIntoSession(sessionId, template, 0, now);
 
-    const session: Session = {
-      id: sessionId,
-      routineId,
-      startedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.sessions.add(session);
-    return sessionId;
-  }
-
-  return startSessionFromTemplate(templateId, routineId);
+  return sessionId;
 }
 
 /**
@@ -282,8 +218,6 @@ export async function startBlankSession(): Promise<string> {
 
 /**
  * Complete a session
- * v1.4: Added status field
- * v1.5: PRs are now detected and saved on completion (not during logging)
  */
 export async function completeSession(sessionId: string): Promise<void> {
   // One readwrite transaction for PR detection + status update + rolling advance,
@@ -403,7 +337,6 @@ async function markRoutineDay(
 
 /**
  * Mark a workout day as skipped
- * v1.4: Creates a minimal session with skipped status
  */
 export async function skipWorkout(
   routineId: string,
@@ -414,7 +347,6 @@ export async function skipWorkout(
 
 /**
  * Mark a workout day as sick
- * v1.4: Creates a minimal session with sick status
  */
 export async function markSick(
   routineId: string,
@@ -563,42 +495,6 @@ export async function groupSessionExercises(
 }
 
 /**
- * Remove an exercise from its group (ungroup single exercise)
- */
-export async function ungroupSessionExercise(
-  sessionExerciseId: string
-): Promise<void> {
-  const se = await db.sessionExercises.get(sessionExerciseId);
-  if (!se?.groupId) return;
-
-  const groupId = se.groupId;
-
-  // Remove this exercise from group
-  await db.sessionExercises.update(sessionExerciseId, {
-    groupId: undefined,
-    groupType: undefined,
-    groupOrder: undefined,
-  });
-
-  // Check remaining group members — if only 1 left, dissolve the group
-  const remaining = await db.sessionExercises
-    .where('sessionId')
-    .equals(se.sessionId)
-    .filter((e) => e.groupId === groupId && e.id !== sessionExerciseId)
-    .toArray();
-
-  if (remaining.length <= 1) {
-    for (const r of remaining) {
-      await db.sessionExercises.update(r.id, {
-        groupId: undefined,
-        groupType: undefined,
-        groupOrder: undefined,
-      });
-    }
-  }
-}
-
-/**
  * Dissolve an entire group back to individual exercises
  */
 export async function ungroupAllSessionExercises(
@@ -679,38 +575,7 @@ export async function updateSessionExerciseNotes(
 }
 
 /**
- * Get template exercise details for a session
- */
-export async function getTemplateForSession(
-  sessionId: string
-): Promise<Template | undefined> {
-  const session = await db.sessions.get(sessionId);
-  if (!session?.templateId) return undefined;
-  return db.templates.get(session.templateId);
-}
-
-/**
- * Get template exercise config for a specific exercise in a session.
- * For progression slots, matches by progressionId first.
- */
-export async function getTemplateExerciseConfig(
-  sessionId: string,
-  exerciseId: string,
-  progressionId?: string
-): Promise<TemplateExercise | undefined> {
-  const template = await getTemplateForSession(sessionId);
-  if (!template) return undefined;
-
-  // For progression slots, match by progressionId
-  if (progressionId) {
-    return template.exercises.find((e) => e.progressionId === progressionId);
-  }
-  return template.exercises.find((e) => e.exerciseId === exerciseId);
-}
-
-/**
- * Import a template into an existing session
- * v1.4: For blank workouts that want to use a template
+ * Import a template into an existing session (e.g. a blank workout)
  */
 export async function importTemplateIntoSession(
   sessionId: string,
@@ -735,59 +600,7 @@ export async function importTemplateIntoSession(
     .where('sessionId')
     .equals(sessionId)
     .toArray();
-  const startOrder = existingExercises.length;
-
-  // Copy template exercises to session exercises and pre-create sets
-  const sessionExercises: SessionExercise[] = [];
-  const setsToCreate: Set[] = [];
-
-  const sortedExercises = [...template.exercises].sort((a, b) => a.order - b.order);
-
-  for (let i = 0; i < sortedExercises.length; i++) {
-    const te = sortedExercises[i];
-    const sessionExerciseId = crypto.randomUUID();
-
-    // Resolve exerciseId for progression slots
-    let resolvedExerciseId = te.exerciseId;
-    if (te.progressionId) {
-      const lastUsed = await getLastUsedExerciseForProgression(te.progressionId);
-      if (lastUsed) {
-        resolvedExerciseId = lastUsed.id;
-      }
-    }
-
-    sessionExercises.push({
-      id: sessionExerciseId,
-      sessionId,
-      exerciseId: resolvedExerciseId,
-      progressionId: te.progressionId,
-      order: startOrder + i + 1,
-      groupId: te.groupId,
-      groupType: te.groupType,
-      groupOrder: te.groupOrder,
-      notes: te.notes,
-      createdAt: now,
-    });
-
-    const sortedSets = [...te.sets].sort((a, b) => a.order - b.order);
-    for (let j = 0; j < sortedSets.length; j++) {
-      const ts = sortedSets[j];
-      setsToCreate.push({
-        id: crypto.randomUUID(),
-        sessionExerciseId,
-        order: j + 1,
-        weight: te.weight,
-        reps: undefined,
-        targetReps: te.targetReps,
-        isWarmup: ts.isWarmup,
-        intensityTechnique: ts.intensityTechnique,
-        createdAt: now,
-      });
-    }
-  }
-
-  await db.sessionExercises.bulkAdd(sessionExercises);
-  await db.sets.bulkAdd(setsToCreate);
+  await copyTemplateExercisesIntoSession(sessionId, template, existingExercises.length, now);
 }
 
 /**
@@ -876,7 +689,6 @@ export async function repeatSession(sourceSessionId: string): Promise<string> {
 
 /**
  * Get today's session for a routine (if any)
- * v1.4: Check if there's already a workout logged for today
  */
 export function useTodaysSession(routineId: string | null | undefined) {
   // Re-runs at local midnight / on app resume so "today" never goes stale

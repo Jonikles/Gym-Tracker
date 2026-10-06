@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 
 /**
  * Drop-in replacement for useState that persists to sessionStorage.
@@ -25,25 +25,23 @@ export function usePersistedState<T>(
     return defaultValue;
   });
 
-  // Keep a ref so the setter closure always has the latest value
-  const stateRef = useRef(state);
-  stateRef.current = state;
-
   const setState = useCallback(
     (value: T | ((prev: T) => T)) => {
-      const newValue =
-        typeof value === 'function'
-          ? (value as (prev: T) => T)(stateRef.current)
-          : value;
+      // Resolve against the latest state inside the updater; persisting there is
+      // idempotent, so a StrictMode double-invoke is harmless.
+      setStateRaw((prev) => {
+        const newValue =
+          typeof value === 'function'
+            ? (value as (prev: T) => T)(prev)
+            : value;
 
-      stateRef.current = newValue;
-      setStateRaw(newValue);
-
-      try {
-        sessionStorage.setItem(key, JSON.stringify(newValue));
-      } catch {
-        // Storage full or unavailable — state still works in memory
-      }
+        try {
+          sessionStorage.setItem(key, JSON.stringify(newValue));
+        } catch {
+          // Storage full or unavailable — state still works in memory
+        }
+        return newValue;
+      });
     },
     [key]
   );

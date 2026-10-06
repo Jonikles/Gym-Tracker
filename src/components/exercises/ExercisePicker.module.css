@@ -1,32 +1,35 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   min-height: 0;
   flex: 1;
 }
 
-/* ── Tab bar ── */
+/* ── Tab bar (segmented control) ── */
 .tabs {
   display: flex;
   gap: 2px;
-  background: var(--color-bg-tertiary);
-  border-radius: var(--radius-md);
   padding: 3px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
 }
 
 .tab {
   flex: 1;
-  padding: var(--space-xs) var(--space-sm);
+  min-height: 34px;
+  padding: 0 var(--space-sm);
   border: none;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: 7px;
   background: transparent;
   color: var(--color-text-muted);
+  font-family: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
   white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .tab:hover {
@@ -34,9 +37,9 @@
 }
 
 .tabActive {
-  background: var(--color-bg-secondary);
+  background: var(--color-surface-3);
   color: var(--color-text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm), var(--highlight-top);
 }
 
 /* ── Filters ── */
@@ -52,79 +55,100 @@
   gap: var(--space-sm);
 }
 
+.filterRow > * {
+  min-width: 0;
+}
+
+.filterRow select {
+  min-height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  text-overflow: ellipsis;
+}
+
 /* ── Exercise list ── */
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 6px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
   min-height: 0;
-  padding-right: var(--space-xs);
+  margin-top: var(--space-xs);
 }
 
-.exerciseRow {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-xs);
-  position: relative;
+/* Rows sit on the sheet (surface-1), so they're one step up */
+.list .rowCard {
+  flex-shrink: 0;
+  background: var(--color-surface-2);
+  box-shadow: var(--highlight-top);
 }
 
-.exerciseRow > *:nth-child(2) {
-  flex: 1;
-  min-width: 0;
+.list .rowCard:active {
+  background: var(--color-surface-3);
 }
 
-.exerciseRowDisabled {
-  opacity: 0.4;
-  pointer-events: none;
-  position: relative;
+.rowCardDisabled {
+  opacity: 0.5;
 }
 
-.exerciseRowDisabled .favBtn {
-  pointer-events: auto;
-  opacity: 1;
-}
-
-.addedLabel {
-  position: absolute;
-  right: var(--space-sm);
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  background: var(--color-bg-tertiary);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm, 4px);
-  pointer-events: none;
-}
-
-/* ── Favorite button ── */
+/* ── Favorite button (in the row header) ── */
 .favBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
   flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  margin: -8px -4px -8px 0;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
   background: none;
   border: none;
+  border-radius: var(--radius-full);
   color: var(--color-text-muted);
-  font-size: 18px;
+  opacity: 0.55;
   cursor: pointer;
-  padding: 0;
-  transition: all 0.15s ease;
-  opacity: 0.5;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
 }
 
 .favBtn:hover {
   opacity: 1;
-  transform: scale(1.2);
 }
 
 .favActive {
-  color: #eab308;
+  color: var(--color-pr);
   opacity: 1;
+}
+
+/* Family rows: star is only an indicator (favorites are per variant) */
+.favIndicator {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--color-pr);
+}
+
+.familyChevron {
+  flex-shrink: 0;
+  width: 20px;
+  margin-right: 2px;
+  font-size: 1.25rem;
+  line-height: 1;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.variationChip {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-full);
+  color: var(--color-accent);
 }
 
 /* ── Empty state ── */
@@ -138,12 +162,12 @@
 .footer {
   display: flex;
   justify-content: flex-end;
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--color-border);
+  gap: var(--space-sm);
+  padding-top: var(--space-sm);
 }
 
-.footer {
-  gap: var(--space-sm);
+.footer > button {
+  min-width: 96px;
 }
 
 .sentinel {
@@ -151,66 +175,26 @@
   flex-shrink: 0;
 }
 
-/* Family rows: star column is just an indicator (favorites are per variant) */
-.favIndicator {
-  font-size: 14px;
-  cursor: default;
-}
-
-.favIndicator:hover {
-  transform: none;
-}
-
-.familyHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-xs);
-}
-
-.familyName {
-  font-size: var(--text-base);
-  font-weight: 600;
-  margin: 0;
-  min-width: 0;
-}
-
-.variationCount {
-  flex-shrink: 0;
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.muscleRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.muscleTag {
-  font-size: var(--text-xs);
-  padding: 1px 6px;
-  background-color: var(--color-bg-tertiary);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-}
-
 /* ── Parameter step ── */
 .stepHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
+  min-width: 0;
 }
 
 .backBtn {
-  min-height: 44px;
-  padding: 0 var(--space-sm);
-  margin-left: calc(-1 * var(--space-sm));
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 var(--space-sm) 0 4px;
+  margin-left: -6px;
   background: none;
   border: none;
-  color: var(--color-text-muted);
+  border-radius: var(--radius-md);
+  color: var(--color-accent);
   font-family: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
@@ -218,44 +202,56 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.backBtn:hover {
-  color: var(--color-text);
+.backBtn:hover,
+.backBtn:active {
+  background: var(--overlay-hover);
 }
 
 .stepTitle {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  margin: 0;
+  flex: 1;
   min-width: 0;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stepBody {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
   min-height: 0;
+  padding: var(--space-xs) 0 var(--space-sm);
 }
 
 .resolved {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  gap: 4px;
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  background: var(--gradient-card);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--highlight-top);
 }
 
 .resolvedName {
-  font-size: var(--text-base);
-  font-weight: 600;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   color: var(--color-text);
 }
 
-.alreadyAdded {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-warning, var(--color-text-muted));
+.resolvedMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
 }

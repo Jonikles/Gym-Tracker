@@ -1,9 +1,5 @@
 import { useEffect, useState } from 'react';
-
-/** Start of the current local day (midnight) as a timestamp */
-export function getStartOfToday(now: Date = new Date()): number {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-}
+import { startOfLocalDay, startOfNextLocalDay } from '../utils/session';
 
 /**
  * Returns the start-of-today timestamp (local midnight) and re-renders when the
@@ -14,18 +10,17 @@ export function getStartOfToday(now: Date = new Date()): number {
  * they don't go stale when the app stays open past midnight.
  */
 export function useToday(): number {
-  const [today, setToday] = useState(() => getStartOfToday());
+  const [today, setToday] = useState(() => startOfLocalDay(Date.now()));
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const refresh = () => {
-      const now = new Date();
-      setToday(getStartOfToday(now));
+      const now = Date.now();
+      setToday(startOfLocalDay(now));
       if (timer) clearTimeout(timer);
-      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
       // +1s margin so we land safely after midnight
-      timer = setTimeout(refresh, nextMidnight - now.getTime() + 1000);
+      timer = setTimeout(refresh, startOfNextLocalDay(now) - now + 1000);
     };
 
     const onVisibility = () => {

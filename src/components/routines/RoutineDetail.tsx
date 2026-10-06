@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
+import { MoreMenu, MoreMenuItem } from '../history/MoreMenu';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, Modal, ConfirmDialog, Select, SkeletonList } from '../common';
@@ -45,10 +46,20 @@ function ScheduleDayRow({
   const currentTemplate = templates.find((t) => t.id === day.templateId);
 
   return (
-    <div className={styles.scheduleRow}>
-      <div className={styles.dayLabel}>
-        {isFixed ? DAY_NAMES[day.dayIndex] : `Day ${day.dayIndex + 1}`}
-        {day.label && <span className={styles.daySubLabel}>({day.label})</span>}
+    <div className={`${styles.scheduleRow} ${day.templateId ? styles.workoutRow : styles.restRow}`}>
+      <div className={styles.dayHead}>
+        <div className={styles.dayLabel}>
+          {isFixed ? DAY_NAMES[day.dayIndex] : `Day ${day.dayIndex + 1}`}
+          {day.label && <span className={styles.daySubLabel}>({day.label})</span>}
+        </div>
+        {currentTemplate ? (
+          <span className={`num ${styles.templatePreview}`}>
+            {currentTemplate.exercises.length} ex ·{' '}
+            {currentTemplate.exercises.reduce((sum, e) => sum + e.sets.length, 0)} sets
+          </span>
+        ) : (
+          <span className={styles.restTag}>Rest</span>
+        )}
       </div>
       <div className={styles.dayControls}>
         <Select
@@ -72,12 +83,6 @@ function ScheduleDayRow({
           </Button>
         )}
       </div>
-      {currentTemplate && (
-        <div className={styles.templatePreview}>
-          {currentTemplate.exercises.length} exercises,{' '}
-          {currentTemplate.exercises.reduce((sum, e) => sum + e.sets.length, 0)} sets
-        </div>
-      )}
     </div>
   );
 }
@@ -100,21 +105,22 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const [showSetActiveConfirm, setShowSetActiveConfirm] = useState(false);
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   const [activeTab, setActiveTab] = useState<'schedule' | 'calendar'>('schedule');
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Local schedule state for editing
   const [localSchedule, setLocalSchedule] = useState<RoutineDay[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize local schedule when routine loads
-  useEffect(() => {
+  // Initialize local schedule when a (different) routine loads — adjusted during
+  // render instead of in an effect
+  const [syncedRoutineId, setSyncedRoutineId] = useState<string | undefined>(undefined);
+  if (routine?.id !== syncedRoutineId) {
+    setSyncedRoutineId(routine?.id);
     if (routine) {
       setLocalSchedule(routine.schedule);
       setHasChanges(false);
     }
-  }, [routine?.id]);
+  }
 
   // Block navigation when there are unsaved changes
   const { allowNextNavigation, dialog: unsavedChangesDialog } = useUnsavedChangesBlocker(
@@ -124,18 +130,6 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
       onDiscard: () => setHasChanges(false),
     }
   );
-
-  // Close "more" menu on outside click
-  useEffect(() => {
-    if (!showMoreMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showMoreMenu]);
 
   if (routine === undefined) {
     return (
@@ -257,70 +251,63 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
 
   return (
     <div className={styles.container}>
-        <header className={styles.header}>
-            <div className={styles.headerTop}>
-                <Button variant="ghost" size="sm" onClick={handleBack}>
-                    ← Back
-                </Button>
-                <div className={styles.headerActions}>
-                    {hasChanges && (
-                    <Button size="sm" onClick={handleSaveSchedule}>
-                        Save
-                    </Button>
-                    )}
-                    {!isActive && (
-                    <Button size="sm" onClick={() => setShowSetActiveConfirm(true)}>
-                        Set as Active
-                    </Button>
-                    )}
-                    <div className={styles.moreMenuWrapper} ref={moreMenuRef}>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowMoreMenu(!showMoreMenu)}
-                            title="More options"
-                            aria-label="More options"
-                            className={styles.moreBtn}
-                        >
-                            ⋮
-                        </Button>
-                        {showMoreMenu && (
-                            <div className={styles.moreMenuDropdown}>
-                                <button
-                                    className={styles.moreMenuOption}
-                                    onClick={() => { setIsEditModalOpen(true); setShowMoreMenu(false); }}
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    className={styles.moreMenuOption}
-                                    onClick={() => { handleDuplicate(); setShowMoreMenu(false); }}
-                                >
-                                    Duplicate
-                                </button>
-                                <button
-                                    className={`${styles.moreMenuOption} ${styles.moreMenuDanger}`}
-                                    onClick={() => { setShowDeleteConfirm(true); setShowMoreMenu(false); }}
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-            <div className={styles.titleBlock}>
-                <div className={styles.titleRow}>
-                    <h1 className={styles.title}>{routine.name}</h1>
-                    {isActive && <span className={styles.activeBadge}>Active</span>}
-                </div>
-                <div className={styles.meta}>
-                    <span>{routine.type === 'fixed' ? 'Weekly' : 'Rolling'}</span>
-                    <span>•</span>
-                    <span>{activeDays.length} workouts</span>
-                </div>
-            </div>
-        </header>
+      <header className={styles.header}>
+        <div className={styles.headerTop}>
+          <Button variant="ghost" onClick={handleBack} className={styles.backBtn}>
+            ← Back
+          </Button>
+          <div className={styles.headerActions}>
+            {hasChanges && (
+              <Button size="sm" onClick={handleSaveSchedule} className={styles.headerBtn}>
+                Save
+              </Button>
+            )}
+            {!isActive && (
+              <Button
+                size="sm"
+                variant={hasChanges ? 'secondary' : 'primary'}
+                onClick={() => setShowSetActiveConfirm(true)}
+                className={styles.headerBtn}
+              >
+                Set as Active
+              </Button>
+            )}
+            <MoreMenu>
+              {(close) => (
+                <>
+                  <MoreMenuItem onClick={() => { setIsEditModalOpen(true); close(); }}>
+                    Edit
+                  </MoreMenuItem>
+                  <MoreMenuItem onClick={() => { handleDuplicate(); close(); }}>
+                    Duplicate
+                  </MoreMenuItem>
+                  <MoreMenuItem danger onClick={() => { setShowDeleteConfirm(true); close(); }}>
+                    Delete
+                  </MoreMenuItem>
+                </>
+              )}
+            </MoreMenu>
+          </div>
+        </div>
+        <div className={styles.titleBlock}>
+          <span className="eyebrow">
+            {routine.type === 'fixed' ? 'Weekly routine' : 'Rolling routine'}
+          </span>
+          <div className={styles.titleRow}>
+            <h1 className={`page-title ${styles.title}`}>{routine.name}</h1>
+            {isActive && <span className="chip chip-accent">Active</span>}
+          </div>
+          <div className={styles.meta}>
+            <span className={`num ${styles.metaValue}`}>{activeDays.length}</span> workouts
+            {localSchedule.length - activeDays.length > 0 && (
+              <>
+                {' · '}
+                <span className={`num ${styles.metaValue}`}>{localSchedule.length - activeDays.length}</span> rest
+              </>
+            )}
+          </div>
+        </div>
+      </header>
 
       {actionError && (
         <p className={styles.actionError} role="alert">
@@ -329,14 +316,20 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
       )}
 
       {/* Tab Navigation */}
-      <div className={styles.tabs}>
+      <div className={styles.tabs} role="tablist">
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'schedule'}
           className={`${styles.tab} ${activeTab === 'schedule' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('schedule')}
         >
           Schedule
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'calendar'}
           className={`${styles.tab} ${activeTab === 'calendar' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('calendar')}
         >
@@ -346,14 +339,14 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
 
       {activeTab === 'schedule' && (
         <section className={styles.scheduleSection}>
-          <div className={styles.scheduleHeader}>
-            <h2>Schedule</h2>
-            {routine.type === 'rolling' && (
-              <Button size="sm" onClick={handleAddDay}>
-                Add Day
+          {routine.type === 'rolling' && (
+            <div className={styles.scheduleHeader}>
+              <h2 className="section-title">Rotation</h2>
+              <Button size="sm" variant="secondary" onClick={handleAddDay}>
+                + Add Day
               </Button>
-            )}
-          </div>
+            </div>
+          )}
           <div className={styles.scheduleList}>
             {sortedSchedule.map((day) => (
               <ScheduleDayRow

@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Set, IntensityTechnique, TechniqueData } from '../types';
+import { findLatestCompletedSessionExercise } from '../utils/session';
 
 /**
  * Input for creating a new set
@@ -84,25 +85,7 @@ export async function getPreviousSets(exerciseId: string): Promise<Set[]> {
     .equals(exerciseId)
     .toArray();
 
-  if (sessionExercises.length === 0) return [];
-
-  // Get the sessions
-  const sessionIds = [...new Set(sessionExercises.map((se) => se.sessionId))];
-  const sessions = await db.sessions.bulkGet(sessionIds);
-
-  // Filter to completed sessions and sort by date
-  const completedSessions = sessions
-    .filter((s) => s && s.completedAt != null)
-    .sort((a, b) => b!.startedAt - a!.startedAt);
-
-  if (completedSessions.length === 0) return [];
-
-  // Get the session exercise from the most recent completed session
-  const lastSession = completedSessions[0]!;
-  const lastSessionExercise = sessionExercises.find(
-    (se) => se.sessionId === lastSession.id
-  );
-
+  const lastSessionExercise = await findLatestCompletedSessionExercise(sessionExercises);
   if (!lastSessionExercise) return [];
 
   // Get sets for that session exercise

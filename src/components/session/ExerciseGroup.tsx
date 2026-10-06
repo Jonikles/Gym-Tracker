@@ -35,7 +35,7 @@ export const ExerciseGroup = memo(function ExerciseGroup({
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <div className={styles.label}>
+        <div className={`chip chip-accent ${styles.label}`}>
           {groupType === 'superset' ? 'Superset' : 'Circuit'}
         </div>
         {onUngroup && (

@@ -8,9 +8,9 @@ import { ExerciseGroup } from './ExerciseGroup';
 import { PlateCalculator } from './PlateCalculator';
 import { flushPendingSaves } from './pendingSaves';
 import { groupSetsBySessionExercise, setHasEmptyRequiredField } from './setValidation';
-import { formatElapsed, formatTime } from '../history/format';
-import { useSessionContext } from '../../context/SessionContext';
-import { useUndo } from '../../context/UndoContext';
+import { formatElapsed, formatTime } from '../common/format';
+import { useSessionContext } from '../../context/useSessionContext';
+import { useUndo } from '../../context/useUndo';
 import { useExercise } from '../../hooks/useExercises';
 import { useRoutine } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
@@ -363,7 +363,7 @@ export function ActiveSession() {
         </div>
         <div className={styles.headerActions}>
           <Button
-            variant="secondary"
+            variant="ghost"
             onClick={() => setShowAbandonConfirm(true)}
             disabled={actionsDisabled}
             className={styles.headerBtn}
@@ -374,7 +374,7 @@ export function ActiveSession() {
             onClick={handleCompleteClick}
             disabled={actionsDisabled}
             aria-busy={isValidating}
-            className={styles.headerBtn}
+            className={`${styles.headerBtn} ${styles.completeBtn}`}
           >
             Complete
           </Button>

@@ -1,377 +1,346 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-sm);
+  padding-top: var(--space-xs);
 }
 
 .header h1 {
   margin: 0;
+  min-width: 0;
 }
 
-/* Filters container */
+.header > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Search + toolbar ── */
 .filters {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
 }
 
-/* Search + Sort row */
-.searchRow {
-  display: flex;
-  gap: var(--space-sm);
-  align-items: flex-end;
-}
-
-.searchRow > *:first-child {
-  flex: 1;
-}
-
-.searchRow > *:last-child {
-  width: 180px;
-  flex-shrink: 0;
-}
-
-/* Dropdown filters row */
-.filterRow {
-  display: flex;
-  gap: var(--space-sm);
-  align-items: flex-end;
-}
-
-.filterRow > * {
-  flex: 1;
-  min-width: 0;
-}
-
-.filterRow > button {
-  flex: 0 0 auto;
-}
-
-@media (max-width: 768px) {
-  .searchRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .searchRow > *:last-child {
-    width: 100%;
-  }
-
-  .filterRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-/* Collapsible chip filter sections (Muscles, Levels) */
-.chipFilterSection {
-  display: flex;
-  flex-direction: column;
-}
-
-.chipFilterToggle {
+.toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
+  gap: 6px;
+}
+
+.toolChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
   font-family: inherit;
-  transition: all var(--transition-fast);
-}
-
-.chipFilterToggle:hover {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-border-focus);
-}
-
-.chipFilterLabel {
   font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--color-text-secondary);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--highlight-top);
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 
-.chevron {
+.toolChip:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.toolChipOn {
+  color: var(--color-accent);
+  border-color: var(--color-accent-muted);
+  background: var(--color-accent-soft);
+}
+
+.toolChipOn:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.toolChipFav,
+.toolChipFav:hover {
+  color: var(--color-pr);
+  border-color: rgba(251, 191, 36, 0.35);
+  background: var(--color-pr-soft);
+}
+
+.toolBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.toolChevron {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
-.chipFilterDropdown {
+.count {
+  margin-left: auto;
+  padding-right: 2px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+/* ── Filters panel ── */
+.panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-md);
-  margin-top: -1px;
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-top: none;
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
-/* Match mode (ANY / ALL) */
+.selectGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.selectGrid > * {
+  min-width: 0;
+}
+
+.selectGrid label {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.selectGrid select {
+  min-height: 40px;
+  padding-top: 0;
+  padding-bottom: 0;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 769px) {
+  .selectGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.disclosure {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
+}
+
+.disclosureToggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  font-family: inherit;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.disclosureLabel {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.levelSummary {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.disclosureBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: 0 var(--space-sm) var(--space-sm);
+}
+
+/* Match mode (Any / All) segmented control */
 .filterModeRow {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-xs);
 }
 
 .filterModeLabel {
   font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--color-text-muted);
 }
 
-.filterModeToggle {
-  display: flex;
-  border: 1px solid var(--color-border);
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--color-bg);
   border-radius: var(--radius-sm);
-  overflow: hidden;
 }
 
-.modeButton {
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--text-xs);
-  font-weight: 500;
+.segment {
+  min-height: 28px;
+  padding: 0 12px;
   font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 650;
   border: none;
-  background: var(--color-bg);
+  border-radius: 4px;
+  background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
-.modeButton:not(:last-child) {
-  border-right: 1px solid var(--color-border);
+.segmentActive {
+  background: var(--color-surface-3);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
 }
 
-.modeButton:hover {
-  background: var(--color-bg-secondary);
-}
-
-.modeActive {
-  background: var(--color-accent);
-  color: var(--color-bg);
-}
-
-.modeActive:hover {
-  background: var(--color-accent);
-}
-
-/* Muscle chips */
-.muscleChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-}
-
-.muscleChip {
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--text-xs);
-  font-family: inherit;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  background: var(--color-bg);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.muscleChip:hover {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-text-muted);
-}
-
-.muscleChipActive {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-bg);
-}
-
-.muscleChipActive:hover {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-}
-
-/* Level chips */
+/* Muscle / level chips */
+.chipWrap,
 .levelChips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  gap: 6px;
+}
+
+.filterChip {
+  min-height: 32px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-3);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.filterChip:hover {
+  color: var(--color-text);
+}
+
+.filterChipActive,
+.filterChipActive:hover {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .levelChip {
   width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 36px;
+  padding: 0;
   font-size: var(--text-sm);
-  font-weight: 500;
-  font-family: inherit;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  background: var(--color-bg);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.levelChip:hover {
-  background: var(--color-bg-tertiary);
-  border-color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .clearChipsBtn {
   align-self: flex-start;
-  padding: var(--space-xs) 0;
-  font-size: var(--text-sm);
+  min-height: 32px;
+  padding: 0 var(--space-xs);
   font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--color-text-muted);
   background: none;
   border: none;
   cursor: pointer;
-  text-decoration: underline;
 }
 
 .clearChipsBtn:hover {
   color: var(--color-text);
 }
 
-/* Toggle row (Show archived + count) */
-.toggleRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-sm);
+.clearAll {
+  align-self: flex-start;
 }
 
-.favFilterBtn {
-  padding: var(--space-xs) var(--space-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: inherit;
-}
-
-.favFilterBtn:hover {
-  color: var(--color-text);
-  border-color: var(--color-text-muted);
-}
-
-.favFilterActive {
-  color: #eab308;
-  border-color: #eab308;
-  background: rgba(234, 179, 8, 0.1);
-}
-
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.toggleInput {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-accent);
-  cursor: pointer;
-}
-
-.count {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-/* Exercise list */
+/* ── Exercise list ── */
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 6px;
 }
 
 .empty {
   text-align: center;
   color: var(--color-text-muted);
-  padding: var(--space-xl);
-}
-
-/* Favorite toggle */
-.favBtn {
-  background: none;
-  border: none;
-  color: var(--color-text-muted);
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0 2px;
-  line-height: 1;
-  transition: all 0.15s ease;
-  opacity: 0.4;
-  flex-shrink: 0;
-}
-
-.favBtn:hover {
-  opacity: 1;
-  transform: scale(1.2);
-}
-
-.favActive {
-  color: #eab308;
-  opacity: 1;
+  padding: var(--space-xl) var(--space-md);
 }
 
 .sentinel {
   height: 1px;
 }
 
-/* Family card (one card per exercise family) */
-.familyHeader {
+/* Favorite toggle (big touch target, no extra row height) */
+.favBtn {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-xs);
-}
-
-.familyName {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  font-size: var(--text-base);
-  font-weight: 500;
-}
-
-.variationCount {
+  justify-content: center;
   flex-shrink: 0;
-  font-size: var(--text-xs);
+  width: 36px;
+  height: 36px;
+  margin: -8px -4px -8px 0;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1;
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
   color: var(--color-text-muted);
-  white-space: nowrap;
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
 }
 
-.muscleRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.favBtn:hover {
+  opacity: 1;
 }
 
-.muscleTag {
-  font-size: var(--text-xs);
-  padding: 1px 6px;
-  background-color: var(--color-bg-tertiary);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
+.favActive {
+  color: var(--color-pr);
+  opacity: 1;
+}
+
+/* Family card: "N variations" chip */
+.variationChip {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-full);
+  color: var(--color-accent);
 }

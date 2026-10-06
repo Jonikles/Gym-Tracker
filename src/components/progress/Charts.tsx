@@ -1,6 +1,7 @@
+import { useId } from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -8,26 +9,28 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { ChartDataPoint } from '../../hooks/useAnalytics';
+import { CHART_AXIS_TICK, CHART_GRID_STROKE, CHART_TOOLTIP_PROPS } from './chartTheme';
+import { formatShortDate } from '../common/format';
 import styles from './Charts.module.css';
 
 interface ProgressChartProps {
   data: ChartDataPoint[];
   title: string;
   unit: string;
-  color: string;
+  /** Line/area color (any CSS color, tokens welcome). Defaults to the accent. */
+  color?: string;
 }
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
+function formatValue(v: number): string {
+  return Number.isInteger(v) ? `${v}` : v.toFixed(1);
 }
 
-export function ProgressChart({ data, title, unit, color }: ProgressChartProps) {
+export function ProgressChart({ data, title, unit, color = 'var(--color-accent)' }: ProgressChartProps) {
+  const gradientId = `progress-fill-${useId().replace(/:/g, '')}`;
+
   if (data.length === 0) {
     return (
-      <div className={styles.chart}>
+      <div className={`surface ${styles.chart}`}>
         <h3 className={styles.title}>{title}</h3>
         <div className={styles.empty}>No data available</div>
       </div>
@@ -36,73 +39,81 @@ export function ProgressChart({ data, title, unit, color }: ProgressChartProps) 
 
   const formattedData = data.map((d) => ({
     ...d,
-    dateLabel: formatDate(d.date),
-    displayValue: d.value.toFixed(1),
+    dateLabel: formatShortDate(d.date),
   }));
 
   const minValue = Math.min(...data.map((d) => d.value));
   const maxValue = Math.max(...data.map((d) => d.value));
   const padding = (maxValue - minValue) * 0.1 || 10;
+  const current = data[data.length - 1].value;
 
   return (
-    <div className={styles.chart}>
-      <h3 className={styles.title}>{title}</h3>
+    <div className={`surface ${styles.chart}`}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>{title}</h3>
+        <span className={styles.headline}>
+          <span className="num">{formatValue(current)}</span>
+          <span className={styles.unit}>{unit}</span>
+        </span>
+      </div>
       <div className={styles.chartContainer}>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart
-            data={formattedData}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+        <ResponsiveContainer width="100%" height={180}>
+          <AreaChart data={formattedData} margin={{ top: 8, right: 6, left: -12, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.35 }} />
+                <stop offset="100%" style={{ stopColor: color, stopOpacity: 0 }} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke={CHART_GRID_STROKE} />
             <XAxis
               dataKey="dateLabel"
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
-              tickLine={{ stroke: 'var(--color-border)' }}
-              axisLine={{ stroke: 'var(--color-border)' }}
+              tick={CHART_AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              minTickGap={16}
+              tickMargin={6}
             />
             <YAxis
               domain={[minValue - padding, maxValue + padding]}
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
-              tickLine={{ stroke: 'var(--color-border)' }}
-              axisLine={{ stroke: 'var(--color-border)' }}
+              tick={CHART_AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              width={44}
               tickFormatter={(v) => `${Math.round(v)}`}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-              }}
-              labelStyle={{ color: 'var(--color-text)' }}
+              {...CHART_TOOLTIP_PROPS}
               formatter={(value) => [`${Number(value).toFixed(1)} ${unit}`, title]}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey="value"
               stroke={color}
-              strokeWidth={2}
-              dot={{ fill: color, strokeWidth: 0, r: 4 }}
-              activeDot={{ fill: color, strokeWidth: 0, r: 6 }}
+              strokeWidth={2.5}
+              fill={`url(#${gradientId})`}
+              dot={{ fill: color, stroke: 'var(--color-surface-1)', strokeWidth: 2, r: 3.5 }}
+              activeDot={{ fill: color, stroke: 'var(--color-surface-1)', strokeWidth: 2, r: 5.5 }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
       <div className={styles.stats}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Current</span>
           <span className={styles.statValue}>
-            {data[data.length - 1].value.toFixed(1)} {unit}
+            <span className="num">{current.toFixed(1)}</span> <span className={styles.unit}>{unit}</span>
           </span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Best</span>
           <span className={styles.statValue}>
-            {maxValue.toFixed(1)} {unit}
+            <span className="num">{maxValue.toFixed(1)}</span> <span className={styles.unit}>{unit}</span>
           </span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Sessions</span>
-          <span className={styles.statValue}>{data.length}</span>
+          <span className={`num ${styles.statValue}`}>{data.length}</span>
         </div>
       </div>
     </div>

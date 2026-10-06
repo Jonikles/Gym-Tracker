@@ -29,7 +29,7 @@ export interface FamilyIndex {
 }
 
 /** Stable key for a params combination, in the family's dimension order */
-export function paramsKey(family: ExerciseFamily, params: Record<string, string>): string {
+function paramsKey(family: ExerciseFamily, params: Record<string, string>): string {
   return family.dimensions.map((d) => params[d.key] ?? '').join('|');
 }
 
@@ -64,7 +64,7 @@ export function getVariantExercise(
 }
 
 /** All concrete exercises of a family that exist in the DB */
-export function getFamilyMembers(index: FamilyIndex, family: ExerciseFamily): Exercise[] {
+function getFamilyMembers(index: FamilyIndex, family: ExerciseFamily): Exercise[] {
   const variants = index.variantsByFamily.get(family.id);
   return variants ? [...variants.values()] : [];
 }
@@ -186,7 +186,7 @@ function queryWords(query: string): string[] {
  * Order-independent word match (like matchesAllWords) that also understands a
  * few gym abbreviations ("db" → dumbbell, "bb" → barbell, "ohp", "rdl"...).
  */
-export function matchesExerciseQuery(text: string, query: string): boolean {
+function matchesExerciseQuery(text: string, query: string): boolean {
   const words = queryWords(query);
   if (words.length === 0) return true;
   const lower = text.toLowerCase();
@@ -196,7 +196,7 @@ export function matchesExerciseQuery(text: string, query: string): boolean {
 }
 
 /** Family matches if the query matches its name or any variant's name */
-export function familyMatchesQuery(family: ExerciseFamily, query: string): boolean {
+function familyMatchesQuery(family: ExerciseFamily, query: string): boolean {
   if (!query.trim()) return true;
   if (matchesExerciseQuery(family.name, query)) return true;
   return family.variants.some((v) => matchesExerciseQuery(v.exerciseName, query));

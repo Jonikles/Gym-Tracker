@@ -1,6 +1,6 @@
 import { memo, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Select, Button, Modal, Card } from '../common';
+import { Input, Select, Button, Modal } from '../common';
 import { formatMuscleGroup, formatLabel } from '../common/format';
 import { ExerciseCard, type ProgressionLevelMap } from './ExerciseCard';
 import { ExerciseForm, type ExerciseFormData } from './ExerciseForm';
@@ -18,11 +18,11 @@ import { db } from '../../db';
 import {
   buildExerciseEntries,
   filterExerciseEntries,
-  getOrCreateVariantExercise,
   type ExerciseListEntry,
 } from '../../utils/exerciseFamilies';
 import type { Exercise, MuscleGroup } from '../../types';
 import styles from './ExerciseList.module.css';
+import cardStyles from './ExerciseCard.module.css';
 
 // Max level across all progressions (covers OG2 ranges)
 const ALL_LEVELS = Array.from({ length: 17 }, (_, i) => i + 1);
@@ -139,10 +139,11 @@ export function ExerciseList() {
 
   const openExercise = useCallback((id: string) => navigate(`/exercises/${id}`), [navigate]);
 
+  // The library never creates variant rows (only the picker does): a family card
+  // opens its default variant, else the first existing variant.
   const openFamily = useCallback(
-    async (entry: FamilyEntry) => {
-      const target = entry.defaultExercise ?? (await getOrCreateVariantExercise(entry.family, entry.family.defaults));
-      if (target) navigate(`/exercises/${target.id}`);
+    (entry: FamilyEntry) => {
+      if (entry.defaultExercise) navigate(`/exercises/${entry.defaultExercise.id}`);
     },
     [navigate],
   );
@@ -181,178 +182,209 @@ export function ExerciseList() {
 
   const hasFilters = searchQuery || muscleGroupFilters.length > 0 || equipmentFilter || movementFilter || progressionFilter || selectedLevels.length > 0 || showFavoritesOnly;
 
+  const activeFilterCount =
+    (muscleGroupFilters.length > 0 ? 1 : 0) +
+    (equipmentFilter ? 1 : 0) +
+    (movementFilter ? 1 : 0) +
+    (progressionFilter ? 1 : 0) +
+    (selectedLevels.length > 0 ? 1 : 0);
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Exercise Library</h1>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          New Exercise
+        <h1 className="page-title">Exercises</h1>
+        <Button size="sm" onClick={() => setIsCreateModalOpen(true)} aria-label="New exercise">
+          + New
         </Button>
       </header>
 
       <div className={styles.filters}>
-        <div className={styles.searchRow}>
-          <Input
-            placeholder="Search exercises..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            autoFocus
-          />
-          <Select
-            label="Sort by"
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as ExerciseSortOption)}
-            options={[
-              { value: 'name-asc', label: 'Name A-Z' },
-              { value: 'name-desc', label: 'Name Z-A' },
-              { value: 'level-asc', label: 'Level Low\u2192High' },
-              { value: 'level-desc', label: 'Level High\u2192Low' },
-            ]}
-          />
-        </div>
+        <Input
+          type="search"
+          placeholder="Search exercises…"
+          aria-label="Search exercises"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          autoFocus
+        />
 
-        <button
-          className={styles.chipFilterToggle}
-          onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
-        >
-          <span className={styles.chipFilterLabel}>
-            Filters{hasFilters ? ' (active)' : ''}
+        <div className={styles.toolbar}>
+          <button
+            type="button"
+            className={`${styles.toolChip} ${isFiltersExpanded || activeFilterCount > 0 ? styles.toolChipOn : ''}`}
+            onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+            aria-expanded={isFiltersExpanded}
+          >
+            <FilterIcon />
+            Filters
+            {activeFilterCount > 0 && <span className={styles.toolBadge}>{activeFilterCount}</span>}
+            <span className={styles.toolChevron} aria-hidden="true">{isFiltersExpanded ? '▴' : '▾'}</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.toolChip} ${showFavoritesOnly ? styles.toolChipFav : ''}`}
+            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            aria-pressed={showFavoritesOnly}
+          >
+            <span aria-hidden="true">{showFavoritesOnly ? '★' : '☆'}</span>
+            Favorites
+          </button>
+          <span className={styles.count}>
+            <span className="num">{filteredEntries.length}</span>
           </span>
-          <span className={styles.chevron}>{isFiltersExpanded ? '▲' : '▼'}</span>
-        </button>
+        </div>
 
         {isFiltersExpanded && (
-          <>
-        <div className={styles.filterRow}>
-          <Select
-            value={equipmentFilter}
-            onChange={(e) => setEquipmentFilter(e.target.value)}
-            options={equipment.map((eq) => ({ value: eq, label: formatLabel(eq) }))}
-            placeholder="All equipment"
-          />
-          <Select
-            value={movementFilter}
-            onChange={(e) => setMovementFilter(e.target.value)}
-            options={movements.map((m) => ({ value: m, label: formatLabel(m) }))}
-            placeholder="All movements"
-          />
-          <Select
-            value={progressionFilter}
-            onChange={(e) => setProgressionFilter(e.target.value)}
-            options={PROGRESSION_DEFINITIONS.map((p) => ({ value: p.id, label: p.name }))}
-            placeholder="All progressions"
-          />
-          {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          )}
-        </div>
+          <div className={`surface ${styles.panel}`}>
+            <div className={styles.selectGrid}>
+              <Select
+                label="Sort"
+                id="exercise-sort"
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as ExerciseSortOption)}
+                options={[
+                  { value: 'name-asc', label: 'Name A–Z' },
+                  { value: 'name-desc', label: 'Name Z–A' },
+                  { value: 'level-asc', label: 'Level ↑' },
+                  { value: 'level-desc', label: 'Level ↓' },
+                ]}
+              />
+              <Select
+                label="Equipment"
+                id="exercise-equipment"
+                value={equipmentFilter}
+                onChange={(e) => setEquipmentFilter(e.target.value)}
+                options={equipment.map((eq) => ({ value: eq, label: formatLabel(eq) }))}
+                placeholder="All"
+              />
+              <Select
+                label="Movement"
+                id="exercise-movement"
+                value={movementFilter}
+                onChange={(e) => setMovementFilter(e.target.value)}
+                options={movements.map((m) => ({ value: m, label: formatLabel(m) }))}
+                placeholder="All"
+              />
+              <Select
+                label="Progression"
+                id="exercise-progression"
+                value={progressionFilter}
+                onChange={(e) => setProgressionFilter(e.target.value)}
+                options={PROGRESSION_DEFINITIONS.map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="All"
+              />
+            </div>
 
-        {/* Muscle Group Multi-Select - Collapsible */}
-        <div className={styles.chipFilterSection}>
-          <button
-            className={styles.chipFilterToggle}
-            onClick={() => setIsMuscleFilterExpanded(!isMuscleFilterExpanded)}
-          >
-            <span className={styles.chipFilterLabel}>
-              Muscles{muscleGroupFilters.length > 0 ? `: ${muscleGroupFilters.length} selected` : ''}
-            </span>
-            <span className={styles.chevron}>{isMuscleFilterExpanded ? '\u25B2' : '\u25BC'}</span>
-          </button>
+            {/* Muscle Group Multi-Select - Collapsible */}
+            <div className={styles.disclosure}>
+              <button
+                type="button"
+                className={styles.disclosureToggle}
+                onClick={() => setIsMuscleFilterExpanded(!isMuscleFilterExpanded)}
+                aria-expanded={isMuscleFilterExpanded}
+              >
+                <span className={styles.disclosureLabel}>Muscles</span>
+                {muscleGroupFilters.length > 0 && (
+                  <span className="chip chip-accent">{muscleGroupFilters.length} selected</span>
+                )}
+                <span className={styles.toolChevron} aria-hidden="true">{isMuscleFilterExpanded ? '▴' : '▾'}</span>
+              </button>
 
-          {isMuscleFilterExpanded && (
-            <div className={styles.chipFilterDropdown}>
-              {muscleGroupFilters.length > 1 && (
-                <div className={styles.filterModeRow}>
-                  <span className={styles.filterModeLabel}>Match:</span>
-                  <div className={styles.filterModeToggle}>
-                    <button
-                      className={`${styles.modeButton} ${filterMode === 'any' ? styles.modeActive : ''}`}
-                      onClick={() => setFilterMode('any')}
-                    >
-                      ANY
-                    </button>
-                    <button
-                      className={`${styles.modeButton} ${filterMode === 'all' ? styles.modeActive : ''}`}
-                      onClick={() => setFilterMode('all')}
-                    >
-                      ALL
-                    </button>
+              {isMuscleFilterExpanded && (
+                <div className={styles.disclosureBody}>
+                  {muscleGroupFilters.length > 1 && (
+                    <div className={styles.filterModeRow}>
+                      <span className={styles.filterModeLabel}>Match</span>
+                      <div className={styles.segmented} role="radiogroup" aria-label="Match muscles">
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={filterMode === 'any'}
+                          className={`${styles.segment} ${filterMode === 'any' ? styles.segmentActive : ''}`}
+                          onClick={() => setFilterMode('any')}
+                        >
+                          Any
+                        </button>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={filterMode === 'all'}
+                          className={`${styles.segment} ${filterMode === 'all' ? styles.segmentActive : ''}`}
+                          onClick={() => setFilterMode('all')}
+                        >
+                          All
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div className={styles.chipWrap}>
+                    {muscleGroups.map((mg) => (
+                      <button
+                        type="button"
+                        key={mg}
+                        className={`${styles.filterChip} ${muscleGroupFilters.includes(mg) ? styles.filterChipActive : ''}`}
+                        onClick={() => handleMuscleGroupToggle(mg)}
+                        aria-pressed={muscleGroupFilters.includes(mg)}
+                      >
+                        {formatMuscleGroup(mg)}
+                      </button>
+                    ))}
                   </div>
+                  {muscleGroupFilters.length > 0 && (
+                    <button type="button" className={styles.clearChipsBtn} onClick={() => setMuscleGroupFilters([])}>
+                      Clear muscles
+                    </button>
+                  )}
                 </div>
               )}
-              <div className={styles.muscleChips}>
-                {muscleGroups.map((mg) => (
-                  <button
-                    key={mg}
-                    className={`${styles.muscleChip} ${muscleGroupFilters.includes(mg) ? styles.muscleChipActive : ''}`}
-                    onClick={() => handleMuscleGroupToggle(mg)}
-                  >
-                    {formatMuscleGroup(mg)}
-                  </button>
-                ))}
-              </div>
-              {muscleGroupFilters.length > 0 && (
-                <button
-                  className={styles.clearChipsBtn}
-                  onClick={() => setMuscleGroupFilters([])}
-                >
-                  Clear muscle filters
-                </button>
+            </div>
+
+            {/* Level Multi-Select - Collapsible */}
+            <div className={styles.disclosure}>
+              <button
+                type="button"
+                className={styles.disclosureToggle}
+                onClick={() => setIsLevelFilterExpanded(!isLevelFilterExpanded)}
+                aria-expanded={isLevelFilterExpanded}
+              >
+                <span className={styles.disclosureLabel}>Level</span>
+                {selectedLevels.length > 0 && (
+                  <span className={`chip chip-accent ${styles.levelSummary}`}>{selectedLevels.join(', ')}</span>
+                )}
+                <span className={styles.toolChevron} aria-hidden="true">{isLevelFilterExpanded ? '▴' : '▾'}</span>
+              </button>
+
+              {isLevelFilterExpanded && (
+                <div className={styles.disclosureBody}>
+                  <div className={styles.levelChips}>
+                    {ALL_LEVELS.map((level) => (
+                      <button
+                        type="button"
+                        key={level}
+                        className={`${styles.filterChip} ${styles.levelChip} ${selectedLevels.includes(level) ? styles.filterChipActive : ''}`}
+                        onClick={() => handleLevelToggle(level)}
+                        aria-pressed={selectedLevels.includes(level)}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedLevels.length > 0 && (
+                    <button type="button" className={styles.clearChipsBtn} onClick={() => setSelectedLevels([])}>
+                      Clear levels
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* Level Multi-Select - Collapsible */}
-        <div className={styles.chipFilterSection}>
-          <button
-            className={styles.chipFilterToggle}
-            onClick={() => setIsLevelFilterExpanded(!isLevelFilterExpanded)}
-          >
-            <span className={styles.chipFilterLabel}>
-              Level{selectedLevels.length > 0 ? `: ${selectedLevels.join(', ')}` : ''}
-            </span>
-            <span className={styles.chevron}>{isLevelFilterExpanded ? '\u25B2' : '\u25BC'}</span>
-          </button>
-
-          {isLevelFilterExpanded && (
-            <div className={styles.chipFilterDropdown}>
-              <div className={styles.levelChips}>
-                {ALL_LEVELS.map((level) => (
-                  <button
-                    key={level}
-                    className={`${styles.levelChip} ${selectedLevels.includes(level) ? styles.muscleChipActive : ''}`}
-                    onClick={() => handleLevelToggle(level)}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-              {selectedLevels.length > 0 && (
-                <button
-                  className={styles.clearChipsBtn}
-                  onClick={() => setSelectedLevels([])}
-                >
-                  Clear level filters
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-          </>
+            {hasFilters && (
+              <Button variant="secondary" size="sm" onClick={clearFilters} className={styles.clearAll}>
+                Clear all filters
+              </Button>
+            )}
+          </div>
         )}
-      </div>
-
-      <div className={styles.toggleRow}>
-        <button
-          className={`${styles.favFilterBtn} ${showFavoritesOnly ? styles.favFilterActive : ''}`}
-          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-        >
-          {showFavoritesOnly ? '★ Favorites' : '☆ Favorites'}
-        </button>
-        <span className={styles.count}>{filteredEntries.length} exercises</span>
       </div>
 
       <div className={styles.list}>
@@ -394,6 +426,14 @@ export function ExerciseList() {
   );
 }
 
+function FilterIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 6h16M7 12h10M10 18h4" />
+    </svg>
+  );
+}
+
 function FavoriteButton({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
     <button
@@ -405,6 +445,7 @@ function FavoriteButton({ active, onToggle }: { active: boolean; onToggle: () =>
       }}
       title={active ? 'Remove from favorites' : 'Add to favorites'}
       aria-label={active ? 'Remove from favorites' : 'Add to favorites'}
+      aria-pressed={active}
     >
       {active ? '★' : '☆'}
     </button>
@@ -432,7 +473,8 @@ const LibraryExerciseCard = memo(function LibraryExerciseCard({
 });
 
 /** Star on a family card: filled if any variant is a favorite. Tapping un-favorites
- *  all favorited variants, or favorites the default variant. */
+ *  all favorited variants, or favorites the default (else first existing) variant.
+ *  Never creates rows. */
 async function toggleFamilyFavorite(entry: FamilyEntry): Promise<void> {
   const favorites = entry.members.filter((m) => m.isFavorite);
   const now = Date.now();
@@ -440,8 +482,9 @@ async function toggleFamilyFavorite(entry: FamilyEntry): Promise<void> {
     await Promise.all(favorites.map((m) => db.exercises.update(m.id, { isFavorite: false, updatedAt: now })));
     return;
   }
-  const target = entry.defaultExercise ?? (await getOrCreateVariantExercise(entry.family, entry.family.defaults));
-  if (target) await db.exercises.update(target.id, { isFavorite: true, updatedAt: now });
+  if (entry.defaultExercise) {
+    await db.exercises.update(entry.defaultExercise.id, { isFavorite: true, updatedAt: now });
+  }
 }
 
 const FamilyCard = memo(function FamilyCard({
@@ -451,24 +494,45 @@ const FamilyCard = memo(function FamilyCard({
   entry: FamilyEntry;
   onOpen: (entry: FamilyEntry) => void;
 }) {
-  const muscles = entry.defaultExercise?.muscleGroups ?? [];
+  const ex = entry.defaultExercise;
+  const muscles = ex?.muscleGroups ?? [];
+  const meta = [ex?.movementPattern].filter(Boolean).map((s) => formatLabel(s!));
   const anyFavorite = entry.members.some((m) => m.isFavorite);
+  // No variant rows in the DB yet: nothing to open or star (the picker creates rows)
+  const hasRows = !!ex;
+  const open = () => onOpen(entry);
   return (
-    <Card onClick={() => onOpen(entry)} interactive>
-      <div className={styles.familyHeader}>
-        <h3 className={styles.familyName}>{entry.name}</h3>
-        <span className={styles.variationCount}>{entry.family.variants.length} variations</span>
-        <FavoriteButton active={anyFavorite} onToggle={() => void toggleFamilyFavorite(entry)} />
+    <div
+      className={hasRows ? `${cardStyles.card} ${cardStyles.interactive}` : cardStyles.card}
+      onClick={hasRows ? open : undefined}
+      role={hasRows ? 'button' : undefined}
+      tabIndex={hasRows ? 0 : undefined}
+      onKeyDown={
+        hasRows
+          ? (e) => {
+              if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault();
+                open();
+              }
+            }
+          : undefined
+      }
+    >
+      <div className={cardStyles.header}>
+        <h3 className={cardStyles.name}>{entry.name}</h3>
+        {hasRows && <FavoriteButton active={anyFavorite} onToggle={() => void toggleFamilyFavorite(entry)} />}
       </div>
-      {muscles.length > 0 && (
-        <div className={styles.muscleRow}>
-          {muscles.map((mg) => (
-            <span key={mg} className={styles.muscleTag}>
-              {formatMuscleGroup(mg)}
-            </span>
-          ))}
-        </div>
-      )}
-    </Card>
+      <div className={cardStyles.meta}>
+        <span className={styles.variationChip}>
+          <span className="num">{entry.family.variants.length}</span> variations
+        </span>
+        {meta.length > 0 && <span className={cardStyles.metaText}>{meta.join(' · ')}</span>}
+        {muscles.map((mg) => (
+          <span key={mg} className={cardStyles.muscleTag}>
+            {formatMuscleGroup(mg)}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 });

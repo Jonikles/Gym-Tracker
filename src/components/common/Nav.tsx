@@ -116,12 +116,10 @@ const allLinks = [
 export function Nav() {
   const activeSession = useActiveSession();
   const location = useLocation();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  // Close more sheet on navigation
-  useEffect(() => {
-    setMoreOpen(false);
-  }, [location.pathname]);
+  // The More sheet is open only on the path it was opened from, so navigating closes it
+  const [moreOpenOnPath, setMoreOpenOnPath] = useState<string | null>(null);
+  const moreOpen = moreOpenOnPath === location.pathname;
+  const setMoreOpen = (open: boolean) => setMoreOpenOnPath(open ? location.pathname : null);
 
   // Lock body scroll when more sheet is open
   useEffect(() => {

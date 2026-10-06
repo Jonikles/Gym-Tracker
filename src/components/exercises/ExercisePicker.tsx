@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Modal, Input, Select, Button, Card } from '../common';
+import { Modal, Input, Select, Button } from '../common';
 import { formatLabel, formatMuscleGroup } from '../common/format';
 import { ExerciseCard } from './ExerciseCard';
 import { FamilyParamSelector } from './VariantChips';
@@ -17,6 +17,7 @@ import {
 } from '../../utils/exerciseFamilies';
 import type { Exercise, MuscleGroup } from '../../types';
 import styles from './ExercisePicker.module.css';
+import cardStyles from './ExerciseCard.module.css';
 
 type PickerTab = 'all' | 'favorites' | 'recent';
 
@@ -172,7 +173,7 @@ function PickerContent({
   return (
     <div className={styles.container}>
       {/* Tab bar */}
-      <div className={styles.tabs}>
+      <div className={styles.tabs} role="group" aria-label="Exercise lists">
         <button
           type="button"
           className={`${styles.tab} ${activeTab === 'all' ? styles.tabActive : ''}`}
@@ -200,7 +201,8 @@ function PickerContent({
       <div className={styles.filters}>
         <Input
           ref={searchRef}
-          placeholder="Search exercises..."
+          placeholder="Search exercises…"
+          aria-label="Search exercises"
           value={searchInput}
           onChange={(e) => {
             setSearchInput(e.target.value);
@@ -215,12 +217,14 @@ function PickerContent({
               onChange={(e) => setMuscleGroupFilter(e.target.value as MuscleGroup | '')}
               options={muscleGroups.map((mg) => ({ value: mg, label: formatMuscleGroup(mg) }))}
               placeholder="All muscles"
+              aria-label="Filter by muscle"
             />
             <Select
               value={equipmentFilter}
               onChange={(e) => setEquipmentFilter(e.target.value)}
               options={equipment.map((eq) => ({ value: eq, label: formatLabel(eq) }))}
               placeholder="All equipment"
+              aria-label="Filter by equipment"
             />
           </div>
         )}
@@ -287,22 +291,30 @@ const PickerExerciseRow = memo(function PickerExerciseRow({
   onToggleFavorite: (exerciseId: string) => void;
 }) {
   return (
-    <div className={`${styles.exerciseRow} ${isExcluded ? styles.exerciseRowDisabled : ''}`}>
-      <button
-        type="button"
-        className={`${styles.favBtn} ${exercise.isFavorite ? styles.favActive : ''}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleFavorite(exercise.id);
-        }}
-        title={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-        aria-label={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-      >
-        {exercise.isFavorite ? '★' : '☆'}
-      </button>
-      <ExerciseCard exercise={exercise} onClick={isExcluded ? undefined : () => onPick(exercise)} showDetails />
-      {isExcluded && <span className={styles.addedLabel}>Added</span>}
-    </div>
+    <ExerciseCard
+      exercise={exercise}
+      onClick={isExcluded ? undefined : () => onPick(exercise)}
+      showDetails
+      className={`${styles.rowCard} ${isExcluded ? styles.rowCardDisabled : ''}`}
+      headerExtra={
+        <>
+          {isExcluded && <span className="chip">Added</span>}
+          <button
+            type="button"
+            className={`${styles.favBtn} ${exercise.isFavorite ? styles.favActive : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(exercise.id);
+            }}
+            title={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-pressed={!!exercise.isFavorite}
+          >
+            {exercise.isFavorite ? '★' : '☆'}
+          </button>
+        </>
+      }
+    />
   );
 });
 
@@ -315,28 +327,39 @@ const PickerFamilyRow = memo(function PickerFamilyRow({
 }) {
   const muscles = entry.defaultExercise?.muscleGroups ?? [];
   const anyFavorite = entry.members.some((m) => m.isFavorite);
+  const pick = () => onPick(entry.family);
   return (
-    <div className={styles.exerciseRow}>
-      <span className={`${styles.favBtn} ${styles.favIndicator} ${anyFavorite ? styles.favActive : ''}`} aria-hidden="true">
-        {anyFavorite ? '★' : ''}
-      </span>
-      <Card onClick={() => onPick(entry.family)} interactive>
-        <div className={styles.familyHeader}>
-          <h3 className={styles.familyName}>{entry.name}</h3>
-          <span className={styles.variationCount}>
-            {entry.family.variants.length} variations ›
+    <div
+      className={`${cardStyles.card} ${cardStyles.interactive} ${styles.rowCard}`}
+      onClick={pick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          pick();
+        }
+      }}
+    >
+      <div className={cardStyles.header}>
+        <h3 className={cardStyles.name}>{entry.name}</h3>
+        {anyFavorite && (
+          <span className={styles.favIndicator} aria-label="Has favorites">
+            ★
           </span>
-        </div>
-        {muscles.length > 0 && (
-          <div className={styles.muscleRow}>
-            {muscles.map((mg) => (
-              <span key={mg} className={styles.muscleTag}>
-                {formatMuscleGroup(mg)}
-              </span>
-            ))}
-          </div>
         )}
-      </Card>
+        <span className={styles.familyChevron} aria-hidden="true">›</span>
+      </div>
+      <div className={cardStyles.meta}>
+        <span className={styles.variationChip}>
+          <span className="num">{entry.family.variants.length}</span> variations
+        </span>
+        {muscles.map((mg) => (
+          <span key={mg} className={cardStyles.muscleTag}>
+            {formatMuscleGroup(mg)}
+          </span>
+        ))}
+      </div>
     </div>
   );
 });
@@ -373,28 +396,32 @@ function FamilyParamStep({
   return (
     <div className={styles.container}>
       <div className={styles.stepHeader}>
-        <button type="button" className={styles.backBtn} onClick={onBack}>
-          ← Back
+        <button type="button" className={styles.backBtn} onClick={onBack} aria-label="Back to list">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m15 6-6 6 6 6" />
+          </svg>
+          Back
         </button>
         <h3 className={styles.stepTitle}>{family.name}</h3>
       </div>
 
       <div className={styles.stepBody}>
         <FamilyParamSelector family={family} params={params} onChange={onChangeParams} />
+      </div>
 
-        <div className={styles.resolved}>
-          <span className={styles.resolvedName}>→ {variant?.exerciseName ?? 'Pick a combination'}</span>
-          {muscles.length > 0 && (
-            <div className={styles.muscleRow}>
-              {muscles.map((mg) => (
-                <span key={mg} className={styles.muscleTag}>
-                  {formatMuscleGroup(mg)}
-                </span>
-              ))}
-            </div>
-          )}
-          {alreadyAdded && <span className={styles.alreadyAdded}>Already added</span>}
-        </div>
+      <div className={styles.resolved} aria-live="polite">
+        <span className="eyebrow">Selected</span>
+        <span className={styles.resolvedName}>{variant?.exerciseName ?? 'Pick a combination'}</span>
+        {(muscles.length > 0 || alreadyAdded) && (
+          <div className={styles.resolvedMeta}>
+            {alreadyAdded && <span className="chip chip-warning">Already added</span>}
+            {muscles.map((mg) => (
+              <span key={mg} className={cardStyles.muscleTag}>
+                {formatMuscleGroup(mg)}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className={styles.footer}>

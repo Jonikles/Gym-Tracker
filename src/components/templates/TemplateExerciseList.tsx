@@ -59,7 +59,7 @@ function TemplateSetRow({ set, setNumber, onUpdate, onRemove, canRemove }: Templ
 
   return (
     <div className={styles.setRow}>
-      <span className={styles.setNumber}>{setNumber}</span>
+      <span className={`num ${styles.setNumber}`}>{setNumber}</span>
       <div className={styles.setFields}>
         <Select
           value={setType}
@@ -217,7 +217,7 @@ function TemplateExerciseRow({
         )}
         <div className={styles.exerciseNameGroup}>
           {isProgression && progressionDef && (
-            <span className={styles.progressionBadge}>
+            <span className={`chip chip-accent ${styles.progressionBadge}`}>
               {progressionDef.name}
             </span>
           )}
@@ -312,7 +312,7 @@ function TemplateExerciseRow({
       )}
 
       {exercise.groupId && (
-        <div className={styles.groupBadge}>
+        <div className={`chip chip-accent ${styles.groupBadge}`}>
           {exercise.groupType === 'superset' ? '🔗 Superset' : '🔄 Circuit'}
         </div>
       )}
@@ -447,7 +447,7 @@ export function TemplateExerciseList({
               return (
                 <div key={`group-${exercise.groupId}`} className={styles.groupWrapper}>
                   <div className={styles.groupHeader}>
-                    <span className={styles.groupLabel}>
+                    <span className={`chip chip-accent ${styles.groupLabel}`}>
                       {exercise.groupType === 'superset' ? 'Superset' : 'Circuit'}
                     </span>
                     <button

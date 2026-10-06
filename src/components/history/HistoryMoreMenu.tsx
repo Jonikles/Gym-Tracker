@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { Button } from '../common';
+import { MoreMenu, MoreMenuItem, MoreMenuSection } from './MoreMenu';
 import styles from './SessionHistory.module.css';
 
 interface HistoryMoreMenuProps {
@@ -18,68 +17,41 @@ export function HistoryMoreMenu({
   selectionMode,
   onToggleSelectionMode,
 }: HistoryMoreMenuProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Close on outside tap
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const pick = (fn: () => void) => () => {
-    fn();
-    setOpen(false);
-  };
-
   return (
-    <div className={styles.moreMenuWrapper} ref={ref}>
-      <Button
-        variant="ghost"
-        onClick={() => setOpen(!open)}
-        title="More options"
-        aria-label="More options"
-        aria-expanded={open}
-        className={styles.moreBtn}
-      >
-        ⋮
-      </Button>
-      {open && (
-        <div className={styles.moreMenuDropdown}>
-          <div className={styles.moreMenuSection}>
-            <span className={styles.moreMenuLabel}>View</span>
-            <div className={styles.viewToggle}>
-              <button
-                type="button"
-                className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
-                onClick={pick(() => onViewModeChange('list'))}
-              >
-                List
-              </button>
-              <button
-                type="button"
-                className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.viewBtnActive : ''}`}
-                onClick={pick(() => onViewModeChange('calendar'))}
-              >
-                Cal
-              </button>
-            </div>
-          </div>
-          <button type="button" className={styles.moreMenuOption} onClick={pick(() => onExport('csv'))}>
-            Export CSV
-          </button>
-          <button type="button" className={styles.moreMenuOption} onClick={pick(() => onExport('json'))}>
-            Export JSON
-          </button>
-          <button type="button" className={styles.moreMenuOption} onClick={pick(onToggleSelectionMode)}>
-            {selectionMode ? 'Cancel selection' : 'Select'}
-          </button>
-        </div>
-      )}
-    </div>
+    <MoreMenu>
+      {(close) => {
+        const pick = (fn: () => void) => () => {
+          fn();
+          close();
+        };
+        return (
+          <>
+            <MoreMenuSection label="View">
+              <div className={styles.viewToggle}>
+                <button
+                  type="button"
+                  className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+                  onClick={pick(() => onViewModeChange('list'))}
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.viewBtn} ${viewMode === 'calendar' ? styles.viewBtnActive : ''}`}
+                  onClick={pick(() => onViewModeChange('calendar'))}
+                >
+                  Calendar
+                </button>
+              </div>
+            </MoreMenuSection>
+            <MoreMenuItem onClick={pick(() => onExport('csv'))}>Export CSV</MoreMenuItem>
+            <MoreMenuItem onClick={pick(() => onExport('json'))}>Export JSON</MoreMenuItem>
+            <MoreMenuItem onClick={pick(onToggleSelectionMode)}>
+              {selectionMode ? 'Cancel selection' : 'Select'}
+            </MoreMenuItem>
+          </>
+        );
+      }}
+    </MoreMenu>
   );
 }

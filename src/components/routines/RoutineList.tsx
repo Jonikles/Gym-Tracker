@@ -101,9 +101,9 @@ export function RoutineList() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Routines</h1>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          New Routine
+        <h1 className="page-title">Routines</h1>
+        <Button size="sm" onClick={() => setIsCreateModalOpen(true)} className={styles.newBtn}>
+          + New Routine
         </Button>
       </header>
 
@@ -139,7 +139,9 @@ export function RoutineList() {
       </div>
 
       <div className={styles.toggleRow}>
-        <span className={styles.count}>{routines.length} routines</span>
+        <span className={styles.count}>
+          <span className="num">{routines.length}</span> routines
+        </span>
       </div>
 
     <div className={styles.list}>
@@ -148,12 +150,10 @@ export function RoutineList() {
                 key={routine.id}
                 className={`${styles.cardWrapper} ${routine.id === activeRoutineId ? styles.activeWrapper : ''}`}
             >
-                {routine.id === activeRoutineId && (
-                    <span className={styles.activeBadge}>Active</span>
-                )}
                 <RoutineCard
                     routine={routine}
                     templateNames={templateNames}
+                    isActive={routine.id === activeRoutineId}
                     onClick={() => navigate(`/routines/${routine.id}`)}
                 />
             </div>

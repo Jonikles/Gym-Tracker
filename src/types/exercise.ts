@@ -8,7 +8,7 @@ export type ExerciseField =
   | 'distance';
 
 /**
- * Valid muscle group keys (v1.1 expanded list)
+ * Valid muscle group keys
  */
 export type MuscleGroup =
   // Lower Body
@@ -43,44 +43,6 @@ export type MuscleGroup =
   | 'erector-spinae'
   // Neck
   | 'neck';
-
-/**
- * All valid muscle groups as an array (for iteration/validation)
- */
-export const MUSCLE_GROUPS: MuscleGroup[] = [
-  // Lower Body
-  'calves',
-  'quads',
-  'hamstrings',
-  'glutes',
-  'adductors',
-  'abductors',
-  // Core
-  'lower-abs',
-  'upper-abs',
-  'obliques',
-  // Chest
-  'lower-chest',
-  'mid-chest',
-  'upper-chest',
-  // Arms
-  'forearms',
-  'triceps',
-  'biceps',
-  'brachioradialis',
-  // Shoulders
-  'front-delts',
-  'side-delts',
-  'rear-delts',
-  // Back
-  'traps',
-  'rhomboids',
-  'lats-upper',
-  'lats-lower',
-  'erector-spinae',
-  // Neck
-  'neck',
-];
 
 /**
  * Muscle group categories for UI grouping

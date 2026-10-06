@@ -1,12 +1,6 @@
 import { db } from '../db';
 import type { RoutineDay, Session } from '../types';
-
-/** Get the start of a day (midnight) for a timestamp in local time */
-function startOfDay(ts: number): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
+import { startOfLocalDay, startOfNextLocalDay } from './session';
 
 /**
  * Auto-skip scheduled workout days that passed with nothing logged.
@@ -27,7 +21,7 @@ export async function autoSkipMissedWorkouts(): Promise<void> {
   await db.transaction('rw', [db.sessions, db.routines, db.settings], async () => {
     const activeRoutineIdSetting = await db.settings.get('activeRoutineId');
     const activeRoutineId = activeRoutineIdSetting?.value as string | null | undefined;
-    const todayStart = startOfDay(Date.now());
+    const todayStart = startOfLocalDay(Date.now());
 
     if (!activeRoutineId) {
       // No active routine — nothing to check, but keep the checkpoint current so
@@ -47,7 +41,7 @@ export async function autoSkipMissedWorkouts(): Promise<void> {
     const activeSetAt = activeSetAtSetting?.value as number | null | undefined;
 
     // Never check further back than when this routine became active
-    const earliestCheckDay = activeSetAt != null ? startOfDay(activeSetAt) : todayStart;
+    const earliestCheckDay = activeSetAt != null ? startOfLocalDay(activeSetAt) : todayStart;
     const lastCheckDay = lastCheckSetting?.value as number | null | undefined;
     const checkFrom = Math.max(lastCheckDay ?? earliestCheckDay, earliestCheckDay);
 
@@ -69,7 +63,7 @@ export async function autoSkipMissedWorkouts(): Promise<void> {
     const cursor = new Date(checkFrom);
     while (cursor.getTime() < todayStart) {
       const dayStart = cursor.getTime();
-      const dayEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1).getTime();
+      const dayEnd = startOfNextLocalDay(dayStart);
 
       let scheduleDay: RoutineDay | undefined;
 

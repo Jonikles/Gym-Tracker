@@ -77,7 +77,8 @@ export function ProgressionPicker({
         <div className={styles.filters}>
           <Input
             ref={searchRef}
-            placeholder="Search progressions..."
+            placeholder="Search progressions…"
+            aria-label="Search progressions"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -90,11 +91,12 @@ export function ProgressionPicker({
               {progressions.map((progression) => (
                 <button
                   key={progression.id}
+                  type="button"
                   className={styles.progressionItem}
                   onClick={() => handleSelect(progression.id)}
                 >
                   <span className={styles.progressionName}>{progression.name}</span>
-                  <span className={styles.arrow}>&rsaquo;</span>
+                  <span className={styles.arrow} aria-hidden="true">&rsaquo;</span>
                 </button>
               ))}
             </div>

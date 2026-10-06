@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../common';
 import { useUnsavedChangesBlocker } from '../common/useUnsavedChangesBlocker';
@@ -55,14 +55,18 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
 
   const isEditing = !!template;
 
-  // Update state if template changes (e.g., navigating between templates)
-  useEffect(() => {
+  // Reset form state when a different template is passed (e.g., navigating between
+  // templates) — adjusted during render instead of in an effect
+  const templateId = template?.id;
+  const [syncedTemplateId, setSyncedTemplateId] = useState(templateId);
+  if (templateId !== syncedTemplateId) {
+    setSyncedTemplateId(templateId);
     if (template) {
       setName(template.name);
       setExercises(withKeys(template.exercises));
       setIsDirty(false);
     }
-  }, [template?.id]);
+  }
 
   // Block navigation when dirty
   const { allowNextNavigation, dialog: unsavedChangesDialog } = useUnsavedChangesBlocker(
@@ -210,24 +214,30 @@ export function TemplateForm({ template, onSave }: TemplateFormProps) {
   return (
     <div className={styles.form}>
       <header className={styles.header}>
-        <Button variant="ghost" size="sm" className={styles.backBtn} onClick={handleBack}>
-          ← Back
-        </Button>
+        <div className={styles.topBar}>
+          <Button variant="ghost" className={styles.backBtn} onClick={handleBack}>
+            ← Back
+          </Button>
+          <Button onClick={handleSave} disabled={isSaving || !name.trim()} className={styles.saveBtn}>
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+        <label className="eyebrow" htmlFor="template-name">
+          {isEditing ? 'Edit template' : 'New template'}
+        </label>
         <input
-          className={styles.nameInput}
+          id="template-name"
+          className={`page-title ${styles.nameInput}`}
           placeholder="e.g., Push Day, Upper Body A"
           value={name}
           onChange={handleNameChange}
           autoFocus={!isEditing}
         />
-        <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
-          {isSaving ? 'Saving...' : 'Save'}
-        </Button>
       </header>
 
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2>Exercises</h2>
+          <h2 className="section-title">Exercises</h2>
         </div>
 
         <TemplateExerciseList

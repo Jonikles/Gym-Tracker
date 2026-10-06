@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Input, Select, Button } from '../common';
 import type { HistoryFilters } from './useHistoryFilters';
+import { formatDateInputValue } from '../common/format';
 import styles from './SessionHistory.module.css';
 
 interface HistoryFilterPanelProps {
@@ -10,10 +11,7 @@ interface HistoryFilterPanelProps {
 /** Search box (always visible) + one collapsible "Filters" panel with an active-count badge */
 export function HistoryFilterPanel({ filters: f }: HistoryFilterPanelProps) {
   // Today as YYYY-MM-DD for date input max constraint
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
+  const todayStr = useMemo(() => formatDateInputValue(new Date()), []);
 
   return (
     <div className={styles.filters}>

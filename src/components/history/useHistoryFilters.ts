@@ -5,7 +5,7 @@ import { useRoutines } from '../../hooks/useRoutines';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { matchesAllWords } from '../../utils/search';
 import type { PR, PRType, Session } from '../../types';
-import { getDurationMinutes } from './format';
+import { getDurationMinutes } from '../common/format';
 
 /** Convert a YYYY-MM-DD string to start-of-day timestamp in local timezone */
 function dateStringToStart(dateStr: string): number {

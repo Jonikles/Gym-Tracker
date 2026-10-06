@@ -107,33 +107,6 @@ export function useTodaysTemplate(weekStartDay: number = 0) {
 }
 
 /**
- * Get templates scheduled for a specific day of the week
- */
-export function useScheduleForDay(dayOfWeek: number) {
-  return useLiveQuery(async () => {
-    const fixedRoutines = await db.routines
-      .filter((r) => r.type === 'fixed')
-      .toArray();
-
-    const results: Array<{ routine: Routine; scheduleDay: RoutineDay; templateName?: string }> = [];
-
-    for (const routine of fixedRoutines) {
-      const daySchedule = routine.schedule.find((s) => s.dayIndex === dayOfWeek);
-      if (daySchedule) {
-        let templateName: string | undefined;
-        if (daySchedule.templateId) {
-          const template = await db.templates.get(daySchedule.templateId);
-          templateName = template?.name;
-        }
-        results.push({ routine, scheduleDay: daySchedule, templateName });
-      }
-    }
-
-    return results;
-  }, [dayOfWeek]);
-}
-
-/**
  * Create a new routine
  */
 export async function createRoutine(input: CreateRoutineInput): Promise<string> {
@@ -175,14 +148,13 @@ export async function createRoutine(input: CreateRoutineInput): Promise<string> 
 }
 
 /**
- * Update an existing routine
- * v1.4.1: Added duplicate name check when renaming
+ * Update an existing routine (rejects renaming to a duplicate name)
  */
 export async function updateRoutine(
   id: string,
   input: UpdateRoutineInput
 ): Promise<void> {
-  // v1.4.1: If name is being changed, check for duplicates
+  // If name is being changed, check for duplicates
   if (input.name !== undefined) {
     const existing = await db.routines
       .filter(
@@ -207,81 +179,6 @@ export async function updateRoutine(
   if (input.currentPosition !== undefined) updates.currentPosition = input.currentPosition;
 
   await db.routines.update(id, updates);
-}
-
-/**
- * Update a specific day in the routine schedule
- */
-export async function updateScheduleDay(
-  routineId: string,
-  dayIndex: number,
-  updates: Partial<RoutineDay>
-): Promise<void> {
-  const routine = await db.routines.get(routineId);
-  if (!routine) throw new Error('Routine not found');
-
-  const schedule = routine.schedule.map((day) =>
-    day.dayIndex === dayIndex ? { ...day, ...updates } : day
-  );
-
-  await db.routines.update(routineId, {
-    schedule,
-    updatedAt: Date.now(),
-  });
-}
-
-/**
- * Add a day to a rolling routine schedule
- */
-export async function addScheduleDay(
-  routineId: string,
-  templateId?: string,
-  label?: string
-): Promise<void> {
-  const routine = await db.routines.get(routineId);
-  if (!routine) throw new Error('Routine not found');
-  if (routine.type !== 'rolling') throw new Error('Can only add days to rolling routines');
-
-  const newDayIndex = routine.schedule.length;
-  const newDay: RoutineDay = {
-    dayIndex: newDayIndex,
-    templateId,
-    label,
-  };
-
-  await db.routines.update(routineId, {
-    schedule: [...routine.schedule, newDay],
-    updatedAt: Date.now(),
-  });
-}
-
-/**
- * Remove a day from a rolling routine schedule
- */
-export async function removeScheduleDay(
-  routineId: string,
-  dayIndex: number
-): Promise<void> {
-  const routine = await db.routines.get(routineId);
-  if (!routine) throw new Error('Routine not found');
-  if (routine.type !== 'rolling') throw new Error('Can only remove days from rolling routines');
-  if (routine.schedule.length <= 1) throw new Error('Routine must have at least one day');
-
-  const schedule = routine.schedule
-    .filter((day) => day.dayIndex !== dayIndex)
-    .map((day, index) => ({ ...day, dayIndex: index })); // Re-index
-
-  // Adjust currentPosition if needed
-  let currentPosition = routine.currentPosition ?? 0;
-  if (currentPosition >= schedule.length) {
-    currentPosition = 0;
-  }
-
-  await db.routines.update(routineId, {
-    schedule,
-    currentPosition,
-    updatedAt: Date.now(),
-  });
 }
 
 /**

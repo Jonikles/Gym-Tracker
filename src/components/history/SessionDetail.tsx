@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { MoreMenu, MoreMenuItem } from './MoreMenu';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, Card, ConfirmDialog } from '../common';
 import { deleteSession, repeatSession, useSession, useSessionExercises } from '../../hooks/useSessions';
-import { useSessionContext } from '../../context/SessionContext';
+import { useSessionContext } from '../../context/useSessionContext';
 import { useRoutine } from '../../hooks/useRoutines';
 import { useSets, useSessionSets } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
@@ -11,8 +12,11 @@ import { usePRsForSession } from '../../hooks/usePRs';
 import { db } from '../../db';
 import { formatPRType } from '../../utils/pr';
 import { getSetVolume } from '../../utils/volume';
-import { formatLongDate, formatTime, formatDuration, formatVolume } from './format';
+import { formatLongDate, formatTime, formatDuration, formatVolume } from '../common/format';
 import type { SessionExercise as SessionExerciseType, Set, PR } from '../../types';
+
+/** Stable fallback while live queries load, so memo deps don't change every render */
+const NO_EXERCISES: SessionExerciseType[] = [];
 import styles from './SessionDetail.module.css';
 
 /** Format seconds into a readable time string */
@@ -133,12 +137,10 @@ function computeVolumeSummary(sets: Set[]): string {
 function SetDisplay({ set, prs, setNumber }: { set: Set; prs: PR[]; setNumber: number }) {
   return (
     <div className={`${styles.set} ${set.isWarmup ? styles.warmup : ''}`}>
-      <div className={styles.setNumberCol}>
-        <span className={styles.setNumber}>{setNumber}</span>
-        {set.isWarmup && <span className={styles.setLabel}>W</span>}
-      </div>
-      <div className={styles.setDivider} />
-      <span className={styles.setData}>
+      <span className={styles.setNumber} title={set.isWarmup ? `Warmup ${setNumber}` : undefined}>
+        {set.isWarmup ? 'W' : setNumber}
+      </span>
+      <span className={`num ${styles.setData}`}>
         {formatSetData(set)}
         {set.intensityTechnique && set.intensityTechnique !== 'standard' && (
           <span className={styles.technique}> ({set.intensityTechnique})</span>
@@ -147,7 +149,7 @@ function SetDisplay({ set, prs, setNumber }: { set: Set; prs: PR[]; setNumber: n
       {prs.length > 0 && (
         <div className={styles.prBadges}>
           {prs.map((pr) => (
-            <span key={pr.id} className={`${styles.prBadge} ${styles[pr.type]}`}>
+            <span key={pr.id} className={`chip ${styles.prBadge} ${styles[pr.type]}`}>
               {pr.type === 'progression' ? 'LVL UP' : `${formatPRType(pr.type)} PR`}
             </span>
           ))}
@@ -184,7 +186,7 @@ function ExerciseDisplay({
           <h3 className={styles.exerciseName}>{exercise?.name ?? 'Unknown'}</h3>
         </div>
         {volumeSummary && (
-          <span className={styles.exerciseStats}>{volumeSummary}</span>
+          <span className={`num ${styles.exerciseStats}`}>{volumeSummary}</span>
         )}
       </div>
       {isExpanded && (
@@ -223,7 +225,7 @@ interface SessionDetailProps {
 export function SessionDetail({ sessionId }: SessionDetailProps) {
   const navigate = useNavigate();
   const session = useSession(sessionId);
-  const sessionExercises = useSessionExercises(sessionId) ?? [];
+  const sessionExercises = useSessionExercises(sessionId) ?? NO_EXERCISES;
   const routine = useRoutine(session?.routineId);
   const templateId = session?.templateId;
   const templateName = useLiveQuery(
@@ -233,23 +235,9 @@ export function SessionDetail({ sessionId }: SessionDetailProps) {
   const allSets = useSessionSets(sessionId);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
   const { activeSession } = useSessionContext();
   // Get ALL PRs for this session in one query
   const sessionPRs = usePRsForSession(sessionId);
-
-  // Close the ⋮ menu on outside tap
-  useEffect(() => {
-    if (!showMoreMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showMoreMenu]);
 
   // Create a map of setId -> PRs for quick lookup
   const prsBySetId = useMemo(() => {
@@ -307,12 +295,19 @@ export function SessionDetail({ sessionId }: SessionDetailProps) {
     ? `${routineName} – ${templateName}`
     : routineName ?? templateName ?? 'Blank Workout';
 
-  const summaryParts = [
-    formatDuration(session.startedAt, session.completedAt),
-    `${sortedExercises.length} exercise${sortedExercises.length === 1 ? '' : 's'}`,
-    `${summary.setCount} set${summary.setCount === 1 ? '' : 's'}`,
+  // Stat tiles: duration · exercises · sets · volume
+  const summaryTiles: { value: string; label: string; status?: string }[] = [
+    {
+      value: formatDuration(session.startedAt, session.completedAt),
+      label: 'Duration',
+      status: session.completedAt ? styles.completed : styles.incomplete,
+    },
+    { value: String(sortedExercises.length), label: sortedExercises.length === 1 ? 'Exercise' : 'Exercises' },
+    { value: String(summary.setCount), label: summary.setCount === 1 ? 'Set' : 'Sets' },
   ];
-  if (summary.volume > 0) summaryParts.push(formatVolume(summary.volume));
+  if (summary.volume > 0) {
+    summaryTiles.push({ value: formatVolume(summary.volume).replace(/kg$/, ''), label: 'Volume (kg)' });
+  }
 
   return (
     <div className={styles.container}>
@@ -327,56 +322,39 @@ export function SessionDetail({ sessionId }: SessionDetailProps) {
                 {isRepeating ? 'Starting...' : 'Repeat'}
               </Button>
             )}
-            <div className={styles.moreMenuWrapper} ref={moreMenuRef}>
-              <Button
-                variant="ghost"
-                onClick={() => setShowMoreMenu(!showMoreMenu)}
-                title="More options"
-                aria-label="More options"
-                aria-expanded={showMoreMenu}
-                className={styles.moreBtn}
-              >
-                ⋮
-              </Button>
-              {showMoreMenu && (
-                <div className={styles.moreMenuDropdown}>
-                  <button
-                    className={styles.moreMenuOption}
-                    onClick={() => { setShowMoreMenu(false); navigate(`/history/${sessionId}/edit`); }}
-                  >
+            <MoreMenu>
+              {(close) => (
+                <>
+                  <MoreMenuItem onClick={() => { close(); navigate(`/history/${sessionId}/edit`); }}>
                     Edit
-                  </button>
-                  <button
-                    className={`${styles.moreMenuOption} ${styles.moreMenuDanger}`}
-                    onClick={() => { setShowMoreMenu(false); setShowDeleteConfirm(true); }}
-                  >
+                  </MoreMenuItem>
+                  <MoreMenuItem danger onClick={() => { close(); setShowDeleteConfirm(true); }}>
                     Delete
-                  </button>
-                </div>
+                  </MoreMenuItem>
+                </>
               )}
-            </div>
+            </MoreMenu>
           </div>
         </div>
-        <h1 className={styles.title}>{title}</h1>
-        <div className={styles.meta}>
+        <span className={`eyebrow num ${styles.meta}`}>
           {formatLongDate(session.startedAt)} · {formatTime(session.startedAt)}
-        </div>
+        </span>
+        <h1 className={`page-title ${styles.title}`}>{title}</h1>
       </header>
 
       <div className={styles.summary}>
-        {summaryParts.map((part, i) => (
-          <span
-            key={i}
-            className={i === 0 ? (session.completedAt ? styles.completed : styles.incomplete) : undefined}
-          >
-            {part}
-          </span>
+        {summaryTiles.map((tile) => (
+          <div key={tile.label} className={styles.summaryTile}>
+            <span className={`${styles.summaryValue} ${tile.status ?? ''}`}>{tile.value}</span>
+            <span className="stat-label">{tile.label}</span>
+          </div>
         ))}
       </div>
 
       {session.notes && (
         <div className={styles.notes}>
-          <strong>Notes:</strong> {session.notes}
+          <span className="eyebrow">Notes</span>
+          <p className={styles.notesText}>{session.notes}</p>
         </div>
       )}
 

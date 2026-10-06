@@ -58,7 +58,7 @@ export interface UpdateExerciseInput {
 export function useExercises(filters?: ExerciseFilters) {
   // Query exercises with optional filters
   const exercises = useLiveQuery(async () => {
-    let collection = db.exercises.toCollection();
+    const collection = db.exercises.toCollection();
 
     // Get all exercises first, then filter in memory
     // Dexie doesn't support complex compound queries well
@@ -188,20 +188,6 @@ export function useUniqueEquipment() {
 }
 
 /**
- * Get unique movement patterns from all exercises
- */
-export function useUniqueMovementPatterns() {
-  return useLiveQuery(async () => {
-    const exercises = await db.exercises.toArray();
-    const patterns = new Set<string>();
-    exercises.forEach((e) => {
-      if (e.movementPattern) patterns.add(e.movementPattern);
-    });
-    return Array.from(patterns).sort();
-  }, []);
-}
-
-/**
  * Create a new exercise
  */
 export async function createExercise(input: CreateExerciseInput): Promise<string> {
@@ -268,31 +254,7 @@ export async function updateExercise(
 }
 
 /**
- * Link an exercise to a parent (for variation grouping)
- */
-export async function linkExerciseToParent(
-  exerciseId: string,
-  parentId: string
-): Promise<void> {
-  await db.exercises.update(exerciseId, {
-    parentId,
-    updatedAt: Date.now(),
-  });
-}
-
-/**
- * Unlink an exercise from its parent
- */
-export async function unlinkExerciseFromParent(exerciseId: string): Promise<void> {
-  await db.exercises.update(exerciseId, {
-    parentId: undefined,
-    updatedAt: Date.now(),
-  });
-}
-
-/**
  * Delete an exercise permanently
- * v1.4: Added for user-created exercises
  */
 export async function deleteExercise(id: string): Promise<void> {
   const exercise = await db.exercises.get(id);
@@ -377,18 +339,6 @@ export function useRecentExercises(limit = 10) {
     const exercises = await db.exercises.bulkGet(recentExerciseIds);
     return exercises.filter((e): e is Exercise => e !== undefined);
   }, [limit]);
-}
-
-/**
- * Hook to get favorite exercises
- */
-export function useFavoriteExercises() {
-  return useLiveQuery(async () => {
-    const favorites = await db.exercises
-      .filter((e) => !!e.isFavorite)
-      .toArray();
-    return favorites.sort((a, b) => a.name.localeCompare(b.name));
-  }, []);
 }
 
 export async function duplicateExercise(id: string): Promise<string> {

@@ -1,6 +1,4 @@
 import {
-  createContext,
-  useContext,
   useState,
   useCallback,
   useMemo,
@@ -10,7 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   useActiveSession,
   useSessionExercises,
-  startSessionFromRoutine,
   startBlankSession,
   completeSession,
   abandonSession,
@@ -21,39 +18,10 @@ import {
   switchProgressionLevel as switchProgressionLevelFn,
   switchExerciseVariant as switchExerciseVariantFn,
   groupSessionExercises,
-  ungroupSessionExercise,
   ungroupAllSessionExercises,
 } from '../hooks/useSessions';
-import type { Session, SessionExercise, Exercise } from '../types';
-
-interface SessionContextValue {
-  // Current active session
-  activeSession: Session | undefined;
-  sessionExercises: SessionExercise[];
-  isLoading: boolean;
-
-  // Session actions
-  startFromRoutine: (routineId: string) => Promise<void>;
-  startBlank: () => Promise<void>;
-  complete: () => Promise<void>;
-  abandon: () => Promise<void>;
-  importTemplate: (templateId: string) => Promise<void>;
-
-  // Exercise actions
-  addExercise: (exercise: Exercise) => Promise<void>;
-  removeExercise: (sessionExerciseId: string) => Promise<void>;
-  reorderExercises: (exerciseIds: string[]) => Promise<void>;
-  switchProgressionLevel: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
-  /** Swap a family exercise to another variant (e.g. Incline Dumbbell Bench Press); keeps its sets */
-  switchExerciseVariant: (sessionExerciseId: string, newExerciseId: string) => Promise<void>;
-
-  // Grouping actions (superset/circuit)
-  groupExercises: (sessionExerciseIds: string[], groupType: 'superset' | 'circuit') => Promise<void>;
-  ungroupExercise: (sessionExerciseId: string) => Promise<void>;
-  ungroupAll: (groupId: string) => Promise<void>;
-}
-
-const SessionContext = createContext<SessionContextValue | null>(null);
+import type { SessionExercise, Exercise } from '../types';
+import { SessionContext, type SessionContextValue } from './useSessionContext';
 
 /** Stable empty array so the memoized context value doesn't change while loading */
 const EMPTY_SESSION_EXERCISES: SessionExercise[] = [];
@@ -64,16 +32,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const liveSessionExercises = useSessionExercises(activeSession?.id);
   const sessionExercises = liveSessionExercises ?? EMPTY_SESSION_EXERCISES;
   const [isLoading, setIsLoading] = useState(false);
-
-  const startFromRoutine = useCallback(async (routineId: string) => {
-    setIsLoading(true);
-    try {
-      await startSessionFromRoutine(routineId);
-      navigate('/workout');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [navigate]);
 
   const startBlank = useCallback(async () => {
     setIsLoading(true);
@@ -144,10 +102,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await groupSessionExercises(sessionExerciseIds, groupType);
   }, []);
 
-  const ungroupExercise = useCallback(async (sessionExerciseId: string) => {
-    await ungroupSessionExercise(sessionExerciseId);
-  }, []);
-
   const ungroupAll = useCallback(async (groupId: string) => {
     if (!activeSession) return;
     await ungroupAllSessionExercises(activeSession.id, groupId);
@@ -158,7 +112,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       activeSession,
       sessionExercises,
       isLoading,
-      startFromRoutine,
       startBlank,
       complete,
       abandon,
@@ -169,14 +122,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       switchProgressionLevel: switchProgression,
       switchExerciseVariant: switchVariant,
       groupExercises,
-      ungroupExercise,
       ungroupAll,
     }),
     [
       activeSession,
       sessionExercises,
       isLoading,
-      startFromRoutine,
       startBlank,
       complete,
       abandon,
@@ -187,7 +138,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       switchProgression,
       switchVariant,
       groupExercises,
-      ungroupExercise,
       ungroupAll,
     ]
   );
@@ -197,12 +147,4 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       {children}
     </SessionContext.Provider>
   );
-}
-
-export function useSessionContext() {
-  const context = useContext(SessionContext);
-  if (!context) {
-    throw new Error('useSessionContext must be used within a SessionProvider');
-  }
-  return context;
 }

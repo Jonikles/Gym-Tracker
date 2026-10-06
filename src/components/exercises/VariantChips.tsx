@@ -8,7 +8,9 @@ import {
 import {
   formatFamilyParams,
   getOrCreateVariantExercise,
+  getVariantExercise,
   selectFamilyOption,
+  type FamilyIndex,
 } from '../../utils/exerciseFamilies';
 import type { Exercise } from '../../types';
 import styles from './VariantChips.module.css';
@@ -20,10 +22,19 @@ interface FamilyParamSelectorProps {
   /** 'large' = 44px chips (picker), 'compact' = smaller chips (inline on cards) */
   size?: 'large' | 'compact';
   disabled?: boolean;
+  /** Extra availability check for an option (e.g. "a DB row exists for the result") */
+  isOptionEnabled?: (dimKey: string, value: string) => boolean;
 }
 
 /** One row of chip buttons per family dimension. Invalid combinations are disabled. */
-export function FamilyParamSelector({ family, params, onChange, size = 'large', disabled }: FamilyParamSelectorProps) {
+export function FamilyParamSelector({
+  family,
+  params,
+  onChange,
+  size = 'large',
+  disabled,
+  isOptionEnabled,
+}: FamilyParamSelectorProps) {
   return (
     <div className={`${styles.selector} ${size === 'compact' ? styles.compact : ''}`}>
       {family.dimensions.map((d, dimIndex) => {
@@ -35,31 +46,33 @@ export function FamilyParamSelector({ family, params, onChange, size = 'large', 
           if (params[prev.key] !== undefined) above[prev.key] = params[prev.key];
         }
         return (
-        <div key={d.key} className={styles.dimension} role="radiogroup" aria-label={d.label}>
-          <span className={styles.dimensionLabel}>{d.label}</span>
-          <div className={styles.chips}>
-            {d.options.map((o) => {
-              const selected = params[d.key] === o.value;
-              const available = isOptionAvailable(family, above, d.key, o.value);
-              return (
-                <button
-                  key={o.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  className={`${styles.chip} ${selected ? styles.chipSelected : ''}`}
-                  disabled={disabled || (!available && !selected)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!selected) onChange(selectFamilyOption(family, params, d.key, o.value));
-                  }}
-                >
-                  {o.label}
-                </button>
-              );
-            })}
+          <div key={d.key} className={styles.dimension} role="radiogroup" aria-label={d.label}>
+            <span className={styles.dimensionLabel}>{d.label}</span>
+            <div className={styles.chips}>
+              {d.options.map((o) => {
+                const selected = params[d.key] === o.value;
+                const available =
+                  isOptionAvailable(family, above, d.key, o.value) &&
+                  (selected || !isOptionEnabled || isOptionEnabled(d.key, o.value));
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={`${styles.chip} ${selected ? styles.chipSelected : ''}`}
+                    disabled={disabled || (!available && !selected)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!selected) onChange(selectFamilyOption(family, params, d.key, o.value));
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
         );
       })}
     </div>
@@ -73,6 +86,13 @@ interface VariantChipsProps {
   onChange: (exercise: Exercise) => void | Promise<void>;
   /** Start expanded (chips visible) instead of the one-line summary */
   defaultExpanded?: boolean;
+  /**
+   * Browse-only mode: only switch to combinations whose exercise row already
+   * exists in this index (others are disabled) — never creates rows.
+   */
+  existingIndex?: FamilyIndex;
+  /** Always show the chip rows (no collapsible summary pill) */
+  alwaysExpanded?: boolean;
 }
 
 /**
@@ -80,7 +100,13 @@ interface VariantChipsProps {
  * ("Incline · Dumbbell ▾") that expands into chip rows on tap.
  * Renders nothing for standalone exercises.
  */
-export const VariantChips = memo(function VariantChips({ exercise, onChange, defaultExpanded = false }: VariantChipsProps) {
+export const VariantChips = memo(function VariantChips({
+  exercise,
+  onChange,
+  defaultExpanded = false,
+  existingIndex,
+  alwaysExpanded = false,
+}: VariantChipsProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [pending, setPending] = useState(false);
   const membership = findFamilyForExerciseName(exercise.name);
@@ -91,38 +117,47 @@ export const VariantChips = memo(function VariantChips({ exercise, onChange, def
     if (!resolveVariant(family, next)) return;
     setPending(true);
     try {
-      const concrete = await getOrCreateVariantExercise(family, next);
+      const concrete = existingIndex
+        ? getVariantExercise(existingIndex, family, next)
+        : await getOrCreateVariantExercise(family, next);
       if (concrete && concrete.id !== exercise.id) await onChange(concrete);
     } finally {
       setPending(false);
     }
   };
 
+  const isOptionEnabled = existingIndex
+    ? (dimKey: string, value: string) =>
+        !!getVariantExercise(existingIndex, family, selectFamilyOption(family, params, dimKey, value))
+    : undefined;
+
   return (
     <div className={styles.variantChips}>
-      <button
-        type="button"
-        className={styles.summary}
-        onClick={(e) => {
-          e.stopPropagation();
-          setExpanded((x) => !x);
-        }}
-        aria-expanded={expanded}
-        title={exercise.name}
-      >
-        <span className={styles.summaryText}>{formatFamilyParams(family, params)}</span>
-        <span className={styles.summaryChevron} aria-hidden="true">{expanded ? '▴' : '▾'}</span>
-      </button>
-      {expanded && (
+      {!alwaysExpanded && (
+        <button
+          type="button"
+          className={styles.summary}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded((x) => !x);
+          }}
+          aria-expanded={expanded}
+          title={exercise.name}
+        >
+          <span className={styles.summaryText}>{formatFamilyParams(family, params)}</span>
+          <span className={styles.summaryChevron} aria-hidden="true">{expanded ? '▴' : '▾'}</span>
+        </button>
+      )}
+      {(expanded || alwaysExpanded) && (
         <FamilyParamSelector
           family={family}
           params={params}
           onChange={handleChange}
           size="compact"
           disabled={pending}
+          isOptionEnabled={isOptionEnabled}
         />
       )}
     </div>
   );
 });
-

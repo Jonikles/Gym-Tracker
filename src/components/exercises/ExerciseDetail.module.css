@@ -1,257 +1,320 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-md);
   max-width: 640px;
   margin: 0 auto;
 }
 
-.header {
+/* ── Top bar: back + favorite ── */
+.topBar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  margin: calc(-1 * var(--space-sm)) 0 calc(-1 * var(--space-xs));
 }
 
-.actions {
-  display: flex;
-  gap: var(--space-sm);
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 var(--space-sm) 0 4px;
+  margin-left: -8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.backBtn:hover,
+.backBtn:active {
+  background: var(--overlay-hover);
+}
+
+.favBtn {
+  margin-right: -8px;
+  font-size: 1.375rem;
+}
+
+.favActive,
+.favActive:hover {
+  color: var(--color-pr);
 }
 
 .notFound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
   text-align: center;
   padding: var(--space-xl);
   color: var(--color-text-muted);
 }
 
-.mainCard {
-  padding: var(--space-lg);
+.actionError {
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
+  border-radius: var(--radius-md);
 }
 
-.titleRow {
+/* ── Title card ── */
+.hero {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-md) var(--space-md) var(--space-md);
+}
+
+.heroChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .name {
-  font-size: var(--text-xl);
-  font-weight: 600;
   margin: 0;
+  font-size: 1.625rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
-.badges {
-  display: flex;
-  gap: var(--space-xs);
+.variantName {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
 }
 
-.badge {
-  font-size: var(--text-xs);
-  padding: 4px 8px;
-  background-color: var(--color-bg-tertiary);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
+.variantSection {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border);
 }
 
-.prBadge {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  padding: 4px 8px;
-  background-color: rgba(251, 191, 36, 0.15);
-  border-radius: var(--radius-sm);
-  color: #fbbf24;
-  white-space: nowrap;
-}
-
-.infoSection {
+/* ── Info rows ── */
+.infoCard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  padding: 0 var(--space-md);
 }
 
 .infoRow {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  min-height: 48px;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.infoRowStacked {
   flex-direction: column;
-  gap: var(--space-xs);
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) 0;
+}
+
+.infoRowLink {
+  width: 100%;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .label {
+  flex-shrink: 0;
   font-size: var(--text-sm);
+  font-weight: 500;
   color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .value {
+  min-width: 0;
   font-size: var(--text-base);
+  font-weight: 600;
+  text-align: right;
   color: var(--color-text);
+}
+
+.linkValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-align: right;
+  color: var(--color-accent);
 }
 
 .tagList {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  gap: 6px;
 }
 
-.tag {
-  font-size: var(--text-sm);
-  padding: 4px 10px;
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
-}
-
-.parentLink {
-  padding: 0;
-  justify-content: flex-start;
-  color: var(--color-accent);
-}
-
-.parentLink:hover {
-  text-decoration: underline;
-}
-
-/* Progression section */
-.progressionSection {
+/* ── Sections (progressions, variations) ── */
+.section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  margin-top: var(--space-lg);
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-sm);
+}
+
+.listCard {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-md);
 }
 
 .progressionRow {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  flex-wrap: wrap;
+  min-height: 56px;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.progressionRow:last-child {
+  border-bottom: none;
 }
 
 .levelBadge {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  padding: 4px 10px;
-  background-color: rgba(168, 85, 247, 0.15);
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  border-radius: var(--radius-sm);
-  color: #a855f7;
-  white-space: nowrap;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--text-base);
+  font-weight: 750;
+  line-height: 1;
+}
+
+.levelBadgeLabel {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-bottom: 2px;
 }
 
 .progressionLink {
-  font-size: var(--text-sm);
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0;
   font-family: inherit;
-  color: var(--color-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: left;
+  color: var(--color-text);
   background: none;
   border: none;
   cursor: pointer;
-  min-height: 40px;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
 .progressionLink:hover {
-  color: var(--color-text);
+  color: var(--color-accent);
 }
 
 .progressionNav {
   display: flex;
-  gap: var(--space-xs);
-  margin-left: auto;
+  flex-shrink: 0;
+  gap: 6px;
 }
 
 .progressionNavBtn {
-  font-size: var(--text-sm);
+  min-width: 44px;
+  min-height: 36px;
+  padding: 0 10px;
   font-family: inherit;
-  min-height: 40px;
-  padding: 4px 12px;
-  background: var(--color-bg);
+  font-size: var(--text-sm);
+  font-weight: 650;
+  background: var(--color-surface-2);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  box-shadow: var(--highlight-top);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.progressionNavBtn:hover {
-  border-color: var(--color-accent);
+.progressionNavBtn:hover,
+.progressionNavBtn:active {
+  background: var(--color-surface-3);
   color: var(--color-text);
 }
 
-
-.variationsCard {
-  padding: var(--space-lg);
-}
-
-.sectionTitle {
-  font-size: var(--text-lg);
-  font-weight: 500;
-  margin: 0 0 var(--space-md) 0;
-}
-
-.variationsList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
 .variationItem {
-  justify-content: flex-start;
-  padding: var(--space-sm) var(--space-md);
-  background-color: var(--color-bg);
-  border-radius: var(--radius-sm);
-}
-
-.variationItem:hover {
-  background-color: var(--color-bg-tertiary);
-}
-
-.actionError {
-  color: var(--color-error);
-  font-size: var(--text-sm);
-  margin-bottom: var(--space-md);
-}
-
-/* Exercise family: family name as title, concrete variant as subtitle */
-.titleGroup {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.name .favBtn {
-  margin-left: var(--space-xs);
-  vertical-align: middle;
-}
-
-.variantName {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.variantSection {
-  margin-bottom: var(--space-lg);
-}
-
-.favBtn {
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-sm) 0;
   background: none;
   border: none;
+  border-bottom: 1px solid var(--color-border);
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: 550;
+  text-align: left;
   color: var(--color-text-muted);
-  font-size: 20px;
-  line-height: 1;
-  min-width: 32px;
-  min-height: 32px;
   cursor: pointer;
-  opacity: 0.5;
 }
 
-.favActive {
-  color: #eab308;
-  opacity: 1;
+.variationItem:last-child {
+  border-bottom: none;
+}
+
+.variationName {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.variationItem:hover .variationName {
+  color: var(--color-accent);
+}
+
+/* ── Custom exercise actions ── */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.actionRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
 }

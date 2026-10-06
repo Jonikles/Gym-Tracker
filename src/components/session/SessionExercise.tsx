@@ -189,7 +189,7 @@ export const SessionExercise = memo(function SessionExercise({
           <span className={styles.chevron} aria-hidden="true">{isCollapsed ? '▸' : '▾'}</span>
           <span className={styles.titleGroup}>
             {isProgression && progressionDef && (
-              <span className={styles.progressionLabel}>{progressionDef.name}</span>
+              <span className={`chip chip-accent ${styles.progressionLabel}`}>{progressionDef.name}</span>
             )}
             <span className={styles.name}>
               {isProgression ? exercise.name : familyTitleFor(exercise)}
@@ -199,7 +199,7 @@ export const SessionExercise = memo(function SessionExercise({
             </span>
           </span>
           {sessionExercise.groupType && (
-            <span className={styles.groupBadge}>{sessionExercise.groupType}</span>
+            <span className={`chip chip-accent ${styles.groupBadge}`}>{sessionExercise.groupType}</span>
           )}
         </button>
         <div className={styles.headerActions}>
@@ -254,7 +254,7 @@ export const SessionExercise = memo(function SessionExercise({
 
       {(targetInfo || isProgression) && (
         <div className={styles.subHeader}>
-          {targetInfo && <span className={styles.target}>Target: {targetInfo}</span>}
+          {targetInfo && <span className={`chip ${styles.target}`}>Target: {targetInfo}</span>}
           {isProgression && (
             <Button
               variant="ghost"
@@ -314,7 +314,7 @@ export const SessionExercise = memo(function SessionExercise({
         </div>
 
         <div className={styles.actions}>
-          <Button variant="secondary" onClick={handleAddSet} className={styles.actionBtn}>
+          <Button variant="secondary" onClick={handleAddSet} className={`${styles.actionBtn} ${styles.addSetBtn}`}>
             + Add Set
           </Button>
           {sets.length === 0 && (

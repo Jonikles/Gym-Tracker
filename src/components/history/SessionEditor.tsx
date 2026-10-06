@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, ConfirmDialog } from '../common';
 import { ExercisePicker } from '../exercises';
@@ -17,17 +17,18 @@ import { useSets, createSet } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
 import { useRoutine } from '../../hooks/useRoutines';
 import type { SessionExercise as SessionExerciseType, Exercise, ExerciseField } from '../../types';
+
+/** Stable fallback while live queries load, so memo deps don't change every render */
+const NO_EXERCISES: SessionExerciseType[] = [];
+import { formatDateInputValue } from '../common/format';
 import styles from './SessionEditor.module.css';
 
 /** Convert a timestamp to a datetime-local input value (YYYY-MM-DDTHH:MM) */
 function timestampToDatetimeLocal(ts: number): string {
   const d = new Date(ts);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
   const h = String(d.getHours()).padStart(2, '0');
   const min = String(d.getMinutes()).padStart(2, '0');
-  return `${y}-${m}-${day}T${h}:${min}`;
+  return `${formatDateInputValue(d)}T${h}:${min}`;
 }
 
 /** Convert a datetime-local input value back to timestamp */
@@ -62,7 +63,7 @@ function EditableExercise({
     <div className={styles.exerciseCard}>
       <div className={styles.exerciseHeader}>
         <h3 className={styles.exerciseName}>{exercise?.name ?? 'Unknown'}</h3>
-        <Button variant="ghost" onClick={onRemove} className={styles.removeBtn}>
+        <Button variant="ghost" size="sm" onClick={onRemove} className={styles.removeBtn}>
           Remove
         </Button>
       </div>
@@ -93,7 +94,7 @@ interface SessionEditorProps {
 export function SessionEditor({ sessionId }: SessionEditorProps) {
   const navigate = useNavigate();
   const session = useSession(sessionId);
-  const sessionExercises = useSessionExercises(sessionId) ?? [];
+  const sessionExercises = useSessionExercises(sessionId) ?? NO_EXERCISES;
   const routine = useRoutine(session?.routineId);
 
   const [notes, setNotes] = useState('');
@@ -103,17 +104,15 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Sync local state when session loads from DB (fixes notes not pre-filling)
-  useEffect(() => {
-    if (session && !hasInitialized) {
-      setNotes(session.notes ?? '');
-      setStartTime(timestampToDatetimeLocal(session.startedAt));
-      if (session.completedAt) {
-        setEndTime(timestampToDatetimeLocal(session.completedAt));
-      }
-      setHasInitialized(true);
+  // Initialize local state once the session loads from DB (adjusted during render)
+  if (session && !hasInitialized) {
+    setNotes(session.notes ?? '');
+    setStartTime(timestampToDatetimeLocal(session.startedAt));
+    if (session.completedAt) {
+      setEndTime(timestampToDatetimeLocal(session.completedAt));
     }
-  }, [session, hasInitialized]);
+    setHasInitialized(true);
+  }
 
   const sortedExercises = useMemo(() => {
     return [...sessionExercises].sort((a, b) => a.order - b.order);
@@ -171,17 +170,19 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <Button variant="ghost" onClick={() => navigate(`/history/${sessionId}`)}>
-          ← Back
-        </Button>
-        <div className={styles.headerContent}>
-          <h1 className={styles.title}>Edit: {routine?.name ?? 'Workout'}</h1>
+        <div className={styles.topBar}>
+          <Button variant="ghost" onClick={() => navigate(`/history/${sessionId}`)} className={styles.backBtn}>
+            ← Back
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => setShowDeleteConfirm(true)} className={styles.deleteBtn}>
+            Delete
+          </Button>
         </div>
-        <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
-          Delete
-        </Button>
+        <span className="eyebrow">Edit session</span>
+        <h1 className={`page-title ${styles.title}`}>{routine?.name ?? 'Workout'}</h1>
       </header>
 
+      <div className={`surface ${styles.details}`}>
       <div className={styles.timeSection}>
         <div className={styles.timeField}>
           <label className={styles.timeLabel}>Started at</label>
@@ -209,6 +210,7 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
           onBlur={() => { void flushNotes(); }}
           placeholder="Add notes about this session..."
         />
+      </div>
       </div>
 
       <div className={styles.exercises}>

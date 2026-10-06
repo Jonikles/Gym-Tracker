@@ -10,7 +10,7 @@ import { CalendarView } from './CalendarView';
 import { HistoryFilterPanel } from './HistoryFilterPanel';
 import { HistoryMoreMenu } from './HistoryMoreMenu';
 import { useHistoryFilters } from './useHistoryFilters';
-import { formatDuration, formatGroupDate, formatTime, formatVolume } from './format';
+import { formatDuration, formatGroupDate, formatTime, formatVolume } from '../common/format';
 import { useSetting } from '../../hooks/useSettings';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useScrollRestore } from '../../hooks/useScrollRestore';
@@ -40,12 +40,12 @@ function SessionCard({ session, title, prCount, stats, selectionMode, isSelected
       : session.notes
     : null;
 
-  // exercises · sets · volume · 🏆 PRs
-  const statParts: string[] = [];
+  // exercises · sets · volume
+  const statParts: { value: string; unit: string }[] = [];
   if (stats) {
-    statParts.push(`${stats.exercises} ex`);
-    statParts.push(`${stats.sets} sets`);
-    if (stats.volume > 0) statParts.push(formatVolume(stats.volume));
+    statParts.push({ value: String(stats.exercises), unit: 'ex' });
+    statParts.push({ value: String(stats.sets), unit: 'sets' });
+    if (stats.volume > 0) statParts.push({ value: formatVolume(stats.volume).replace(/kg$/, ''), unit: 'kg' });
   }
 
   return (
@@ -65,16 +65,23 @@ function SessionCard({ session, title, prCount, stats, selectionMode, isSelected
       <div className={styles.cardBody}>
         <div className={styles.cardTopRow}>
           <span className={styles.cardTitle}>{title}</span>
-          <span className={styles.cardWhen}>
-            {formatTime(session.startedAt)} · {formatDuration(session.startedAt, session.completedAt)}
-          </span>
+          {prCount > 0 && <span className="chip chip-pr num">🏆 {prCount}</span>}
         </div>
+        <span className={`num ${styles.cardWhen}`}>
+          {formatTime(session.startedAt)} · {formatDuration(session.startedAt, session.completedAt)}
+        </span>
         <div className={styles.cardStats}>
-          {statParts.length > 0 ? statParts.join(' · ') : ' '}
-          {prCount > 0 && <span className={styles.prCountBadge}>🏆 {prCount}</span>}
+          {statParts.length > 0
+            ? statParts.map((p) => (
+                <span key={p.unit} className={styles.cardStat}>
+                  <span className={`num ${styles.cardStatValue}`}>{p.value}</span> {p.unit}
+                </span>
+              ))
+            :' '}
         </div>
         {notes && <span className={styles.cardNotes}>{notes}</span>}
       </div>
+      {!selectionMode && <span className={styles.cardChevron} aria-hidden="true">›</span>}
     </div>
   );
 }
@@ -221,9 +228,13 @@ export function SessionHistory() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>History</h1>
+        <h1 className="page-title">History</h1>
         <div className={styles.headerRight}>
-          {!isLoading && <span className={styles.count}>{sessions.length} sessions</span>}
+          {!isLoading && (
+            <span className={styles.count}>
+              <span className="num">{sessions.length}</span> sessions
+            </span>
+          )}
           <Select
             value={f.sortBy}
             onChange={(e) => f.setSortBy(e.target.value)}
@@ -301,7 +312,7 @@ export function SessionHistory() {
         <div className={styles.list}>
           {groupedSessions.map(([dateKey, group]) => (
             <div key={dateKey} className={styles.dateGroup}>
-              <h3 className={styles.dateHeader}>{group.label}</h3>
+              <h3 className={`eyebrow ${styles.dateHeader}`}>{group.label}</h3>
               {group.sessions.map((session) => (
                 <SessionCard
                   key={session.id}

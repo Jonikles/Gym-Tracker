@@ -18,8 +18,7 @@ interface ExerciseDefinition {
 }
 
 /**
- * Preset exercise library - v1.1 with updated muscle groups
- * All exercises use the new specific muscle group keys
+ * Preset exercise library (uses the specific muscle group keys)
  */
 const basePresetExercises: ExerciseDefinition[] = [
   // ============================================

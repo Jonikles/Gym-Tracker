@@ -47,9 +47,6 @@ export type TechniqueData =
 
 /**
  * Set entity - a single set logged during a workout
- * v1.1: Removed RIR, restTime, tempo, notes
- * v1.2: Added targetReps for template-based sets
- * v1.5: Added time and distance as first-class fields
  */
 export interface Set {
   id: string;

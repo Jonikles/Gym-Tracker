@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, SkeletonList } from '../common';
 import { ProgressChart } from './Charts';
 import { PRHistory } from './PRHistory';
+import { formatLabel } from '../common/format';
 import { db } from '../../db';
 import { useExerciseHistory } from '../../hooks/useAnalytics';
 import styles from './ExerciseProgress.module.css';
@@ -46,23 +47,26 @@ export function ExerciseProgress({ exerciseId }: ExerciseProgressProps) {
     );
   }
 
+  const meta = [exercise.equipment, exercise.movementPattern].filter((s): s is string => !!s).map(formatLabel);
+
   return (
     <div className={styles.container}>
+      <div className={styles.topBar}>
+        <button type="button" className={styles.backBtn} onClick={() => navigate('/progress')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m15 6-6 6 6 6" />
+          </svg>
+          Progress
+        </button>
+      </div>
+
       <header className={styles.header}>
-        <Button variant="ghost" onClick={() => navigate('/progress')}>
-          ← Back
-        </Button>
-        <div className={styles.headerContent}>
-          <h1 className={styles.title}>{exercise.name}</h1>
-          <div className={styles.meta}>
-            {exercise.equipment && <span>{exercise.equipment}</span>}
-            {exercise.movementPattern && <span>{exercise.movementPattern}</span>}
-          </div>
-        </div>
+        <h1 className={`page-title ${styles.title}`}>{exercise.name}</h1>
+        {meta.length > 0 && <p className={styles.meta}>{meta.join(' · ')}</p>}
       </header>
 
       <div className={styles.filters}>
-        <label className={styles.toggle}>
+        <label className={`${styles.toggle} ${!includeWarmups ? styles.toggleOn : ''}`}>
           <input
             type="checkbox"
             checked={!includeWarmups}
@@ -71,7 +75,7 @@ export function ExerciseProgress({ exerciseId }: ExerciseProgressProps) {
           <span>Exclude warmups</span>
         </label>
         {exercise.parentId && (
-          <label className={styles.toggle}>
+          <label className={`${styles.toggle} ${includeVariations ? styles.toggleOn : ''}`}>
             <input
               type="checkbox"
               checked={includeVariations}
@@ -83,33 +87,23 @@ export function ExerciseProgress({ exerciseId }: ExerciseProgressProps) {
       </div>
 
       {!history ? (
-        <p className={styles.empty}>No workout data for this exercise yet.</p>
+        <p className={`surface ${styles.empty}`}>No workout data for this exercise yet.</p>
       ) : (
         <>
           <div className={styles.summary}>
-            <div className={styles.summaryItem}>
-              <span className={styles.summaryValue}>{history.totalSessions}</span>
-              <span className={styles.summaryLabel}>Sessions</span>
+            <div className={`${styles.summaryItem} ${styles.summaryAccent}`}>
+              <span className="stat-value">{history.totalSessions}</span>
+              <span className="stat-label">Sessions</span>
             </div>
             <div className={styles.summaryItem}>
-              <span className={styles.summaryValue}>{history.totalSets}</span>
-              <span className={styles.summaryLabel}>Total Sets</span>
+              <span className="stat-value">{history.totalSets}</span>
+              <span className="stat-label">Total sets</span>
             </div>
           </div>
 
           <div className={styles.charts}>
-            <ProgressChart
-              data={history.weightOverTime}
-              title="Weight Over Time"
-              unit="kg"
-              color="var(--pr-weight)"
-            />
-            <ProgressChart
-              data={history.volumeOverTime}
-              title="Volume Over Time"
-              unit="kg"
-              color="var(--color-success)"
-            />
+            <ProgressChart data={history.weightOverTime} title="Weight over time" unit="kg" />
+            <ProgressChart data={history.volumeOverTime} title="Volume over time" unit="kg" />
           </div>
 
           <PRHistory exerciseId={exerciseId} />

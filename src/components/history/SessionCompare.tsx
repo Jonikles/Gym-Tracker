@@ -6,8 +6,11 @@ import { useRoutine } from '../../hooks/useRoutines';
 import { useSets } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
 import { getSetVolume } from '../../utils/volume';
-import { formatDate, formatDuration } from './format';
+import { formatDate, formatDuration } from '../common/format';
 import type { SessionExercise, Set } from '../../types';
+
+/** Stable fallback while live queries load, so memo deps don't change every render */
+const NO_EXERCISES: SessionExercise[] = [];
 import styles from './SessionCompare.module.css';
 
 function ExerciseCompare({
@@ -35,8 +38,8 @@ function ExerciseCompare({
     <Card className={styles.exerciseCard}>
       <div className={styles.exerciseName}>
         {name}
-        {!leftSE && <span className={styles.addedBadge}>+ New</span>}
-        {!rightSE && <span className={styles.removedBadge}>- Removed</span>}
+        {!leftSE && <span className="chip chip-success">+ New</span>}
+        {!rightSE && <span className="chip chip-danger">- Removed</span>}
       </div>
       <div className={styles.setsGrid}>
         <div className={styles.setsCol}>
@@ -109,7 +112,7 @@ function SetCompareRow({
   return (
     <div className={`${styles.setRow} ${weightClass || repsClass}`}>
       <span className={styles.setIndex}>{index + 1}</span>
-      <span>{parts.join(' × ') || '—'}</span>
+      <span className="num">{parts.join(' × ') || '—'}</span>
     </div>
   );
 }
@@ -123,8 +126,8 @@ export function SessionCompare({ sessionIdA, sessionIdB }: SessionCompareProps) 
   const navigate = useNavigate();
   const sessionA = useSession(sessionIdA);
   const sessionB = useSession(sessionIdB);
-  const exercisesA = useSessionExercises(sessionIdA) ?? [];
-  const exercisesB = useSessionExercises(sessionIdB) ?? [];
+  const exercisesA = useSessionExercises(sessionIdA) ?? NO_EXERCISES;
+  const exercisesB = useSessionExercises(sessionIdB) ?? NO_EXERCISES;
   const routineA = useRoutine(sessionA?.routineId);
   const routineB = useRoutine(sessionB?.routineId);
 
@@ -158,23 +161,23 @@ export function SessionCompare({ sessionIdA, sessionIdB }: SessionCompareProps) 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <Button variant="ghost" onClick={() => navigate('/history')}>
+        <Button variant="ghost" onClick={() => navigate('/history')} className={styles.backBtn}>
           ← Back
         </Button>
-        <h1 className={styles.title}>Compare Sessions</h1>
+        <h1 className={`page-title ${styles.title}`}>Compare Sessions</h1>
       </header>
 
       <div className={styles.sessionHeaders}>
         <div className={styles.sessionLabel}>
           <strong>{routineA?.name ?? 'Workout'}</strong>
           <span className={styles.sessionDate}>{formatDate(sessionA.startedAt)}</span>
-          <span className={styles.sessionDuration}>{formatDuration(sessionA.startedAt, sessionA.completedAt)}</span>
+          <span className={`num ${styles.sessionDuration}`}>{formatDuration(sessionA.startedAt, sessionA.completedAt)}</span>
         </div>
         <div className={styles.vsLabel}>vs</div>
         <div className={styles.sessionLabel}>
           <strong>{routineB?.name ?? 'Workout'}</strong>
           <span className={styles.sessionDate}>{formatDate(sessionB.startedAt)}</span>
-          <span className={styles.sessionDuration}>{formatDuration(sessionB.startedAt, sessionB.completedAt)}</span>
+          <span className={`num ${styles.sessionDuration}`}>{formatDuration(sessionB.startedAt, sessionB.completedAt)}</span>
         </div>
       </div>
 

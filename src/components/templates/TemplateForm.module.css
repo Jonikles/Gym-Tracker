@@ -1,42 +1,65 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  gap: var(--space-lg);
 }
 
+/* "← Back" + Save on top, then the template name as an inline title input */
 .header {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topBar {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.backBtn {
+  min-height: 44px;
+  margin-left: calc(-1 * var(--space-sm));
+  padding-left: var(--space-sm);
+  padding-right: var(--space-sm);
+}
+
+.saveBtn {
+  min-width: 88px;
 }
 
 .nameInput {
-  flex: 1;
+  width: 100%;
   min-width: 0;
-  font-size: var(--text-lg); /* ≥16px: no iOS zoom */
-  font-weight: 600;
-  font-family: inherit;
+  min-height: 52px;
+  font-family: var(--font-display);
+  font-size: 1.75rem; /* ≥16px: no iOS zoom */
   color: var(--color-text);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: var(--space-xs) 2px;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  padding: 6px 12px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .nameInput::placeholder {
   color: var(--color-text-muted);
-  font-weight: 400;
+  font-weight: 500;
+  font-size: var(--text-xl);
 }
 
 .nameInput:focus {
   outline: none;
-  border-bottom-color: var(--color-accent);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
 }
 
 .sectionHeader {
@@ -46,16 +69,11 @@
 }
 
 .sectionHeader h2 {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  margin: 0;
+  margin-bottom: var(--space-sm);
 }
 
 .error {
-  color: var(--color-error);
+  margin: 0;
+  color: var(--color-danger-text);
   font-size: var(--text-sm);
-}
-
-.backBtn {
-  min-height: 44px;
 }

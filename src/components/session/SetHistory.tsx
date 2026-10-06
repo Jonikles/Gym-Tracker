@@ -23,7 +23,7 @@ export function SetHistory({ previousSets }: SetHistoryProps) {
 
   return (
     <div className={styles.container}>
-      <span className={styles.label}>Previous:</span>
+      <span className={styles.label}>Previous</span>
       <div className={styles.sets}>
         {workingSets.map((set, index) => {
           const parts: string[] = [];

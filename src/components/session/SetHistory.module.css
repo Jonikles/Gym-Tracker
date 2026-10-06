@@ -1,24 +1,31 @@
 .container {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-sm);
+  padding: 0 2px;
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-  padding: var(--space-xs) 0;
 }
 
 .label {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
 .sets {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
+  gap: 2px 6px;
+  min-width: 0;
 }
 
 .set {
   color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .technique {

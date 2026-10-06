@@ -4,12 +4,11 @@ import type { SettingsMap } from '../types';
 
 /**
  * Default settings values (also used by seed.ts on fresh installs)
- * v1.4: Added activeRoutineId
  */
 export const defaultSettings: SettingsMap = {
   weightIncrement: 2.5,
   weekStartDay: 0, // Sunday
-  activeRoutineId: null, // v1.4: No active routine by default
+  activeRoutineId: null, // No active routine by default
   bodyweight: 0, // 0 = not set
   activeRoutineSetAt: null,
   lastAutoSkipCheckAt: null,

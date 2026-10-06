@@ -1,22 +1,14 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/common';
+import styles from './NotFound.module.css';
 
 export function NotFound() {
+  const navigate = useNavigate();
   return (
-    <div className="page" style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '60vh',
-      gap: 'var(--space-md)',
-      textAlign: 'center',
-    }}>
-      <h1 style={{ fontSize: '4rem', margin: 0, lineHeight: 1 }}>404</h1>
-      <p style={{ color: 'var(--color-text-muted)', margin: 0 }}>Page not found</p>
-      <Link to="/">
-        <Button>Go Home</Button>
-      </Link>
+    <div className={`page ${styles.page}`}>
+      <h1 className={styles.code}>404</h1>
+      <p className={styles.text}>This page doesn&rsquo;t exist.</p>
+      <Button onClick={() => navigate('/')}>Go Home</Button>
     </div>
   );
 }

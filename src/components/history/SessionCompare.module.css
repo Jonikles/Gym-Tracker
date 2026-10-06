@@ -1,36 +1,51 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-md);
 }
 
 .header {
   display: flex;
-  align-items: center;
-  gap: var(--space-md);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.backBtn {
+  min-height: 44px;
+  margin-left: calc(-1 * var(--space-sm));
+  padding-left: var(--space-sm);
+  padding-right: var(--space-sm);
 }
 
 .title {
-  font-size: var(--text-2xl);
-  font-weight: 600;
   margin: 0;
 }
 
+/* A vs B */
 .sessionHeaders {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: var(--space-sm);
 }
 
 .sessionLabel {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: var(--space-md);
-  background: var(--color-bg-secondary);
+  min-width: 0;
+  padding: 12px;
+  background: var(--color-surface-1);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), var(--highlight-top);
+  overflow-wrap: anywhere;
+}
+
+.sessionLabel:first-child {
+  background: var(--gradient-card);
+  border-color: rgba(56, 189, 248, 0.14);
 }
 
 .sessionDate {
@@ -40,79 +55,70 @@
 
 .sessionDuration {
   font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--color-text-muted);
 }
 
 .vsLabel {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
+  align-self: center;
+  font-size: var(--text-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }
 
 .exercises {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 12px;
 }
 
-.exerciseCard {
-  padding: var(--space-md);
+.exerciseCard.exerciseCard {
+  padding: 12px var(--space-sm) var(--space-sm);
 }
 
 .exerciseName {
-  font-weight: 600;
-  margin-bottom: var(--space-sm);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 4px var(--space-sm);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-sm);
-}
-
-.addedBadge {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-success);
-  padding: 1px 6px;
-  background: rgba(34, 197, 94, 0.15);
-  border-radius: var(--radius-sm);
-}
-
-.removedBadge {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-error);
-  padding: 1px 6px;
-  background: rgba(239, 68, 68, 0.15);
-  border-radius: var(--radius-sm);
 }
 
 .setsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .setsCol {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 4px;
+  min-width: 0;
 }
 
 .setRow {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--color-bg);
-  border-radius: var(--radius-sm);
+  min-height: 36px;
+  padding: 4px var(--space-sm);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-md);
   font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .setIndex {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-muted);
   font-size: var(--text-xs);
-  min-width: 16px;
+  min-width: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .noData {
@@ -126,10 +132,20 @@
   justify-content: space-between;
   align-items: center;
   margin-top: var(--space-sm);
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-sm) var(--space-sm) 0;
   font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
   border-top: 1px solid var(--color-border);
+}
+
+.setRow.positive {
+  box-shadow: inset 2px 0 0 var(--color-success);
+}
+
+.setRow.negative {
+  box-shadow: inset 2px 0 0 var(--color-danger-text);
 }
 
 .positive {
@@ -137,21 +153,11 @@
 }
 
 .negative {
-  color: var(--color-error);
+  color: var(--color-danger-text);
 }
 
 .empty {
   text-align: center;
   color: var(--color-text-muted);
   padding: var(--space-lg);
-}
-
-@media (max-width: 600px) {
-  .sessionHeaders {
-    flex-direction: column;
-  }
-
-  .setsGrid {
-    grid-template-columns: 1fr;
-  }
 }

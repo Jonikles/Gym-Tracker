@@ -5,9 +5,13 @@ import { TemplateCard } from './TemplateCard';
 import { useTemplates } from '../../hooks/useTemplates';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useScrollRestore } from '../../hooks/useScrollRestore';
+import type { Template } from '../../types';
 import styles from './TemplateList.module.css';
 
 type SortOrder = 'recent' | 'name-asc' | 'name-desc';
+
+/** Stable fallback while live queries load, so memo deps don't change every render */
+const NO_TEMPLATES: Template[] = [];
 
 export function TemplateList() {
     const navigate = useNavigate();
@@ -17,7 +21,7 @@ export function TemplateList() {
 
     const templates = useTemplates({
         search: searchQuery,
-    }) ?? [];
+    }) ?? NO_TEMPLATES;
 
     const sortedTemplates = useMemo(() => {
         const list = [...templates];
@@ -39,9 +43,9 @@ export function TemplateList() {
     return (
         <div className={styles.container}>
             <header className={styles.header}>
-                <h1>Templates</h1>
-                <Button onClick={() => navigate('/templates/new')}>
-                    New Template
+                <h1 className="page-title">Templates</h1>
+                <Button size="sm" onClick={() => navigate('/templates/new')} className={styles.newBtn}>
+                    + New Template
                 </Button>
             </header>
 

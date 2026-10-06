@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { MoreMenu, MoreMenuItem } from '../history/MoreMenu';
 import { useNavigate, Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, ConfirmDialog, Modal, SkeletonList } from '../common';
@@ -9,7 +10,7 @@ import {
   getRoutinesUsingTemplate,
 } from '../../hooks/useTemplates';
 import { startSessionFromTemplate } from '../../hooks/useSessions';
-import { useSessionContext } from '../../context/SessionContext';
+import { useSessionContext } from '../../context/useSessionContext';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import type { TemplateExercise, Routine, Exercise } from '../../types';
 import styles from './TemplateDetail.module.css';
@@ -43,15 +44,15 @@ function ExerciseSummary({
   return (
     <div className={styles.exerciseSummary}>
       <span className={`${styles.exerciseName} ${isMissing ? styles.exerciseMissing : ''}`}>
-        {isProgression && <span className={styles.progressionTag}>Progression</span>}
+        {isProgression && <span className={`chip chip-accent ${styles.progressionTag}`}>Progression</span>}
         {displayName}
       </span>
-      <span className={styles.exerciseDetail}>
+      <span className={`num ${styles.exerciseDetail}`}>
         {setCount} sets × {targetReps}
         {warmupCount > 0 && ` (${warmupCount} warmup)`}
         {exercise.weight && ` @ ${exercise.weight}kg`}
         {techniques.map(t => (
-          <span key={t} className={styles.technique}>{t}</span>
+          <span key={t} className={`chip ${styles.technique}`}>{t}</span>
         ))}
       </span>
     </div>
@@ -86,22 +87,8 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
   const [showRoutineWarning, setShowRoutineWarning] = useState(false);
   const [affectedRoutines, setAffectedRoutines] = useState<Routine[]>([]);
   const [showActiveWorkoutPrompt, setShowActiveWorkoutPrompt] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close "more" menu on outside click
-  useEffect(() => {
-    if (!showMoreMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showMoreMenu]);
 
   if (template === undefined) {
     return (
@@ -184,51 +171,36 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerTop}>
-          <Button variant="ghost" size="sm" className={styles.backBtn} onClick={() => navigate('/templates')}>
+          <Button variant="ghost" className={styles.backBtn} onClick={() => navigate('/templates')}>
             ← Back
           </Button>
-          <div className={styles.moreMenuWrapper} ref={moreMenuRef}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={styles.moreBtn}
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
-              title="More options"
-              aria-label="More options"
-              aria-expanded={showMoreMenu}
-            >
-              ⋮
-            </Button>
-            {showMoreMenu && (
-              <div className={styles.moreMenuDropdown}>
-                <button
-                  className={styles.moreMenuOption}
-                  onClick={() => { setShowMoreMenu(false); navigate(`/templates/${template.id}/edit`); }}
-                >
+          <MoreMenu>
+            {(close) => (
+              <>
+                <MoreMenuItem onClick={() => { close(); navigate(`/templates/${template.id}/edit`); }}>
                   Edit
-                </button>
-                <button
-                  className={styles.moreMenuOption}
-                  onClick={() => { setShowMoreMenu(false); handleDuplicate(); }}
-                >
+                </MoreMenuItem>
+                <MoreMenuItem onClick={() => { close(); handleDuplicate(); }}>
                   Duplicate
-                </button>
-                <button
-                  className={`${styles.moreMenuOption} ${styles.moreMenuDanger}`}
-                  onClick={() => { setShowMoreMenu(false); handleDeleteClick(); }}
-                >
+                </MoreMenuItem>
+                <MoreMenuItem danger onClick={() => { close(); handleDeleteClick(); }}>
                   Delete
-                </button>
-              </div>
+                </MoreMenuItem>
+              </>
             )}
-          </div>
+          </MoreMenu>
         </div>
+        <div className={`surface-hero ${styles.hero}`}>
         <div className={styles.headerContent}>
-          <h1 className={styles.title}>{template.name}</h1>
+          <span className="eyebrow">Template</span>
+          <h1 className={`page-title ${styles.title}`}>{template.name}</h1>
           <div className={styles.meta}>
-            <span>{template.exercises.length} exercises</span>
-            <span>•</span>
-            <span>{totalSets} total sets</span>
+            <span>
+              <span className={`num ${styles.metaValue}`}>{template.exercises.length}</span> exercises
+            </span>
+            <span>
+              <span className={`num ${styles.metaValue}`}>{totalSets}</span> total sets
+            </span>
           </div>
         </div>
         <Button
@@ -244,10 +216,11 @@ export function TemplateDetail({ templateId }: TemplateDetailProps) {
             {actionError}
           </p>
         )}
+        </div>
       </header>
 
       <div className={styles.exercises}>
-        <h2>Exercises</h2>
+        <h2 className="section-title">Exercises</h2>
         <div className={styles.exerciseList}>
           {sortedExercises.map((exercise, index) => (
             <div

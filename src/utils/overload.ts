@@ -33,7 +33,7 @@ export const DEFAULT_WEIGHT_INCREMENT = 2.5;
  * Parse rep target (can be number or range like "8-12")
  * Returns the minimum reps needed to meet the target
  */
-export function parseRepTarget(target: number | string | undefined): number | undefined {
+function parseRepTarget(target: number | string | undefined): number | undefined {
   if (target === undefined) return undefined;
   
   if (typeof target === 'number') return target;

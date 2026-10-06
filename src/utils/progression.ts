@@ -20,7 +20,7 @@ export interface ProgressionAdvancement {
  *
  * Returns an array because an exercise can belong to multiple progressions.
  */
-export async function detectProgressionAdvancements(
+async function detectProgressionAdvancements(
   exerciseId: string
 ): Promise<ProgressionAdvancement[]> {
   const exercise = await db.exercises.get(exerciseId);
@@ -93,7 +93,7 @@ export async function detectProgressionAdvancements(
 /**
  * Save progression advancements as PR records
  */
-export async function saveProgressionAdvancements(
+async function saveProgressionAdvancements(
   advancements: ProgressionAdvancement[],
   exerciseId: string,
   setId: string

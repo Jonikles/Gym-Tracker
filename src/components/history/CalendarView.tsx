@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Session } from '../../types';
+import { formatDateInputValue } from '../common/format';
 import styles from './CalendarView.module.css';
 
 interface CalendarViewProps {
@@ -66,9 +67,9 @@ export function CalendarView({ sessions, onDayClick, sessionPRCounts, weekStartD
   return (
     <div className={styles.calendar}>
       <div className={styles.calendarNav}>
-        <button className={styles.navBtn} onClick={prevMonth}>&#8592;</button>
+        <button className={`icon-btn ${styles.navBtn}`} onClick={prevMonth} aria-label="Previous month">&#8592;</button>
         <span className={styles.monthLabel}>{monthLabel}</span>
-        <button className={styles.navBtn} onClick={nextMonth}>&#8594;</button>
+        <button className={`icon-btn ${styles.navBtn}`} onClick={nextMonth} aria-label="Next month">&#8594;</button>
       </div>
       <div className={styles.calendarGrid}>
         {dayHeaders.map((d, i) => (
@@ -87,7 +88,7 @@ export function CalendarView({ sessions, onDayClick, sessionPRCounts, weekStartD
               className={`${styles.dayCell} ${hasSessions ? styles.hasSession : ''} ${isToday ? styles.today : ''}`}
               onClick={() => {
                 if (!hasSessions) return;
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dateStr = formatDateInputValue(new Date(year, month, day));
                 onDayClick(dateStr, daySessions);
               }}
               disabled={!hasSessions}

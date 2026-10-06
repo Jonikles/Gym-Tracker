@@ -19,7 +19,7 @@ const PERIOD_OPTIONS: { value: TimePeriod; label: string }[] = [
 ];
 
 /** Convert a TimePeriod to a number of days (0 = all time) */
-export function periodToDays(period: TimePeriod): number {
+function periodToDays(period: TimePeriod): number {
   switch (period) {
     case '1W': return 7;
     case '1M': return 30;
@@ -38,13 +38,14 @@ export function AnalyticsDashboard() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Analytics</h1>
+        <h1 className="page-title">Analytics</h1>
         <button
+          type="button"
           className={styles.exportBtn}
           onClick={() => exportRef.current?.exportImage()}
           title="Export as image"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
             <polyline points="16 6 12 2 8 6" />
             <line x1="12" y1="2" x2="12" y2="15" />
@@ -53,10 +54,13 @@ export function AnalyticsDashboard() {
         </button>
       </header>
 
-      <div className={styles.periodBar}>
+      <div className={styles.periodBar} role="radiogroup" aria-label="Time period">
         {PERIOD_OPTIONS.map((opt) => (
           <button
             key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={period === opt.value}
             className={`${styles.periodBtn} ${period === opt.value ? styles.periodActive : ''}`}
             onClick={() => setPeriod(opt.value)}
           >

@@ -59,11 +59,14 @@ export function ProgressionList() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Progressions</h1>
+        <span className="eyebrow">Overcoming Gravity</span>
+        <h1 className="page-title">Progressions</h1>
       </header>
 
       <Input
-        placeholder="Search progressions..."
+        type="search"
+        placeholder="Search progressions…"
+        aria-label="Search progressions"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />
@@ -77,14 +80,18 @@ export function ProgressionList() {
           const isExpanded = expandedCategory === cat || !!searchQuery;
 
           return (
-            <div key={cat} className={styles.category}>
+            <div key={cat} className={`surface ${styles.category}`}>
               <button
+                type="button"
                 className={styles.categoryHeader}
                 onClick={() => toggleCategory(cat)}
+                aria-expanded={isExpanded}
               >
                 <span className={styles.categoryName}>{cat}</span>
-                <span className={styles.categoryCount}>{progs.length}</span>
-                <span className={styles.chevron}>{isExpanded ? '▲' : '▼'}</span>
+                <span className={`chip ${styles.categoryCount}`}>{progs.length}</span>
+                <span className={`${styles.chevron} ${isExpanded ? styles.chevronOpen : ''}`} aria-hidden="true">
+                  <ChevronIcon />
+                </span>
               </button>
 
               {isExpanded && (
@@ -95,25 +102,25 @@ export function ProgressionList() {
                     return (
                       <button
                         key={prog.id}
+                        type="button"
                         className={styles.progressionCard}
                         onClick={() => navigate(`/progressions/${prog.id}`)}
                       >
-                        <div className={styles.cardTop}>
+                        <div className={styles.cardMain}>
                           <span className={styles.progressionName}>{prog.name}</span>
-                          {achieved && (
-                            <span className={styles.achievedBadge}>
-                              Lvl {achieved}
-                            </span>
-                          )}
-                        </div>
-                        <div className={styles.cardBottom}>
                           <span className={styles.stat}>
-                            {stats?.count ?? 0} exercises
-                          </span>
-                          <span className={styles.stat}>
-                            Max Lvl {stats?.maxLevel ?? 0}
+                            <span className="num">{stats?.count ?? 0}</span> exercises · max Lv{' '}
+                            <span className="num">{stats?.maxLevel ?? 0}</span>
                           </span>
                         </div>
+                        {achieved && (
+                          <span className="chip chip-accent" title="Highest level achieved">
+                            Lv <span className="num">{achieved}</span>
+                          </span>
+                        )}
+                        <span className={styles.rowChevron} aria-hidden="true">
+                          <ChevronIcon />
+                        </span>
                       </button>
                     );
                   })}
@@ -124,5 +131,13 @@ export function ProgressionList() {
         })}
       </div>
     </div>
+  );
+}
+
+function ChevronIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m9 6 6 6-6 6" />
+    </svg>
   );
 }

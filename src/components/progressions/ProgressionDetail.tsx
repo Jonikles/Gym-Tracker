@@ -1,10 +1,15 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../common';
+import { formatLabel, formatMediumDate } from '../common/format';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import { useProgressionExercises, useProgressionAchievements } from '../../hooks/useProgressions';
 import { useProgressionHistory } from '../../hooks/useProgressionHistory';
+import type { Exercise } from '../../types';
 import styles from './ProgressionDetail.module.css';
+
+/** Stable fallback while live queries load, so memo deps don't change every render */
+const NO_EXERCISES: Exercise[] = [];
 
 interface ProgressionDetailProps {
   progressionId: string;
@@ -13,7 +18,7 @@ interface ProgressionDetailProps {
 export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
   const navigate = useNavigate();
   const definition = PROGRESSION_MAP[progressionId];
-  const exercises = useProgressionExercises(progressionId) ?? [];
+  const exercises = useProgressionExercises(progressionId) ?? NO_EXERCISES;
   const achievements = useProgressionAchievements() ?? {};
   const achievedLevel = achievements[progressionId] ?? 0;
   const history = useProgressionHistory(progressionId);
@@ -43,16 +48,28 @@ export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/progressions')}>
-          ← Back
-        </Button>
+      <div className={styles.topBar}>
+        <button type="button" className={styles.backBtn} onClick={() => navigate('/progressions')}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m15 6-6 6 6 6" />
+          </svg>
+          Progressions
+        </button>
+      </div>
+
+      <header className={`surface-hero ${styles.header}`}>
         <div className={styles.titleBlock}>
+          <span className="eyebrow">{definition.category}</span>
           <h1 className={styles.title}>{definition.name}</h1>
-          <span className={styles.category}>{definition.category}</span>
+          <span className={styles.subtitle}>
+            <span className="num">{levelGroups.length}</span> levels
+          </span>
         </div>
         {achievedLevel > 0 && (
-          <span className={styles.achievedBadge}>Your Level: {achievedLevel}</span>
+          <div className={styles.achieved}>
+            <span className="stat-value">{achievedLevel}</span>
+            <span className="stat-label">Your level</span>
+          </div>
         )}
       </header>
 
@@ -79,13 +96,14 @@ export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
                   {exs.map((exercise) => (
                     <button
                       key={exercise.id}
+                      type="button"
                       className={`${styles.exerciseCard} ${isAchieved ? styles.exerciseAchieved : ''}`}
                       onClick={() => navigate(`/exercises/${exercise.id}`)}
                     >
                       <span className={styles.exerciseName}>{exercise.name}</span>
                       <div className={styles.exerciseMeta}>
                         {exercise.equipment && (
-                          <span className={styles.tag}>{exercise.equipment}</span>
+                          <span className={styles.tag}>{formatLabel(exercise.equipment)}</span>
                         )}
                         {exercise.defaultFields.includes('time') && (
                           <span className={styles.tag}>Hold</span>
@@ -111,8 +129,8 @@ export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
       {/* History Timeline */}
       {history && history.length > 0 && (
         <section className={styles.historySection}>
-          <h2 className={styles.historyTitle}>History</h2>
-          <div className={styles.timeline}>
+          <h2 className="section-title">History</h2>
+          <div className={`surface ${styles.timeline}`}>
             {history.map((entry, i) => {
               const prevEntry = history[i + 1]; // older entry (sorted newest-first)
               const levelChanged = prevEntry && prevEntry.level !== entry.level;
@@ -121,6 +139,7 @@ export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
               return (
                 <button
                   key={`${entry.sessionId}-${entry.exerciseId}`}
+                  type="button"
                   className={styles.timelineEntry}
                   onClick={() => navigate(`/history/${entry.sessionId}`)}
                 >
@@ -128,17 +147,13 @@ export function ProgressionDetail({ progressionId }: ProgressionDetailProps) {
                   {i < history.length - 1 && <div className={styles.timelineLine} />}
                   <div className={styles.timelineContent}>
                     <span className={styles.timelineDate}>
-                      {new Date(entry.date).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+                      {formatMediumDate(entry.date)}
                     </span>
                     <span className={styles.timelineExercise}>{entry.exerciseName}</span>
                     <div className={styles.timelineMeta}>
-                      <span className={styles.timelineLevel}>Lvl {entry.level}</span>
+                      <span className="chip chip-accent">Lv <span className="num">{entry.level}</span></span>
                       {levelChanged && (
-                        <span className={levelUp ? styles.levelUpBadge : styles.levelDownBadge}>
+                        <span className={levelUp ? 'chip chip-success' : 'chip chip-warning'} aria-label={levelUp ? 'Level up' : 'Level down'}>
                           {levelUp ? '↑' : '↓'}
                         </span>
                       )}

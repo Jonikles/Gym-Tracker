@@ -58,7 +58,7 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
   if (!distribution || distribution.length === 0) {
     return (
       <div className={styles.chart}>
-        <h3 className={styles.chartTitle}>Muscle Balance</h3>
+        <h3 className={styles.chartTitle}>Muscle balance</h3>
         <div className={styles.empty}>No workout data yet</div>
       </div>
     );
@@ -84,7 +84,7 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
 
   return (
     <div className={styles.chart}>
-      <h3 className={styles.chartTitle}>Muscle Balance</h3>
+      <h3 className={styles.chartTitle}>Muscle balance</h3>
       <p className={styles.chartHint}>Tap a muscle to see exercise breakdown</p>
       <div className={styles.heatmapBody}>
         <div className={styles.heatmapView}>
@@ -121,9 +121,10 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
             />
             <span className={styles.drillDownTitle}>{selectedLabel}</span>
             <span className={styles.drillDownVolume}>
-              {formatVolume(muscleVolumes.get(selectedMuscle) ?? 0)} kg total
+              <span className="num">{formatVolume(muscleVolumes.get(selectedMuscle) ?? 0)}</span> kg total
             </span>
             <button
+              type="button"
               className={styles.drillDownClose}
               onClick={() => setSelectedMuscle(null)}
               aria-label="Close"
@@ -138,7 +139,7 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
                 <div key={item.exerciseId} className={styles.drillDownItem}>
                   <div className={styles.drillDownExercise}>
                     <span className={styles.drillDownName}>{item.exerciseName}</span>
-                    <span className={styles.drillDownSets}>{item.sets} sets</span>
+                    <span className={styles.drillDownSets}><span className="num">{item.sets}</span> sets</span>
                   </div>
                   <div className={styles.drillDownBar}>
                     <div
@@ -150,8 +151,8 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
                     />
                   </div>
                   <div className={styles.drillDownMeta}>
-                    <span>{formatVolume(item.volume)} kg</span>
-                    <span>{item.percentage}%</span>
+                    <span className="num">{formatVolume(item.volume)} kg</span>
+                    <span className="num">{item.percentage}%</span>
                   </div>
                 </div>
               ))}

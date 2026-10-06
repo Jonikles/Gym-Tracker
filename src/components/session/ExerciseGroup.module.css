@@ -1,35 +1,44 @@
+/* Superset / circuit: accent rail on the left + a small label chip */
 .container {
-  border: 2px solid var(--color-accent);
-  border-radius: var(--radius-lg);
-  padding: var(--space-sm) var(--space-xs);
-  background-color: var(--color-bg);
+  position: relative;
+  padding: 2px 0 2px 12px;
+}
+
+.container::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-accent);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
 }
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: var(--space-xs);
-  margin-bottom: var(--space-xs);
+  gap: var(--space-sm);
+  min-height: 44px;
 }
 
 .label {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-accent);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  font-size: 11px;
 }
 
-.ungroupBtn {
-  font-size: var(--text-xs) !important;
+.ungroupBtn.ungroupBtn {
   min-height: 44px;
-  padding: 0 var(--space-sm) !important;
-  color: var(--color-text-muted) !important;
+  padding: 0 var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
-.ungroupBtn:hover {
-  color: var(--color-text) !important;
+.ungroupBtn.ungroupBtn:hover:not(:disabled) {
+  color: var(--color-text);
 }
 
 .exercises {

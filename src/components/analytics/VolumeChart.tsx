@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useWeeklyVolume } from '../../hooks/useStats';
+import { CHART_AXIS_TICK, CHART_BAR_CURSOR, CHART_GRID_STROKE, CHART_TOOLTIP_PROPS } from '../progress/chartTheme';
 import styles from './Analytics.module.css';
 
 interface VolumeChartProps {
@@ -29,7 +30,7 @@ export function VolumeChart({ days }: VolumeChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className={styles.chart}>
-        <h3 className={styles.chartTitle}>Weekly Volume</h3>
+        <h3 className={styles.chartTitle}>Weekly volume</h3>
         <div className={styles.empty}>No workout data yet</div>
       </div>
     );
@@ -37,11 +38,18 @@ export function VolumeChart({ days }: VolumeChartProps) {
 
   return (
     <div className={styles.chart}>
-      <h3 className={styles.chartTitle}>Weekly Volume (kg)</h3>
+      <div className={styles.chartHeader}>
+        <h3 className={styles.chartTitle}>Weekly volume</h3>
+        <span className={styles.chartUnit}>kg</span>
+      </div>
       <div className={styles.chartContainer}>
         <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <BarChart data={data} margin={{ top: 8, right: 6, left: -12, bottom: 0 }}>
             <defs>
+              <linearGradient id="volume-bar-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" style={{ stopColor: 'var(--color-accent)', stopOpacity: 1 }} />
+                <stop offset="100%" style={{ stopColor: 'var(--color-accent)', stopOpacity: 0.45 }} />
+              </linearGradient>
               <pattern
                 id="volume-current-week"
                 width="6"
@@ -53,37 +61,34 @@ export function VolumeChart({ days }: VolumeChartProps) {
                 <rect width="3" height="6" fill="var(--color-accent)" fillOpacity={0.55} />
               </pattern>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+            <CartesianGrid vertical={false} stroke={CHART_GRID_STROKE} />
             <XAxis
               dataKey="weekLabel"
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              tickLine={{ stroke: 'var(--color-border)' }}
-              axisLine={{ stroke: 'var(--color-border)' }}
+              tick={CHART_AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }}
-              tickLine={{ stroke: 'var(--color-border)' }}
-              axisLine={{ stroke: 'var(--color-border)' }}
+              tick={CHART_AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              width={44}
               tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-              }}
-              labelStyle={{ color: 'var(--color-text)' }}
+              {...CHART_TOOLTIP_PROPS}
+              cursor={CHART_BAR_CURSOR}
               labelFormatter={(label, payload) =>
                 payload?.[0]?.payload?.isCurrent ? `${label} (this week, so far)` : label
               }
               formatter={(value) => [`${Number(value).toLocaleString()} kg`, 'Volume']}
             />
-            <Bar dataKey="totalVolume" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+            <Bar dataKey="totalVolume" radius={[5, 5, 0, 0]} maxBarSize={28} isAnimationActive={false}>
               {data.map((d) => (
                 <Cell
                   key={d.weekStart}
-                  fill={d.isCurrent ? 'url(#volume-current-week)' : 'var(--color-accent)'}
+                  fill={d.isCurrent ? 'url(#volume-current-week)' : 'url(#volume-bar-fill)'}
                   stroke={d.isCurrent ? 'var(--color-accent)' : undefined}
                   strokeOpacity={d.isCurrent ? 0.6 : undefined}
                   strokeDasharray={d.isCurrent ? '3 2' : undefined}

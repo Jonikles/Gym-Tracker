@@ -1,12 +1,11 @@
 import {
-  createContext,
-  useContext,
   useState,
   useCallback,
   useRef,
   useEffect,
   type ReactNode,
 } from 'react';
+import { UndoCtx } from './useUndo';
 import styles from './UndoToast.module.css';
 
 interface UndoAction {
@@ -15,19 +14,6 @@ interface UndoAction {
   undo: () => void | Promise<void>;
   expiresAt: number;
 }
-
-interface UndoContextValue {
-  /**
-   * Show an undo toast. Execute the destructive action first, then call this.
-   * If the user clicks "Undo", the undo callback fires to restore the data.
-   * @param message - e.g. "Template archived"
-   * @param undo - callback to reverse the action
-   * @param durationMs - how long the toast stays visible (default 5000)
-   */
-  showUndo: (message: string, undo: () => void | Promise<void>, durationMs?: number) => void;
-}
-
-const UndoCtx = createContext<UndoContextValue | null>(null);
 
 export function UndoProvider({ children }: { children: ReactNode }) {
   const [action, setAction] = useState<UndoAction | null>(null);
@@ -84,10 +70,4 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       )}
     </UndoCtx.Provider>
   );
-}
-
-export function useUndo() {
-  const ctx = useContext(UndoCtx);
-  if (!ctx) throw new Error('useUndo must be used within UndoProvider');
-  return ctx;
 }

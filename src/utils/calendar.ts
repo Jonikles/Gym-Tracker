@@ -1,9 +1,9 @@
 import { db } from '../db';
 import type { Routine, Session } from '../types';
+import { startOfLocalDay, startOfNextLocalDay } from './session';
 
 /**
- * Calendar day status types
- * v1.4: For routine-centric calendar view
+ * Calendar day status types for the routine calendar view
  */
 export type CalendarDayStatus = 'pending' | 'completed' | 'skipped' | 'sick' | 'rest';
 
@@ -19,29 +19,17 @@ export interface CalendarDay {
 }
 
 /**
- * Get the start of a day (midnight)
- */
-export function getStartOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-/** Start of the following local day (DST-safe: not "+24h") */
-function getStartOfNextDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-}
-
-/**
  * Whole calendar days from a to b in local time. Rounded so the 23/25-hour
  * days around DST transitions don't shift the result by one.
  */
 function calendarDaysBetween(a: Date, b: Date): number {
-  return Math.round((getStartOfDay(b).getTime() - getStartOfDay(a).getTime()) / (24 * 60 * 60 * 1000));
+  return Math.round((startOfLocalDay(b.getTime()) - startOfLocalDay(a.getTime())) / (24 * 60 * 60 * 1000));
 }
 
 /**
  * Get days in a month
  */
-export function getDaysInMonth(year: number, month: number): Date[] {
+function getDaysInMonth(year: number, month: number): Date[] {
   const days: Date[] = [];
   const date = new Date(year, month, 1);
   while (date.getMonth() === month) {
@@ -62,8 +50,8 @@ function getDayStatus(templateId: string | null, session: Session | undefined): 
 
 /** Find the session (if any) that started on the given local day */
 function findSessionOnDay(sessions: Session[], date: Date): Session | undefined {
-  const dayStart = getStartOfDay(date).getTime();
-  const dayEnd = getStartOfNextDay(date).getTime();
+  const dayStart = startOfLocalDay(date.getTime());
+  const dayEnd = startOfNextLocalDay(date.getTime());
   return sessions.find((s) => s.startedAt >= dayStart && s.startedAt < dayEnd);
 }
 
@@ -79,7 +67,7 @@ async function getTemplateMap(routine: Routine) {
  * Calculate calendar days for a fixed routine
  * Maps day of week to template
  */
-export async function getFixedRoutineCalendar(
+async function getFixedRoutineCalendar(
   routine: Routine,
   year: number,
   month: number
@@ -122,7 +110,7 @@ export async function getFixedRoutineCalendar(
  * Calculate calendar days for a rolling routine
  * Uses first workout date or routine creation as anchor
  */
-export async function getRollingRoutineCalendar(
+async function getRollingRoutineCalendar(
   routine: Routine,
   year: number,
   month: number
@@ -142,8 +130,8 @@ export async function getRollingRoutineCalendar(
 
   // Get anchor date (first workout or routine creation)
   const anchorDate = allSessions.length > 0
-    ? getStartOfDay(new Date(allSessions[0].startedAt))
-    : getStartOfDay(new Date(routine.createdAt));
+    ? new Date(startOfLocalDay(allSessions[0].startedAt))
+    : new Date(startOfLocalDay(routine.createdAt));
 
   const templateMap = await getTemplateMap(routine);
 

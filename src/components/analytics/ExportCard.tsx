@@ -70,7 +70,7 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
 
         const dataUrl = await toPng(el, {
           pixelRatio: 2,
-          backgroundColor: '#141414',
+          backgroundColor: '#12171c',
           width: 440,
           height: el.scrollHeight,
         });
@@ -194,7 +194,7 @@ function ExportCardContent({ days, period, onReady }: ExportCardContentProps) {
         </div>
         <div className={styles.stat}>
           <span className={styles.statNum}>{stats.currentStreak}</span>
-          <span className={styles.statLbl}>Day Streak</span>
+          <span className={styles.statLbl}>Workout streak</span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statNum}>{stats.consistencyRate}<small>%</small></span>

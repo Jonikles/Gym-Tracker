@@ -1,11 +1,12 @@
+/* Set row: raised surface-2 tile inside the surface-1 exercise card */
 .row {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-xs);
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
+  gap: 6px;
+  padding: 5px;
+  background-color: var(--color-surface-2);
   border-radius: var(--radius-md);
+  box-shadow: var(--highlight-top);
   position: relative;
   z-index: 0;
 }
@@ -14,9 +15,14 @@
   z-index: 50;
 }
 
+/* Warmups: recessed + dimmer so working sets stand out */
 .row.warmup {
-  border-style: dashed;
-  color: var(--color-text-muted);
+  background-color: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+
+.row.warmup .input {
+  color: var(--color-text-secondary);
 }
 
 .row.expandedRow {
@@ -27,24 +33,25 @@
 .mainRow {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 5px;
   min-height: 44px;
 }
 
 .setNumber {
-  width: 32px;
+  width: 34px;
   height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  background-color: var(--color-bg-tertiary);
-  border: 1px solid transparent;
+  background-color: var(--color-surface-3);
+  border: none;
   border-radius: var(--radius-sm);
-  font-family: inherit;
-  font-weight: 600;
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-base);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
 }
@@ -54,17 +61,28 @@
   opacity: 1;
 }
 
+/* Warmup "W" chip */
+.row.warmup .setNumber {
+  background-color: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-size: var(--text-sm);
+}
+
 /* Tapping the number fills empty fields from last session */
 .setNumberFillable {
   cursor: pointer;
-  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
   color: var(--color-accent);
+}
+
+.row.warmup .setNumberFillable {
+  cursor: pointer;
 }
 
 .fields {
   display: flex;
   flex: 1;
-  gap: var(--space-xs);
+  gap: 5px;
   min-width: 0;
 }
 
@@ -74,25 +92,38 @@
   min-width: 56px;
 }
 
+/* Recessed inputs: darker than the row so they read as wells */
 .field .input {
   width: 100%;
+  min-height: 44px;
   height: 44px;
   padding: 0 26px 0 var(--space-xs);
   text-align: center;
-  font-size: 16px; /* ≥16px avoids iOS zoom on focus */
+  font-size: 17px; /* ≥16px avoids iOS zoom on focus */
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  background-color: var(--color-surface-1);
+  border-color: transparent;
 }
 
-.field .input.invalid {
+.field .input:focus {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg);
+}
+
+.field .input.invalid,
+.techniqueUI .miniInput.invalid {
   border-color: var(--color-error);
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--color-danger-soft);
 }
 
 .unit {
   position: absolute;
-  right: 6px;
+  right: 7px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: var(--text-xs);
+  font-size: 11px;
+  font-weight: 500;
   color: var(--color-text-muted);
   pointer-events: none;
 }
@@ -102,7 +133,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  width: 40px;
   height: 44px;
   flex-shrink: 0;
   padding: 0;
@@ -115,29 +146,35 @@
   line-height: 1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.deleteBtn {
-  margin-left: var(--space-xs);
+.iconBtn {
+  width: 44px;
+}
+
+.deleteBtn:active,
+.iconBtn:active {
+  color: var(--color-danger-text);
+  background-color: var(--color-danger-soft);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .deleteBtn:hover,
   .iconBtn:hover {
-    color: var(--color-error);
-    background-color: var(--color-bg-tertiary);
+    color: var(--color-danger-text);
+    background-color: var(--color-danger-soft);
   }
 }
 
-/* Technique-specific UI styles */
+/* Technique-specific UI */
 .techniqueUI {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-sm);
-  background-color: var(--color-bg);
+  background-color: var(--color-surface-1);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
 }
 
 .techniqueInputRow {
@@ -147,12 +184,16 @@
 }
 
 .techniqueInputRow .field {
-  flex: 0 0 96px;
+  flex: 0 0 104px;
+}
+
+.techniqueUI .field .input {
+  background-color: var(--color-surface-2);
 }
 
 .techniqueLabel {
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
 }
 
 .techniqueSubSection {
@@ -160,15 +201,16 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding-left: var(--space-sm);
-  border-left: 2px solid var(--color-accent);
+  box-shadow: inset 2px 0 0 var(--color-accent-muted);
 }
 
 .techniqueSubLabel {
   font-size: var(--text-xs);
+  font-weight: 650;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--space-xs);
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
 }
 
 .miniSetRow {
@@ -178,25 +220,23 @@
 }
 
 .techniqueUI .miniInput {
-  width: 64px;
+  width: 68px;
+  min-height: 44px;
   height: 44px;
   text-align: center;
   padding: var(--space-xs);
-  font-size: 16px;
-}
-
-.techniqueUI .miniInput.invalid {
-  border-color: var(--color-error);
-  background-color: rgba(239, 68, 68, 0.1);
+  font-size: 17px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .addButton {
   align-self: flex-start;
   min-height: 44px;
-  margin-top: var(--space-xs);
+  margin-top: 2px;
 }
 
-/* Drop Set styles */
+/* Drop set */
 .dropRow {
   display: flex;
   align-items: center;
@@ -206,6 +246,7 @@
 
 .dropLabel {
   font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--color-text-secondary);
   min-width: 55px;
 }
@@ -215,7 +256,7 @@
   color: var(--color-text-muted);
 }
 
-/* Cluster styles */
+/* Cluster */
 .clusterSection {
   display: flex;
   flex-direction: column;
@@ -234,7 +275,7 @@
   gap: 2px;
 }
 
-/* Partials styles */
+/* Partials */
 .partialsSection {
   display: flex;
   flex-direction: column;
@@ -259,45 +300,48 @@
   gap: 2px;
   min-width: 44px;
   height: 44px;
-  padding: 0 var(--space-xs);
-  background: var(--color-bg-tertiary);
-  border: 1px solid var(--color-border);
+  padding: 0 6px;
+  background: var(--color-surface-3);
+  border: none;
   border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  font-size: 11px;
   font-family: inherit;
+  letter-spacing: 0.03em;
   cursor: pointer;
   white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .typeSwapButton:hover {
-    border-color: var(--color-accent);
+    background: var(--color-surface-active);
     color: var(--color-text);
   }
 }
 
 .typeSwapIcon {
-  font-size: 10px;
+  font-size: 9px;
+  color: var(--color-text-muted);
 }
 
 .typeShort {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .typePickerDropdown {
   position: absolute;
   left: 0;
   top: 100%;
-  margin-top: var(--space-xs);
-  min-width: 160px;
-  background-color: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 6px;
+  min-width: 176px;
+  padding: 6px;
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), var(--highlight-top);
   z-index: 50;
-  overflow: hidden;
 }
 
 .typePickerOption {
@@ -306,9 +350,10 @@
   gap: var(--space-sm);
   width: 100%;
   min-height: 44px;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-sm);
   background: none;
   border: none;
+  border-radius: var(--radius-md);
   color: var(--color-text);
   font-size: var(--text-sm);
   font-family: inherit;
@@ -317,21 +362,25 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.typePickerOption:active {
+  background-color: var(--color-surface-3);
+}
+
 @media (hover: hover) and (pointer: fine) {
   .typePickerOption:hover {
-    background-color: var(--color-bg-tertiary);
+    background-color: var(--color-surface-3);
   }
 }
 
 .typePickerOption.typePickerOptionActive {
-  background-color: var(--color-bg-tertiary);
+  background-color: var(--color-accent-soft);
   color: var(--color-accent);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .typePickerShort {
-  min-width: 28px;
-  font-weight: 600;
+  min-width: 32px;
+  font-weight: 700;
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
@@ -343,10 +392,6 @@
 @media (max-width: 480px) {
   /* 3+ fields (e.g. weight + time + distance) wrap instead of overflowing */
   .fields {
-    flex-wrap: wrap;
-  }
-
-  .dropRow {
     flex-wrap: wrap;
   }
 
