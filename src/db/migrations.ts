@@ -447,7 +447,8 @@ async function deduplicateExercises(): Promise<void> {
 }
 
 /**
- * Add any preset exercises defined in seed.ts that don't exist in the DB yet.
+ * Add any preset exercises defined in seed.ts that don't exist in the DB yet
+ * (presetExercises includes NEW_FAMILY_EXERCISES — the exercise-family variants).
  * Lets new presets (e.g. Kelso Shrug) reach existing installs, not just fresh ones.
  */
 async function addNewPresetExercises(): Promise<void> {

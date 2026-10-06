@@ -1,45 +1,43 @@
-import { useState, useMemo } from 'react';
+import { memo, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Input, Select, Button, Modal } from '../common';
+import { Input, Select, Button, Modal, Card } from '../common';
+import { formatMuscleGroup, formatLabel } from '../common/format';
 import { ExerciseCard, type ProgressionLevelMap } from './ExerciseCard';
 import { ExerciseForm, type ExerciseFormData } from './ExerciseForm';
 import {
-  useExercises,
-  useUniqueMuscleGroups,
-  useUniqueEquipment,
-  useUniqueMovementPatterns,
   createExercise,
   toggleFavorite,
-  type ExerciseFilters,
   type ExerciseSortOption,
   type FilterMode,
 } from '../../hooks/useExercises';
+import { useDebouncedValue, useFamilyIndex, useIncrementalList } from '../../hooks/useExerciseFamilies';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useScrollRestore } from '../../hooks/useScrollRestore';
 import { PROGRESSION_DEFINITIONS } from '../../data/progressions';
-import type { MuscleGroup } from '../../types';
+import { db } from '../../db';
+import {
+  buildExerciseEntries,
+  filterExerciseEntries,
+  getOrCreateVariantExercise,
+  type ExerciseListEntry,
+} from '../../utils/exerciseFamilies';
+import type { Exercise, MuscleGroup } from '../../types';
 import styles from './ExerciseList.module.css';
-
-// Helper to format muscle group keys for display
-function formatMuscleGroup(mg: string): string {
-  return mg
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-// Helper to capitalize first letter
-function formatLabel(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
 
 // Max level across all progressions (covers OG2 ranges)
 const ALL_LEVELS = Array.from({ length: 17 }, (_, i) => i + 1);
+
+type FamilyEntry = Extract<ExerciseListEntry, { kind: 'family' }>;
+
+function entryLevel(entry: ExerciseListEntry): number | undefined {
+  return entry.kind === 'exercise' ? entry.exercise.progressionLevel : undefined;
+}
 
 export function ExerciseList() {
   const navigate = useNavigate();
   useScrollRestore();
   const [searchQuery, setSearchQuery] = usePersistedState('exercises.search', '');
+  const debouncedSearch = useDebouncedValue(searchQuery, 150);
   const [muscleGroupFilters, setMuscleGroupFilters] = usePersistedState<MuscleGroup[]>('exercises.muscles', []);
   const [filterMode, setFilterMode] = usePersistedState<FilterMode>('exercises.filterMode', 'any');
   const [equipmentFilter, setEquipmentFilter] = usePersistedState('exercises.equipment', '');
@@ -54,34 +52,78 @@ export function ExerciseList() {
   const [isMuscleFilterExpanded, setIsMuscleFilterExpanded] = usePersistedState('exercises.muscleExpanded', false);
   const [isLevelFilterExpanded, setIsLevelFilterExpanded] = usePersistedState('exercises.levelExpanded', false);
 
-  const filters: ExerciseFilters = {
-    searchQuery,
-    muscleGroups: muscleGroupFilters.length > 0 ? muscleGroupFilters : undefined,
-    filterMode,
-    equipment: equipmentFilter || undefined,
-    movementPattern: movementFilter || undefined,
-    sort: sortOption,
-    progressionId: progressionFilter || undefined,
-  };
+  // One live query for the whole library; everything else is derived in memory
+  const { exercises, index } = useFamilyIndex();
 
-  const exercises = useExercises(filters);
-  const allExercises = useExercises({}); // Unfiltered — used for progression level lookups
-  const filteredExercises = exercises.filter((e) => {
-    if (showFavoritesOnly && !e.isFavorite) return false;
-    if (selectedLevels.length > 0) {
-      if (!e.progressionLevel) return false;
-      if (!selectedLevels.includes(e.progressionLevel)) return false;
+  const { muscleGroups, equipment, movements } = useMemo(() => {
+    const mg = new Set<MuscleGroup>();
+    const eq = new Set<string>();
+    const mv = new Set<string>();
+    for (const e of exercises ?? []) {
+      e.muscleGroups?.forEach((m) => mg.add(m));
+      if (e.equipment) eq.add(e.equipment);
+      if (e.movementPattern) mv.add(e.movementPattern);
     }
-    return true;
+    return { muscleGroups: [...mg].sort(), equipment: [...eq].sort(), movements: [...mv].sort() };
+  }, [exercises]);
+
+  const entries = useMemo(
+    () => (exercises && index ? buildExerciseEntries(exercises, index) : []),
+    [exercises, index],
+  );
+
+  const muscleKey = muscleGroupFilters.join(',');
+  const levelKey = selectedLevels.join(',');
+  const filteredEntries = useMemo(() => {
+    const muscles = muscleKey ? (muscleKey.split(',') as MuscleGroup[]) : [];
+    const levels = levelKey ? levelKey.split(',').map(Number) : [];
+    const hasPredicate =
+      muscles.length > 0 || !!equipmentFilter || !!movementFilter || !!progressionFilter || levels.length > 0 || showFavoritesOnly;
+    const predicate = hasPredicate
+      ? (e: Exercise) => {
+          if (muscles.length > 0) {
+            const ok =
+              filterMode === 'all'
+                ? muscles.every((mg) => e.muscleGroups?.includes(mg))
+                : muscles.some((mg) => e.muscleGroups?.includes(mg));
+            if (!ok) return false;
+          }
+          if (equipmentFilter && e.equipment !== equipmentFilter) return false;
+          if (movementFilter && e.movementPattern !== movementFilter) return false;
+          if (progressionFilter && !e.progressionMemberships?.some((pm) => pm.progressionId === progressionFilter)) return false;
+          if (levels.length > 0 && (!e.progressionLevel || !levels.includes(e.progressionLevel))) return false;
+          if (showFavoritesOnly && !e.isFavorite) return false;
+          return true;
+        }
+      : undefined;
+
+    const result = filterExerciseEntries(entries, debouncedSearch, predicate);
+    if (sortOption === 'name-desc') {
+      result.sort((a, b) => b.name.localeCompare(a.name));
+    } else if (sortOption === 'level-asc') {
+      result.sort((a, b) => (entryLevel(a) ?? 999) - (entryLevel(b) ?? 999));
+    } else if (sortOption === 'level-desc') {
+      result.sort((a, b) => (entryLevel(b) ?? 0) - (entryLevel(a) ?? 0));
+    }
+    return result;
+  }, [entries, debouncedSearch, muscleKey, levelKey, filterMode, equipmentFilter, movementFilter, progressionFilter, showFavoritesOnly, sortOption]);
+
+  const listResetKey = `${debouncedSearch}|${muscleKey}|${levelKey}|${filterMode}|${equipmentFilter}|${movementFilter}|${progressionFilter}|${showFavoritesOnly}|${sortOption}`;
+  // Render enough cards up front for useScrollRestore to land where the user left off
+  const [initialCount] = useState(() => {
+    try {
+      const y = parseInt(sessionStorage.getItem('scroll:/exercises') ?? '0', 10) || 0;
+      return Math.max(40, Math.ceil(y / 60) + 20);
+    } catch {
+      return 40;
+    }
   });
-  const muscleGroups = useUniqueMuscleGroups() ?? [];
-  const equipment = useUniqueEquipment() ?? [];
-  const movements = useUniqueMovementPatterns() ?? [];
+  const { visibleCount, hasMore, sentinelRef } = useIncrementalList(filteredEntries.length, listResetKey, initialCount);
 
   // Build progressionId → level → exerciseId map for prev/next navigation
   const progressionLevelMap: ProgressionLevelMap = useMemo(() => {
     const map: ProgressionLevelMap = new Map();
-    for (const ex of allExercises) {
+    for (const ex of exercises ?? []) {
       if (!ex.progressionMemberships) continue;
       for (const pm of ex.progressionMemberships) {
         let levelMap = map.get(pm.progressionId);
@@ -93,7 +135,17 @@ export function ExerciseList() {
       }
     }
     return map;
-  }, [allExercises]);
+  }, [exercises]);
+
+  const openExercise = useCallback((id: string) => navigate(`/exercises/${id}`), [navigate]);
+
+  const openFamily = useCallback(
+    async (entry: FamilyEntry) => {
+      const target = entry.defaultExercise ?? (await getOrCreateVariantExercise(entry.family, entry.family.defaults));
+      if (target) navigate(`/exercises/${target.id}`);
+    },
+    [navigate],
+  );
 
   const handleCreate = async (data: ExerciseFormData) => {
     const id = await createExercise(data);
@@ -300,29 +352,24 @@ export function ExerciseList() {
         >
           {showFavoritesOnly ? '★ Favorites' : '☆ Favorites'}
         </button>
-        <span className={styles.count}>{filteredExercises.length} exercises</span>
+        <span className={styles.count}>{filteredEntries.length} exercises</span>
       </div>
 
       <div className={styles.list}>
-        {filteredExercises.map((exercise) => (
-            <ExerciseCard
-                key={exercise.id}
-                exercise={exercise}
-                onClick={() => navigate(`/exercises/${exercise.id}`)}
-                showProgressionNav
-                progressionLevelMap={progressionLevelMap}
-                headerExtra={
-                  <button
-                    className={`${styles.favBtn} ${exercise.isFavorite ? styles.favActive : ''}`}
-                    onClick={(e) => { e.stopPropagation(); toggleFavorite(exercise.id); }}
-                    title={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    {exercise.isFavorite ? '★' : '☆'}
-                  </button>
-                }
+        {filteredEntries.slice(0, visibleCount).map((entry) =>
+          entry.kind === 'family' ? (
+            <FamilyCard key={entry.key} entry={entry} onOpen={openFamily} />
+          ) : (
+            <LibraryExerciseCard
+              key={entry.key}
+              exercise={entry.exercise}
+              onOpen={openExercise}
+              progressionLevelMap={progressionLevelMap}
             />
-        ))}
-        {filteredExercises.length === 0 && (
+          ),
+        )}
+        {hasMore && <div key={visibleCount} ref={sentinelRef} className={styles.sentinel} />}
+        {exercises && filteredEntries.length === 0 && (
           <p className={styles.empty}>
             {hasFilters
               ? 'No exercises match your filters.'
@@ -346,3 +393,82 @@ export function ExerciseList() {
     </div>
   );
 }
+
+function FavoriteButton({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className={`${styles.favBtn} ${active ? styles.favActive : ''}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      title={active ? 'Remove from favorites' : 'Add to favorites'}
+      aria-label={active ? 'Remove from favorites' : 'Add to favorites'}
+    >
+      {active ? '★' : '☆'}
+    </button>
+  );
+}
+
+const LibraryExerciseCard = memo(function LibraryExerciseCard({
+  exercise,
+  onOpen,
+  progressionLevelMap,
+}: {
+  exercise: Exercise;
+  onOpen: (id: string) => void;
+  progressionLevelMap: ProgressionLevelMap;
+}) {
+  return (
+    <ExerciseCard
+      exercise={exercise}
+      onClick={() => onOpen(exercise.id)}
+      showProgressionNav
+      progressionLevelMap={progressionLevelMap}
+      headerExtra={<FavoriteButton active={!!exercise.isFavorite} onToggle={() => toggleFavorite(exercise.id)} />}
+    />
+  );
+});
+
+/** Star on a family card: filled if any variant is a favorite. Tapping un-favorites
+ *  all favorited variants, or favorites the default variant. */
+async function toggleFamilyFavorite(entry: FamilyEntry): Promise<void> {
+  const favorites = entry.members.filter((m) => m.isFavorite);
+  const now = Date.now();
+  if (favorites.length > 0) {
+    await Promise.all(favorites.map((m) => db.exercises.update(m.id, { isFavorite: false, updatedAt: now })));
+    return;
+  }
+  const target = entry.defaultExercise ?? (await getOrCreateVariantExercise(entry.family, entry.family.defaults));
+  if (target) await db.exercises.update(target.id, { isFavorite: true, updatedAt: now });
+}
+
+const FamilyCard = memo(function FamilyCard({
+  entry,
+  onOpen,
+}: {
+  entry: FamilyEntry;
+  onOpen: (entry: FamilyEntry) => void;
+}) {
+  const muscles = entry.defaultExercise?.muscleGroups ?? [];
+  const anyFavorite = entry.members.some((m) => m.isFavorite);
+  return (
+    <Card onClick={() => onOpen(entry)} interactive>
+      <div className={styles.familyHeader}>
+        <h3 className={styles.familyName}>{entry.name}</h3>
+        <span className={styles.variationCount}>{entry.family.variants.length} variations</span>
+        <FavoriteButton active={anyFavorite} onToggle={() => void toggleFamilyFavorite(entry)} />
+      </div>
+      {muscles.length > 0 && (
+        <div className={styles.muscleRow}>
+          {muscles.map((mg) => (
+            <span key={mg} className={styles.muscleTag}>
+              {formatMuscleGroup(mg)}
+            </span>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+});

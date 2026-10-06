@@ -1,41 +1,57 @@
 .wrapper {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: 6px;
 }
 
 .label {
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text-secondary);
 }
 
 .input {
   width: 100%;
+  min-height: 46px;
   padding: var(--space-sm) var(--space-md);
   font-family: inherit;
-  font-size: var(--text-base);
+  font-size: max(16px, var(--text-base)); /* ≥16px stops iOS zoom-on-focus */
   color: var(--input-text);
   background-color: var(--input-bg);
   border: 1px solid var(--input-border);
   border-radius: var(--radius-md);
-  transition: border-color var(--transition-fast);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .input::placeholder {
   color: var(--input-placeholder);
 }
 
+.input:hover:not(:focus):not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
 .input:focus {
   outline: none;
   border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.input:disabled {
+  opacity: 0.55;
 }
 
 .input.error {
   border-color: var(--color-error);
 }
 
+.input.error:focus {
+  box-shadow: 0 0 0 3px var(--color-danger-soft);
+}
+
 .errorText {
   font-size: var(--text-sm);
-  color: var(--color-error);
+  color: var(--color-danger-text);
 }

@@ -1,5 +1,6 @@
 .message {
   color: var(--color-text-secondary);
+  line-height: 1.55;
   margin-bottom: var(--space-lg);
 }
 
@@ -10,15 +11,18 @@
 }
 
 .error {
-  color: var(--color-error);
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
   font-size: var(--text-sm);
   margin-top: calc(-1 * var(--space-sm));
   margin-bottom: var(--space-md);
 }
 
-.error {
-  color: var(--color-error);
-  font-size: var(--text-sm);
-  margin-top: calc(-1 * var(--space-sm));
-  margin-bottom: var(--space-md);
+/* Mobile bottom sheet: full-width, equal buttons */
+@media (max-width: 768px) {
+  .actions > * {
+    flex: 1;
+  }
 }

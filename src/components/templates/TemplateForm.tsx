@@ -19,7 +19,10 @@ interface TemplateFormProps {
 type FormExercise = KeyedTemplateExercise & { uid: string };
 
 function withKeys(exercises: TemplateExercise[]): FormExercise[] {
-  return exercises.map((e) => ({ ...e, uid: crypto.randomUUID() }));
+  // Normalize order to 0..n-1: rows are addressed by their (unique) order
+  return [...exercises]
+    .sort((a, b) => a.order - b.order)
+    .map((e, index) => ({ ...e, order: index, uid: crypto.randomUUID() }));
 }
 
 function stripKeys(exercises: FormExercise[]): TemplateExercise[] {

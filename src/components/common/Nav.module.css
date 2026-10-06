@@ -4,8 +4,11 @@
 .desktopNav {
   display: flex;
   align-items: center;
-  padding: var(--space-md) var(--space-lg);
-  background-color: var(--color-bg-secondary);
+  padding: var(--space-sm) var(--space-lg);
+  min-height: 60px;
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
   border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
@@ -13,17 +16,37 @@
   gap: var(--space-lg);
 }
 
+.brandLink:hover {
+  color: inherit;
+}
+
 .brand {
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 750;
   font-size: var(--text-lg);
+  letter-spacing: -0.02em;
   color: var(--color-text);
   white-space: nowrap;
+}
+
+.brandMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  box-shadow: var(--shadow-accent);
 }
 
 .desktopLinks {
   display: flex;
   flex: 1;
-  gap: var(--space-xs);
+  gap: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -34,35 +57,52 @@
 
 .desktopLink {
   display: block;
-  padding: var(--space-xs) var(--space-sm);
+  padding: 6px var(--space-md);
   font-size: var(--text-sm);
+  font-weight: 550;
   color: var(--color-text-secondary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   transition: color var(--transition-fast), background-color var(--transition-fast);
   white-space: nowrap;
 }
 
 .desktopLink:hover {
   color: var(--color-text);
-  background-color: var(--color-bg-tertiary);
+  background-color: var(--overlay-hover);
 }
 
 .desktopLink.active {
-  color: var(--color-text);
-  background-color: var(--color-bg-tertiary);
+  color: var(--color-accent);
+  background-color: var(--color-accent-soft);
 }
 
 .desktopWorkoutBtn {
-  display: block;
-  padding: var(--space-xs) var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
   font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-bg);
+  font-weight: 700;
+  color: var(--color-on-accent);
   background-color: var(--color-accent);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-accent);
   white-space: nowrap;
   text-align: center;
   flex-shrink: 0;
+  transition: background-color var(--transition-fast);
+}
+
+.desktopWorkoutBtn:hover {
+  color: var(--color-on-accent);
+  background-color: #52c7fa;
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-on-accent);
 }
 
 /* ════════════════════════════════════════
@@ -84,26 +124,32 @@
     left: 0;
     right: 0;
     z-index: 200;
-    background-color: var(--color-bg-secondary);
+    padding: 0 var(--space-xs) env(safe-area-inset-bottom, 0);
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
     border-top: 1px solid var(--color-border);
-    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, 0.6);
   }
 }
 
 .mobileTab {
   flex: 1;
+  min-width: 0;
+  min-height: var(--bottom-nav-height);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: var(--space-sm) 0;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 0 6px;
   background: none;
   border: none;
   color: var(--color-text-muted);
   font-family: inherit;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--transition-fast);
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -112,22 +158,61 @@
   color: var(--color-text-secondary);
 }
 
-.mobileTabActive {
+/* Icon sits in a pill that fills with accent-soft when active */
+.mobileTabIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.mobileTab:active .mobileTabIcon {
+  background-color: var(--overlay-pressed);
+}
+
+.mobileTabActive,
+.mobileTabActive:hover {
+  color: var(--color-accent);
+}
+
+.mobileTabActive .mobileTabIcon,
+.mobileTabActive:active .mobileTabIcon {
+  background-color: var(--color-accent-soft);
+}
+
+.mobileTabActive .mobileTabLabel {
+  font-weight: 650;
+}
+
+/* Workout in progress: green "live" dot on the Workout tab */
+.mobileTabLive {
   color: var(--color-text);
 }
 
-.mobileTabLive {
-  color: var(--color-success);
+.mobileTabLive.mobileTabActive {
+  color: var(--color-accent);
 }
 
-.mobileTabIcon {
-  font-size: 20px;
-  line-height: 1;
+.liveBadge {
+  position: absolute;
+  top: 3px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-bg);
 }
 
 .mobileTabLabel {
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-weight: 550;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 /* ════════════════════════════════════════
@@ -146,7 +231,9 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--overlay-backdrop);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
     z-index: 190;
     animation: fadeIn 0.15s ease;
   }
@@ -159,37 +246,88 @@
     left: 0;
     right: 0;
     z-index: 195;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    max-height: calc(70vh + 50px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px));
-    padding-top: var(--space-sm);
+    background: var(--color-surface-1);
+    border-top: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: var(--shadow-lg);
+    max-height: calc(70vh + var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--bottom-nav-height) + var(--space-sm) + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    animation: slideUp 0.2s ease;
+    overscroll-behavior: contain;
+    animation: slideUp 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .moreHandle {
+    flex-shrink: 0;
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    margin: var(--space-sm) 0 var(--space-sm);
+    border-radius: var(--radius-full);
+    background: var(--color-surface-3);
+  }
+
+  .moreList {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 var(--space-sm);
   }
 
   .moreLink {
-    display: block;
-    padding: var(--space-md) var(--space-lg);
-    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    min-height: 52px;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
     font-size: var(--text-base);
-    font-weight: 500;
+    font-weight: 550;
     text-decoration: none;
-    transition: background-color 0.1s ease;
+    transition: background-color var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
   }
 
   .moreLink:hover,
   .moreLink:active {
-    background-color: var(--color-bg-tertiary);
+    color: var(--color-text);
+    background-color: var(--overlay-hover);
   }
 
-  .moreLinkActive {
-    color: var(--color-text);
+  .moreIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    color: var(--color-text-secondary);
+  }
+
+  .moreLabel {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .moreChevron {
+    display: flex;
+    color: var(--color-text-muted);
+  }
+
+  .moreLinkActive,
+  .moreLinkActive:hover {
+    color: var(--color-accent);
+  }
+
+  .moreLinkActive .moreIcon {
+    background: var(--color-accent-soft);
+    color: var(--color-accent);
   }
 }
-
 
 /* ════════════════════════════════════════
    Animations

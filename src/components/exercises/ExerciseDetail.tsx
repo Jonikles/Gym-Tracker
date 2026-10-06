@@ -10,7 +10,10 @@ import {
   updateExercise,
   deleteExercise,
   duplicateExercise,
+  toggleFavorite,
 } from '../../hooks/useExercises';
+import { findFamilyForExerciseName } from '../../data/exercise-families';
+import { VariantChips } from './VariantChips';
 import { useCurrentPRs } from '../../hooks/usePRs';
 import { formatPRValue } from '../../utils/pr';
 import { PROGRESSION_MAP } from '../../data/progressions';
@@ -68,6 +71,8 @@ export function ExerciseDetail() {
     }
     return map;
   }, [siblingExercises]);
+
+  const family = exercise ? findFamilyForExerciseName(exercise.name)?.family : undefined;
 
   if (exercise === undefined) {
     return (
@@ -150,7 +155,21 @@ export function ExerciseDetail() {
 
       <Card className={styles.mainCard}>
         <div className={styles.titleRow}>
-          <h1 className={styles.name}>{exercise.name}</h1>
+          <div className={styles.titleGroup}>
+            <h1 className={styles.name}>
+              {family ? family.name : exercise.name}
+              <button
+                type="button"
+                className={`${styles.favBtn} ${exercise.isFavorite ? styles.favActive : ''}`}
+                onClick={() => toggleFavorite(exercise.id)}
+                title={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                aria-label={exercise.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                {exercise.isFavorite ? '★' : '☆'}
+              </button>
+            </h1>
+            {family && <span className={styles.variantName}>{exercise.name}</span>}
+          </div>
           <div className={styles.badges}>
             {currentPRs?.weight && (
               <span className={styles.prBadge} title="Current weight PR">
@@ -165,6 +184,16 @@ export function ExerciseDetail() {
             {exercise.isPreset && <span className={styles.badge}>Preset</span>}
           </div>
         </div>
+
+        {family && (
+          <div className={styles.variantSection}>
+            <VariantChips
+              exercise={exercise}
+              defaultExpanded
+              onChange={(next) => navigate(`/exercises/${next.id}`, { replace: true })}
+            />
+          </div>
+        )}
 
         <div className={styles.infoSection}>
           {exercise.muscleGroups && exercise.muscleGroups.length > 0 && (

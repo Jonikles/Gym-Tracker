@@ -334,3 +334,44 @@
   color: #eab308;
   opacity: 1;
 }
+
+.sentinel {
+  height: 1px;
+}
+
+/* Family card (one card per exercise family) */
+.familyHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.familyName {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 500;
+}
+
+.variationCount {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.muscleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.muscleTag {
+  font-size: var(--text-xs);
+  padding: 1px 6px;
+  background-color: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+}

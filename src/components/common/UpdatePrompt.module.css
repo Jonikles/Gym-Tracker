@@ -1,37 +1,58 @@
 .banner {
   position: fixed;
-  top: var(--space-md);
+  top: calc(var(--space-sm) + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 300;
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-bg-secondary);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-  animation: slideDown 0.3s ease;
+  max-width: calc(100vw - 2 * var(--space-md));
+  padding: 6px 6px 6px var(--space-md);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--color-accent-muted);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+  animation: slideDown 0.25s ease-out;
 }
 
 .text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 
+.text::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
 .updateBtn {
-  padding: var(--space-xs) var(--space-md);
+  min-height: 36px;
+  padding: 0 var(--space-md);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
-  color: var(--color-bg);
+  color: var(--color-on-accent);
   background: var(--color-accent);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color var(--transition-fast);
+}
+
+.updateBtn:active {
+  background: var(--color-accent-strong);
 }
 
 @keyframes slideDown {

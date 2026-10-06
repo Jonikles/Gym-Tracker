@@ -19,6 +19,7 @@ import {
   reorderSessionExercises,
   importTemplateIntoSession,
   switchProgressionLevel as switchProgressionLevelFn,
+  switchExerciseVariant as switchExerciseVariantFn,
   groupSessionExercises,
   ungroupSessionExercise,
   ungroupAllSessionExercises,
@@ -43,6 +44,8 @@ interface SessionContextValue {
   removeExercise: (sessionExerciseId: string) => Promise<void>;
   reorderExercises: (exerciseIds: string[]) => Promise<void>;
   switchProgressionLevel: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
+  /** Swap a family exercise to another variant (e.g. Incline Dumbbell Bench Press); keeps its sets */
+  switchExerciseVariant: (sessionExerciseId: string, newExerciseId: string) => Promise<void>;
 
   // Grouping actions (superset/circuit)
   groupExercises: (sessionExerciseIds: string[], groupType: 'superset' | 'circuit') => Promise<void>;
@@ -133,6 +136,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return switchProgressionLevelFn(activeSession.id, sessionExerciseId, newExerciseId);
   }, [activeSession]);
 
+  const switchVariant = useCallback(async (sessionExerciseId: string, newExerciseId: string) => {
+    await switchExerciseVariantFn(sessionExerciseId, newExerciseId);
+  }, []);
+
   const groupExercises = useCallback(async (sessionExerciseIds: string[], groupType: 'superset' | 'circuit') => {
     await groupSessionExercises(sessionExerciseIds, groupType);
   }, []);
@@ -160,6 +167,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       removeExercise,
       reorderExercises,
       switchProgressionLevel: switchProgression,
+      switchExerciseVariant: switchVariant,
       groupExercises,
       ungroupExercise,
       ungroupAll,
@@ -177,6 +185,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       removeExercise,
       reorderExercises,
       switchProgression,
+      switchVariant,
       groupExercises,
       ungroupExercise,
       ungroupAll,

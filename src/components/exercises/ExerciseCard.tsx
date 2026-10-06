@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Exercise } from '../../types';
 import { PROGRESSION_MAP } from '../../data/progressions';
@@ -19,7 +20,7 @@ interface ExerciseCardProps {
   headerExtra?: React.ReactNode;
 }
 
-export function ExerciseCard({ exercise, onClick, showDetails = true, showProgressionNav = false, progressionLevelMap, headerExtra }: ExerciseCardProps) {
+function ExerciseCardImpl({ exercise, onClick, showDetails = true, showProgressionNav = false, progressionLevelMap, headerExtra }: ExerciseCardProps) {
   const navigate = useNavigate();
 
   const memberships = exercise.progressionMemberships;
@@ -112,3 +113,6 @@ export function ExerciseCard({ exercise, onClick, showDetails = true, showProgre
     </Card>
   );
 }
+
+/** Memoized: list pages render hundreds of these */
+export const ExerciseCard = memo(ExerciseCardImpl);

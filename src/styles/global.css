@@ -7,41 +7,95 @@
   padding: 0;
 }
 
-/* CSS Variables */
+/* ════════════════════════════════════════
+   Design tokens (dark-only, ice-blue accent)
+   ════════════════════════════════════════ */
 :root {
-  /* Dark theme (only theme) */
-  --color-bg: #0a0a0a;
-  --color-bg-secondary: #141414;
-  --color-bg-tertiary: #1e1e1e;
-  --color-text: #e5e5e5;
-  --color-text-secondary: #a3a3a3;
-  --color-text-muted: #737373;
-  --color-border: #262626;
-  --color-border-focus: #404040;
-  --color-accent: #f5f5f5;
-  --color-accent-muted: #525252;
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-warning: #f59e0b;
+  /* ── Surfaces (blue-tinted neutrals, layered back → front) ── */
+  --color-bg: #0a0d10;          /* app background */
+  --color-surface-1: #12171c;   /* cards, sheets, nav */
+  --color-surface-2: #1a2027;   /* raised: inputs, secondary buttons, rows inside cards */
+  --color-surface-3: #232a33;   /* hover/pressed on surface-2, chips */
 
-  /* Muscle diagram */
+  /* Legacy surface names (still used across the app) */
+  --color-bg-secondary: var(--color-surface-1);
+  --color-bg-tertiary: var(--color-surface-2);
+  --color-surface: var(--color-surface-2);
+  --color-surface-alt: var(--color-surface-2);
+  --color-surface-hover: var(--color-surface-3);
+  --color-surface-active: #2b3440;
+
+  /* ── Text (all ≥ 4.5:1 on surface-3) ── */
+  --color-text: #e8edf2;
+  --color-text-secondary: #a9b4c0;
+  --color-text-muted: #8794a3;
+
+  /* ── Lines: soft hairlines, not "white lines" ── */
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.12);
+  --color-border-focus: rgba(255, 255, 255, 0.16);
+
+  /* ── Accent: ice blue ── */
+  --color-accent: #38bdf8;
+  --color-accent-strong: #0ea5e9;               /* pressed / hover fills */
+  --color-accent-soft: rgba(56, 189, 248, 0.14); /* chip / badge backgrounds */
+  --color-accent-muted: rgba(56, 189, 248, 0.4); /* accent borders */
+  --color-on-accent: #04121c;                    /* text/icons on accent fills */
+  --color-primary: var(--color-accent);
+  --color-primary-subtle: var(--color-accent-soft);
+
+  /* ── Status ── */
+  --color-success: #22c55e;
+  --color-success-soft: rgba(34, 197, 94, 0.14);
+  --color-error: #ef4444;
+  --color-danger: var(--color-error);
+  --color-danger-text: #f87171;                  /* red text on dark surfaces */
+  --color-danger-soft: rgba(248, 113, 113, 0.14);
+  --color-warning: #f59e0b;
+  --color-warning-soft: rgba(245, 158, 11, 0.14);
+  --color-pr: #fbbf24;                           /* gold for PRs */
+  --color-pr-soft: rgba(251, 191, 36, 0.14);
+
+  /* ── Gradients ── */
+  --gradient-accent: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+  --gradient-card:
+    radial-gradient(120% 140% at 0% 0%, rgba(56, 189, 248, 0.16) 0%, rgba(56, 189, 248, 0) 55%),
+    linear-gradient(180deg, #17202a 0%, #12171c 100%);
+  --gradient-card-warm:
+    radial-gradient(120% 140% at 0% 0%, rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0) 55%),
+    linear-gradient(180deg, #1a1d22 0%, #12171c 100%);
+
+  /* ── Elevation (soft, dark) ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px -6px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.35), 0 20px 48px -12px rgba(0, 0, 0, 0.7);
+  --shadow-accent: 0 6px 20px -6px rgba(56, 189, 248, 0.55);
+  --highlight-top: inset 0 1px 0 rgba(255, 255, 255, 0.04); /* subtle top edge light */
+
+  /* Muscle diagram (mirrored as literals in components/analytics/muscleMap.ts) */
   --muscle-body: #3a3a3a;
   --muscle-highlight: #ef4444;
 
   /* Overlay / glass */
   --overlay-hover: rgba(255, 255, 255, 0.05);
-  --overlay-separator: rgba(255, 255, 255, 0.15);
+  --overlay-pressed: rgba(255, 255, 255, 0.08);
+  --overlay-separator: rgba(255, 255, 255, 0.1);
+  --overlay-backdrop: rgba(3, 6, 9, 0.6);
+  --glass-bg: rgba(14, 18, 23, 0.78);
 
   /* Spacing */
+  --space-xxs: 0.125rem;
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 1.5rem;
   --space-xl: 2rem;
   --space-2xl: 3rem;
-  
+  --page-gutter: var(--space-md);
+
   /* Typography */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', Consolas, monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -50,15 +104,24 @@
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
   --text-3xl: 2rem;
-  
+  --text-4xl: 2.5rem;
+  --font-xs: var(--text-xs);
+  --font-sm: var(--text-sm);
+  --font-lg: var(--text-lg);
+
   /* Border radius */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  
+  --radius-sm: 0.375rem;  /* 6px */
+  --radius-md: 0.625rem;  /* 10px */
+  --radius-lg: 0.875rem;  /* 14px — cards */
+  --radius-xl: 1.25rem;   /* 20px — hero cards, sheets */
+  --radius-full: 9999px;
+
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
+
+  /* Fixed chrome */
+  --bottom-nav-height: 58px;
 }
 
 /* Hide number input spinners */
@@ -77,7 +140,9 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
   color-scheme: dark;
+  background-color: var(--color-bg);
 }
 
 body {
@@ -87,10 +152,24 @@ body {
   color: var(--color-text);
   background-color: var(--color-bg);
   min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Very subtle ice-blue glow at the top, fixed behind all content */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 420px;
+  background: radial-gradient(80% 100% at 50% 0%, rgba(56, 189, 248, 0.07) 0%, rgba(56, 189, 248, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Root element */
 #root {
+  position: relative;
+  z-index: 1;
   min-height: 100vh;
 }
 
@@ -112,29 +191,45 @@ a:hover {
 
 /* Headings */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  line-height: 1.25;
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
 }
 
-h1 { font-size: var(--text-3xl); }
+h1 { font-size: var(--text-3xl); letter-spacing: -0.025em; }
 h2 { font-size: var(--text-2xl); }
-h3 { font-size: var(--text-xl); }
-h4 { font-size: var(--text-lg); }
+h3 { font-size: var(--text-xl); font-weight: 650; }
+h4 { font-size: var(--text-lg); font-weight: 600; }
 
 /* Page layout */
 .page {
-  padding: var(--space-lg);
+  padding: var(--space-lg) var(--page-gutter);
   padding-top: calc(var(--space-lg) + env(safe-area-inset-top, 0px));
   padding-bottom: calc(var(--space-lg) + 80px + env(safe-area-inset-bottom, 0px));
   max-width: 1200px;
   margin: 0 auto;
   overflow-x: hidden;
+  animation: pageIn 0.18s ease-out;
 }
 
 @media (min-width: 769px) {
-  .page {
-    padding-bottom: var(--space-lg);
+  :root {
+    --page-gutter: var(--space-lg);
   }
+
+  .page {
+    padding-bottom: var(--space-xl);
+  }
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page { animation: none; }
 }
 
 /* Loading state */
@@ -157,17 +252,123 @@ h4 { font-size: var(--text-lg); }
   color: var(--color-error);
 }
 
-/* Page transitions */
-.page {
-  animation: pageIn 0.15s ease;
+/* ════════════════════════════════════════
+   Shared utility classes (global, use from any page)
+   ════════════════════════════════════════ */
+
+/* Big page heading */
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--color-text);
 }
 
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Small uppercase label above a title / section */
+.eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
 }
 
-/* Utility classes */
+/* Section header: small, muted, uppercase — goes above a group of cards */
+.section-title {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+/* Numbers that line up / don't jitter */
+.tabular-nums,
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Big stat number */
+.stat-value {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.stat-label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Layered surface card (for markup that doesn't use <Card>) */
+.surface {
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), var(--highlight-top);
+}
+
+/* Hero card with a subtle accent glow in the top-left */
+.surface-hero {
+  background: var(--gradient-card);
+  border: 1px solid rgba(56, 189, 248, 0.14);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg), var(--highlight-top);
+}
+
+/* Pill chip / badge */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 2px 10px;
+  min-height: 24px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: var(--color-surface-3);
+  color: var(--color-text-secondary);
+}
+
+.chip-accent { background: var(--color-accent-soft); color: var(--color-accent); }
+.chip-success { background: var(--color-success-soft); color: var(--color-success); }
+.chip-warning { background: var(--color-warning-soft); color: var(--color-warning); }
+.chip-danger { background: var(--color-danger-soft); color: var(--color-danger-text); }
+.chip-pr { background: var(--color-pr-soft); color: var(--color-pr); }
+
+/* Square 44px icon button (⋮ menus, close buttons, etc.) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.icon-btn:hover { background: var(--overlay-hover); color: var(--color-text); }
+.icon-btn:active { background: var(--overlay-pressed); }
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -191,6 +392,6 @@ html {
 
 /* Selection */
 ::selection {
-  background-color: var(--color-accent);
-  color: var(--color-bg);
+  background-color: rgba(56, 189, 248, 0.35);
+  color: var(--color-text);
 }

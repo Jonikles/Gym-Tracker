@@ -506,6 +506,21 @@ export async function switchProgressionLevel(
 }
 
 /**
+ * Switch a session exercise to another variant of the same exercise family
+ * (e.g. Flat Barbell → Incline Dumbbell Bench Press) mid-workout.
+ * Only the exerciseId changes: sets, order, groups and progressionId are kept.
+ */
+export async function switchExerciseVariant(
+  sessionExerciseId: string,
+  newExerciseId: string
+): Promise<void> {
+  const currentSE = await db.sessionExercises.get(sessionExerciseId);
+  if (!currentSE) throw new Error('Session exercise not found');
+  if (currentSE.exerciseId === newExerciseId) return;
+  await db.sessionExercises.update(sessionExerciseId, { exerciseId: newExerciseId });
+}
+
+/**
  * Remove an exercise from a session
  */
 export async function removeExerciseFromSession(

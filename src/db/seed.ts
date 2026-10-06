@@ -2,6 +2,7 @@ import { db } from './index';
 import type { Exercise, Setting, SettingsMap, MuscleGroup, ExerciseField, ProgressionMembership } from '../types';
 import { defaultSettings } from '../hooks/useSettings';
 import { PROGRESSION_EXERCISES } from '../data/progression-exercises';
+import { NEW_FAMILY_EXERCISES } from '../data/exercise-families';
 
 /**
  * Helper type for exercise definition
@@ -20,7 +21,7 @@ interface ExerciseDefinition {
  * Preset exercise library - v1.1 with updated muscle groups
  * All exercises use the new specific muscle group keys
  */
-export const presetExercises: ExerciseDefinition[] = [
+const basePresetExercises: ExerciseDefinition[] = [
   // ============================================
   // CHEST - Barbell
   // ============================================
@@ -352,6 +353,17 @@ export const presetExercises: ExerciseDefinition[] = [
     { name: 'Dead Hang', muscleGroups: ['forearms', 'lats-upper'], movementPattern: 'vertical-pull', equipment: 'bodyweight', defaultFields: ['time'] },
     { name: 'One-Arm Hang', muscleGroups: ['forearms', 'lats-upper', 'obliques'], movementPattern: 'vertical-pull', equipment: 'bodyweight', defaultFields: ['time'] },
 ];
+
+/**
+ * Full preset list: the base library plus the extra gym variants needed to fill
+ * common exercise-family combinations (see data/exercise-families.ts).
+ * Used by the fresh-install seed and by addNewPresetExercises() for existing installs.
+ */
+export const presetExercises: ExerciseDefinition[] = (() => {
+  const names = new Set(basePresetExercises.map((e) => e.name.toLowerCase()));
+  const extra = NEW_FAMILY_EXERCISES.filter((e) => !names.has(e.name.toLowerCase()));
+  return [...basePresetExercises, ...extra];
+})();
 
 
 /**

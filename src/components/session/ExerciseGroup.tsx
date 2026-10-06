@@ -8,9 +8,11 @@ interface ExerciseGroupProps {
   groupId: string;
   groupType: 'superset' | 'circuit';
   exercises: SessionExerciseType[];
-  templateExerciseMap: Map<string, TemplateExercise>;
   onRemoveExercise: (sessionExerciseId: string) => void;
   onSwitchProgression?: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
+  onSwitchVariant?: (sessionExerciseId: string, newExerciseId: string) => Promise<void>;
+  /** Finds the template exercise for a session exercise (handles variant switches) */
+  findTemplateExercise: (se: SessionExerciseType) => TemplateExercise | undefined;
   showValidation?: boolean;
   onUngroup?: (groupId: string) => void;
 }
@@ -19,9 +21,10 @@ export const ExerciseGroup = memo(function ExerciseGroup({
   groupId,
   groupType,
   exercises,
-  templateExerciseMap,
   onRemoveExercise,
   onSwitchProgression,
+  onSwitchVariant,
+  findTemplateExercise,
   showValidation,
   onUngroup,
 }: ExerciseGroupProps) {
@@ -43,9 +46,7 @@ export const ExerciseGroup = memo(function ExerciseGroup({
       </div>
       <div className={styles.exercises}>
         {sortedExercises.map((se) => {
-          const templateExercise = se.progressionId
-            ? templateExerciseMap.get(`prog:${se.progressionId}`)
-            : templateExerciseMap.get(se.exerciseId);
+          const templateExercise = findTemplateExercise(se);
 
           return (
             <SessionExercise
@@ -54,6 +55,7 @@ export const ExerciseGroup = memo(function ExerciseGroup({
               templateExercise={templateExercise}
               onRemove={onRemoveExercise}
               onSwitchProgression={onSwitchProgression}
+              onSwitchVariant={onSwitchVariant}
               showValidation={showValidation}
             />
           );

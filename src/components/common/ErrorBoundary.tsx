@@ -1,4 +1,6 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
+import { Button } from './Button';
+import styles from './ErrorBoundary.module.css';
 
 interface Props {
   children: ReactNode;
@@ -34,62 +36,29 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '60vh',
-          gap: '1rem',
-          padding: '2rem',
-          textAlign: 'center',
-          color: 'var(--color-text)',
-        }}>
-          <h2 style={{ margin: 0 }}>Something went wrong</h2>
-          <p style={{ color: 'var(--color-text-muted)', maxWidth: 400 }}>
-            The app hit an unexpected error. Your data is safe.
-          </p>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              onClick={this.handleReset}
-              style={{
-                padding: '0.5rem 1.5rem',
-                borderRadius: '0.5rem',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-bg-secondary)',
-                color: 'var(--color-text)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: '0.875rem',
-              }}
-            >
-              Try Again
-            </button>
-            <button
-              onClick={this.handleFullReset}
-              style={{
-                padding: '0.5rem 1.5rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                background: 'var(--color-accent)',
-                color: 'var(--color-bg)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-              }}
-            >
-              Go Home
-            </button>
+        <div className={styles.wrap}>
+          <div className={styles.card}>
+            <span className={styles.icon} aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 9v4M12 17h.01" />
+                <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+              </svg>
+            </span>
+            <h2 className={styles.title}>Something went wrong</h2>
+            <p className={styles.text}>The app hit an unexpected error. Your data is safe.</p>
+            <div className={styles.actions}>
+              <Button variant="secondary" onClick={this.handleReset}>
+                Try Again
+              </Button>
+              <Button onClick={this.handleFullReset}>Go Home</Button>
+            </div>
+            {this.state.error && (
+              <details className={styles.details}>
+                <summary>Error details</summary>
+                <pre>{this.state.error.message}</pre>
+              </details>
+            )}
           </div>
-          {this.state.error && (
-            <details style={{ marginTop: '1rem', color: 'var(--color-text-muted)', fontSize: '0.75rem', maxWidth: 400 }}>
-              <summary style={{ cursor: 'pointer' }}>Error details</summary>
-              <pre style={{ textAlign: 'left', whiteSpace: 'pre-wrap', marginTop: '0.5rem' }}>
-                {this.state.error.message}
-              </pre>
-            </details>
-          )}
         </div>
       );
     }

@@ -1,0 +1,115 @@
+/* ── Chip rows (shared by picker parameter step + inline switcher) ── */
+.selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.dimension {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.dimensionLabel {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.chip {
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.chipSelected {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+  font-weight: 600;
+}
+
+.chipSelected:disabled {
+  opacity: 1;
+}
+
+/* Compact: inline on template rows / workout cards */
+.compact {
+  gap: var(--space-sm);
+}
+
+.compact .chips {
+  gap: 6px;
+}
+
+.compact .chip {
+  min-height: 38px;
+  padding: 0 var(--space-sm);
+  font-size: var(--text-xs);
+}
+
+/* ── Inline switcher ── */
+.variantChips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.summary {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary, var(--color-text-muted));
+  font-family: inherit;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.summary:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+.summaryText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summaryChevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}

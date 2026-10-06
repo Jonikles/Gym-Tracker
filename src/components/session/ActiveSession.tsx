@@ -16,6 +16,7 @@ import { useRoutine } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
 import { useSessionSets } from '../../hooks/useSets';
 import { updateSessionNotes } from '../../hooks/useSessions';
+import { findFamilyForExerciseName } from '../../data/exercise-families';
 import type { TemplateExercise, ExerciseField, SessionExercise as SessionExerciseType, Set as SetType } from '../../types';
 import styles from './ActiveSession.module.css';
 
@@ -78,6 +79,7 @@ export function ActiveSession() {
     removeExercise,
     reorderExercises,
     switchProgressionLevel,
+    switchExerciseVariant,
     groupExercises,
     ungroupAll,
   } = useSessionContext();
@@ -162,8 +164,32 @@ export function ActiveSession() {
     else if (validationType === 'empty-fields' && current === null) setValidationType(null);
   }, [validationType, sessionExercises, setsBySE, exerciseFieldsMap, allSets]);
 
+  // exerciseId → exercise-family id for template + session exercises, so an exercise whose
+  // variant was switched mid-workout (e.g. Flat Barbell → Incline Dumbbell Bench Press)
+  // still finds its template target.
+  const familyLookupKey = [
+    ...new Set([
+      ...(template?.exercises ?? []).map((te) => te.exerciseId),
+      ...sessionExercises.map((se) => se.exerciseId),
+    ]),
+  ].sort().join(',');
+  const familyIdByExerciseId = useLiveQuery(
+    async () => {
+      const ids = familyLookupKey ? familyLookupKey.split(',') : [];
+      const exercises = await db.exercises.bulkGet(ids);
+      const map = new Map<string, string>();
+      for (const ex of exercises) {
+        const hit = ex ? findFamilyForExerciseName(ex.name) : undefined;
+        if (ex && hit) map.set(ex.id, hit.family.id);
+      }
+      return map;
+    },
+    [familyLookupKey]
+  );
+
   // Create a map for template exercise lookup.
-  // Keys by exerciseId AND by progressionId (prefixed with "prog:") for progression slots.
+  // Keys by exerciseId, by progressionId ("prog:") for progression slots and by
+  // exercise family ("fam:", first template exercise of that family) for variant switches.
   const templateExerciseMap = useMemo(() => {
     const map = new Map<string, TemplateExercise>();
     if (template?.exercises) {
@@ -172,10 +198,25 @@ export function ActiveSession() {
         if (te.progressionId) {
           map.set(`prog:${te.progressionId}`, te);
         }
+        const familyId = familyIdByExerciseId?.get(te.exerciseId);
+        if (familyId && !map.has(`fam:${familyId}`)) {
+          map.set(`fam:${familyId}`, te);
+        }
       }
     }
     return map;
-  }, [template?.exercises]);
+  }, [template?.exercises, familyIdByExerciseId]);
+
+  const findTemplateExercise = useCallback(
+    (se: SessionExerciseType): TemplateExercise | undefined => {
+      if (se.progressionId) return templateExerciseMap.get(`prog:${se.progressionId}`);
+      const direct = templateExerciseMap.get(se.exerciseId);
+      if (direct) return direct;
+      const familyId = familyIdByExerciseId?.get(se.exerciseId);
+      return familyId ? templateExerciseMap.get(`fam:${familyId}`) : undefined;
+    },
+    [templateExerciseMap, familyIdByExerciseId]
+  );
 
   // Group exercises for rendering
   const groupedExercises = useMemo(() => {
@@ -387,9 +428,10 @@ export function ActiveSession() {
                 groupId={group.groupId}
                 groupType={group.groupType}
                 exercises={group.exercises}
-                templateExerciseMap={templateExerciseMap}
+                findTemplateExercise={findTemplateExercise}
                 onRemoveExercise={handleRemoveExercise}
                 onSwitchProgression={switchProgressionLevel}
+                onSwitchVariant={switchExerciseVariant}
                 showValidation={showValidation}
                 onUngroup={handleUngroup}
               />
@@ -397,10 +439,7 @@ export function ActiveSession() {
           }
 
           const exercise = group.exercises[0];
-          // For progression slots, look up by progressionId first, then exerciseId
-          const templateExercise = exercise.progressionId
-            ? templateExerciseMap.get(`prog:${exercise.progressionId}`)
-            : templateExerciseMap.get(exercise.exerciseId);
+          const templateExercise = findTemplateExercise(exercise);
 
           if (isSelectMode) {
             // Minimal card in select mode — just name + checkbox
@@ -429,6 +468,7 @@ export function ActiveSession() {
               templateExercise={templateExercise}
               onRemove={handleRemoveExercise}
               onSwitchProgression={switchProgressionLevel}
+              onSwitchVariant={switchExerciseVariant}
               onMove={standaloneIndex > -1 ? handleMoveExercise : undefined}
               canMoveUp={standaloneIndex > 0}
               canMoveDown={standaloneIndex > -1 && standaloneIndex < standaloneOrder.length - 1}

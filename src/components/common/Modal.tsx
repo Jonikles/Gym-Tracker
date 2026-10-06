@@ -54,7 +54,11 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             className={styles.closeButton}
             aria-label="Close"
           >
-            ×
+            <span className={styles.closeIcon} aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </span>
           </button>
         </header>
         <div className={styles.body}>{children}</div>

@@ -4,6 +4,8 @@ import { SetRow } from './SetRow';
 import { SetHistory } from './SetHistory';
 import { OverloadHint } from './OverloadHint';
 import { ProgressionLevelPicker } from './ProgressionLevelPicker';
+import { VariantChips } from '../exercises/VariantChips';
+import { familyTitleFor } from '../../utils/exerciseFamilies';
 import { useDebouncedSave } from './useDebouncedSave';
 import { useSets, createSet, quickFillFromPrevious, getPreviousSets } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
@@ -22,6 +24,8 @@ interface SessionExerciseProps {
   /** Called with this card's sessionExercise id (keeps the callback stable for memo) */
   onRemove: (sessionExerciseId: string) => void;
   onSwitchProgression?: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
+  /** Swap to another variant of the same exercise family (keeps sets) */
+  onSwitchVariant?: (sessionExerciseId: string, newExerciseId: string) => Promise<void>;
   /** Called with (sessionExerciseId, direction); omit to hide the move buttons */
   onMove?: (sessionExerciseId: string, direction: -1 | 1) => void;
   canMoveUp?: boolean;
@@ -34,6 +38,7 @@ export const SessionExercise = memo(function SessionExercise({
   templateExercise,
   onRemove,
   onSwitchProgression,
+  onSwitchVariant,
   onMove,
   canMoveUp,
   canMoveDown,
@@ -139,6 +144,10 @@ export const SessionExercise = memo(function SessionExercise({
     }
   }, [onSwitchProgression, sessionExerciseId]);
 
+  const handleSwitchVariant = useCallback(async (newExercise: Exercise) => {
+    if (onSwitchVariant) await onSwitchVariant(sessionExerciseId, newExercise.id);
+  }, [onSwitchVariant, sessionExerciseId]);
+
   // Previous session's working / warmup sets, for per-row placeholders and "fill from last time"
   const previousWorking = useMemo(() => (previousSets ?? []).filter((s) => !s.isWarmup), [previousSets]);
   const previousWarmup = useMemo(() => (previousSets ?? []).filter((s) => s.isWarmup), [previousSets]);
@@ -183,7 +192,7 @@ export const SessionExercise = memo(function SessionExercise({
               <span className={styles.progressionLabel}>{progressionDef.name}</span>
             )}
             <span className={styles.name}>
-              {exercise.name}
+              {isProgression ? exercise.name : familyTitleFor(exercise)}
               {isProgression && exerciseLevel !== undefined && (
                 <span className={styles.levelBadge}>Lvl {exerciseLevel}</span>
               )}
@@ -238,6 +247,10 @@ export const SessionExercise = memo(function SessionExercise({
           </button>
         </div>
       </div>
+
+      {!isProgression && onSwitchVariant && (
+        <VariantChips exercise={exercise} onChange={handleSwitchVariant} />
+      )}
 
       {(targetInfo || isProgression) && (
         <div className={styles.subHeader}>

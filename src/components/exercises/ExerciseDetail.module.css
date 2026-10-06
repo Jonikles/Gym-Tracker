@@ -216,3 +216,42 @@
   font-size: var(--text-sm);
   margin-bottom: var(--space-md);
 }
+
+/* Exercise family: family name as title, concrete variant as subtitle */
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name .favBtn {
+  margin-left: var(--space-xs);
+  vertical-align: middle;
+}
+
+.variantName {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.variantSection {
+  margin-bottom: var(--space-lg);
+}
+
+.favBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 20px;
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.favActive {
+  color: #eab308;
+  opacity: 1;
+}
