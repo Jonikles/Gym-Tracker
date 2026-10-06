@@ -26,51 +26,53 @@ export async function detectProgressionAdvancements(
   const exercise = await db.exercises.get(exerciseId);
   if (!exercise?.progressionMemberships?.length) return [];
 
+  const memberships = exercise.progressionMemberships.filter((m) => PROGRESSION_MAP[m.progressionId]);
+  if (memberships.length === 0) return [];
+  const progressionIds = new Set(memberships.map((m) => m.progressionId));
+
+  // All indexed / one-pass reads, done once for every membership:
+  // - all progression PRs (indexed by type)
+  // - exercises belonging to any of these progressions (one pass over exercises)
+  // - which of those exercises have ever been used (indexed anyOf on exerciseId)
+  const [progressionPRs, candidateExercises] = await Promise.all([
+    db.prs.where('type').equals('progression').toArray(),
+    db.exercises
+      .filter((e) => e.progressionMemberships?.some((pm) => progressionIds.has(pm.progressionId)) ?? false)
+      .toArray(),
+  ]);
+  const otherIds = candidateExercises.map((e) => e.id).filter((id) => id !== exerciseId);
+  const usedExerciseIds = new Set(
+    otherIds.length > 0
+      ? ((await db.sessionExercises.where('exerciseId').anyOf(otherIds).keys()) as string[])
+      : []
+  );
+
   const advancements: ProgressionAdvancement[] = [];
 
-  for (const membership of exercise.progressionMemberships) {
+  for (const membership of memberships) {
     const { progressionId, level } = membership;
     const definition = PROGRESSION_MAP[progressionId];
-    if (!definition) continue;
-
-    // Check existing progression PRs for this progression
-    const existingProgressionPRs = await db.prs
-      .where('exerciseId')
-      .equals(exerciseId)
-      .filter((pr) => pr.type === 'progression' && pr.progressionId === progressionId)
-      .toArray();
 
     // If we already recorded a PR for this exact exercise + progression, skip
-    if (existingProgressionPRs.length > 0) continue;
+    const alreadyRecorded = progressionPRs.some(
+      (pr) => pr.exerciseId === exerciseId && pr.progressionId === progressionId
+    );
+    if (alreadyRecorded) continue;
 
     // Find the highest level previously achieved in this progression
     // by looking at all progression PRs for any exercise in this progression
-    const allProgressionPRs = await db.prs
-      .filter((pr) => pr.type === 'progression' && pr.progressionId === progressionId)
-      .toArray();
-
-    const maxPreviousLevel = allProgressionPRs.length > 0
-      ? Math.max(...allProgressionPRs.map((pr) => pr.value))
-      : 0;
+    const maxPreviousLevel = Math.max(
+      0,
+      ...progressionPRs.filter((pr) => pr.progressionId === progressionId).map((pr) => pr.value)
+    );
 
     // Also check session history for exercises used in this progression
     // (for cases where no PR was recorded yet but user has used exercises)
-    const progressionExercises = await db.exercises
-      .filter(
-        (e) => e.progressionMemberships?.some((pm) => pm.progressionId === progressionId) ?? false
-      )
-      .toArray();
-
-    const sessionExercises = await db.sessionExercises.toArray();
-    const usedExerciseIds = new Set(sessionExercises.map((se) => se.exerciseId));
-
     let maxUsedLevel = 0;
-    for (const ex of progressionExercises) {
-      if (usedExerciseIds.has(ex.id) && ex.id !== exerciseId) {
-        const exLevel =
-          ex.progressionMemberships?.find((pm) => pm.progressionId === progressionId)?.level ?? 0;
-        if (exLevel > maxUsedLevel) maxUsedLevel = exLevel;
-      }
+    for (const ex of candidateExercises) {
+      if (ex.id === exerciseId || !usedExerciseIds.has(ex.id)) continue;
+      const exLevel = ex.progressionMemberships?.find((pm) => pm.progressionId === progressionId)?.level ?? 0;
+      if (exLevel > maxUsedLevel) maxUsedLevel = exLevel;
     }
 
     const previousLevel = Math.max(maxPreviousLevel, maxUsedLevel);

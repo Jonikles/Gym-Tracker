@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Input, ConfirmDialog } from '../common';
 import { ExercisePicker } from '../exercises';
 import { SetRow } from '../session/SetRow';
+import { useDebouncedSave } from '../session/useDebouncedSave';
 import {
   useSession,
   useSessionExercises,
@@ -61,7 +62,7 @@ function EditableExercise({
     <div className={styles.exerciseCard}>
       <div className={styles.exerciseHeader}>
         <h3 className={styles.exerciseName}>{exercise?.name ?? 'Unknown'}</h3>
-        <Button variant="ghost" size="sm" onClick={onRemove}>
+        <Button variant="ghost" onClick={onRemove} className={styles.removeBtn}>
           Remove
         </Button>
       </div>
@@ -74,12 +75,11 @@ function EditableExercise({
               set={set}
               setNumber={workingSetNumber}
               defaultFields={defaultFields}
-              onDelete={() => {}}
             />
           );
         })}
       </div>
-      <Button variant="secondary" size="sm" onClick={handleAddSet}>
+      <Button variant="secondary" onClick={handleAddSet} className={styles.addSet}>
         + Add Set
       </Button>
     </div>
@@ -119,11 +119,15 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
     return [...sessionExercises].sort((a, b) => a.order - b.order);
   }, [sessionExercises]);
 
-  const handleNotesChange = async (newNotes: string) => {
+  // Debounced like set edits; flushed on blur / unmount
+  const { schedule: scheduleNotesSave, flush: flushNotes } = useDebouncedSave<string>(
+    `sessionNotes:${sessionId}`,
+    (value) => updateSessionNotes(sessionId, value)
+  );
+
+  const handleNotesChange = (newNotes: string) => {
     setNotes(newNotes);
-    if (session) {
-      await updateSessionNotes(session.id, newNotes);
-    }
+    scheduleNotesSave(newNotes);
   };
 
   const handleStartTimeChange = async (value: string) => {
@@ -202,6 +206,7 @@ export function SessionEditor({ sessionId }: SessionEditorProps) {
           label="Session Notes"
           value={notes}
           onChange={(e) => handleNotesChange(e.target.value)}
+          onBlur={() => { void flushNotes(); }}
           placeholder="Add notes about this session..."
         />
       </div>

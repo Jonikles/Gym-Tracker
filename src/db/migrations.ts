@@ -2,9 +2,10 @@
  * Database Migrations
  *
  * All schema changes are handled via Dexie versioning in db/index.ts.
- * This file contains upgrade logic for data migrations when schema changes.
+ * This file contains upgrade logic for data migrations when schema changes,
+ * plus the app's single startup entry point, initializeDatabase().
  *
- * Current version: 5
+ * Current schema version: 8
  *
  * Migration history:
  * - v1: Initial schema with exercises, routines, sessions, sessionExercises, sets, prs, settings
@@ -12,17 +13,20 @@
  * - v3: Templates now define individual sets (TemplateSet[]), removed theme setting
  * - v4: Added progressionMemberships to exercises (Overcoming Gravity progressions)
  * - v5: Added progressionId index to sessionExercises (progression slots in templates)
+ * - v6: Added body measurements table
+ * - v7: Removed archive feature (isArchived) from exercises, templates, routines
+ * - v8: Added setId index to prs (PR lookup/cleanup by set)
  */
 
 import { db } from './index';
-import type { Template, TemplateExercise, TemplateSet, Routine, RoutineDay, IntensityTechnique } from '../types';
+import type { Exercise, Template, TemplateExercise, TemplateSet, Routine, RoutineDay, IntensityTechnique } from '../types';
 import { PROGRESSION_EXERCISES } from '../data/progression-exercises';
-import { presetExercises } from './seed';
+import { presetExercises, seedDatabase } from './seed';
 import { autoSkipMissedWorkouts } from '../utils/autoSkip';
 
 /**
  * Run any necessary migrations
- * Called on app startup before rendering
+ * Called on app startup (via initializeDatabase) before rendering
  */
 export async function runMigrations(): Promise<void> {
   // Ensure database is open
@@ -34,17 +38,45 @@ export async function runMigrations(): Promise<void> {
   // Migrate templates to new set structure (v3)
   await migrateTemplateSets();
 
-  // Migrate to progression exercises (v4)
-  await migrateProgressionExercises();
-
-  // Clean up any duplicate exercises from past bugs
-  await deduplicateExercises();
-
-  // Add any new preset exercises that don't exist yet (e.g. added in later app versions)
-  await addNewPresetExercises();
+  // Exercise-library maintenance runs in one readwrite transaction so concurrent
+  // callers (StrictMode double effects, multiple tabs) serialize instead of each
+  // inserting their own copy of a "missing" exercise.
+  await db.transaction('rw', [db.exercises, db.sessionExercises, db.prs, db.templates], async () => {
+    // Sync progression exercises (v4+)
+    await migrateProgressionExercises();
+    // Clean up any duplicate exercises from past bugs
+    await deduplicateExercises();
+    // Add any new preset exercises that don't exist yet (e.g. added in later app versions)
+    await addNewPresetExercises();
+  });
 
   // Auto-skip scheduled workout days that passed with nothing logged
   await autoSkipMissedWorkouts();
+}
+
+let initPromise: Promise<void> | null = null;
+
+/**
+ * Single entry point for database startup: open → seed if fresh → migrate.
+ *
+ * Memoized at module level so concurrent calls (e.g. React StrictMode running
+ * the init effect twice) share one run instead of seeding/migrating twice.
+ * If it fails, the memo is cleared so a later call can retry.
+ */
+export function initializeDatabase(): Promise<void> {
+  if (!initPromise) {
+    initPromise = (async () => {
+      const fresh = await isFreshInstall();
+      if (fresh) {
+        await seedDatabase();
+      }
+      await runMigrations();
+    })();
+    initPromise.catch(() => {
+      initPromise = null;
+    });
+  }
+  return initPromise;
 }
 
 /**
@@ -262,46 +294,47 @@ async function migrateTemplateSets(): Promise<void> {
 }
 
 /**
- * Migrate existing exercises to include progression data (v4)
- * Also adds new progression exercises that don't exist yet.
+ * Sync progression exercises (v4+) into an existing install.
+ *
+ * Runs on every startup and is cheap: one read of the exercises table, then only
+ * writes what's missing or out of date. Adds any progression exercise whose name
+ * doesn't exist yet (so newly defined progression exercises reach existing installs)
+ * and updates memberships on existing exercises only when they differ.
  * Skips on fresh installs (seed handles it).
  */
 async function migrateProgressionExercises(): Promise<void> {
-  // Skip on fresh install — seed will handle it
-  const exerciseCount = await db.exercises.count();
-  if (exerciseCount === 0) return;
-
-  // Check if already migrated
-  const sample = await db.exercises
-    .filter((e) => e.progressionMemberships !== undefined && e.progressionMemberships.length > 0)
-    .first();
-  if (sample) return;
+  const existing = await db.exercises.toArray();
+  if (existing.length === 0) return; // fresh install — seed will handle it
 
   const now = Date.now();
-  const existing = await db.exercises.toArray();
-  const nameMap = new Map<string, string>(); // lowercase name -> id
+  const byName = new Map<string, Exercise>(); // lowercase name -> exercise
   for (const ex of existing) {
-    nameMap.set(ex.name.toLowerCase(), ex.id);
+    const key = ex.name.toLowerCase();
+    if (!byName.has(key)) byName.set(key, ex);
   }
 
+  const toAdd: Exercise[] = [];
   let updated = 0;
-  let added = 0;
 
   for (const def of PROGRESSION_EXERCISES) {
-    const existingId = nameMap.get(def.name.toLowerCase());
-    if (existingId) {
-      // Update existing exercise with progression data
-      await db.exercises.update(existingId, {
+    const key = def.name.toLowerCase();
+    const ex = byName.get(key);
+    if (ex) {
+      const same =
+        JSON.stringify(ex.progressionMemberships ?? []) === JSON.stringify(def.progressionMemberships);
+      if (same) continue;
+      const hadMemberships = (ex.progressionMemberships?.length ?? 0) > 0;
+      await db.exercises.update(ex.id, {
         progressionMemberships: def.progressionMemberships,
         progressionLevel: def.progressionMemberships[0]?.level,
-        muscleGroups: def.muscleGroups,
-        movementPattern: def.movementPattern,
+        // First-time enrichment also aligns muscle groups / pattern with the
+        // progression definition; later membership updates leave them alone.
+        ...(hadMemberships ? {} : { muscleGroups: def.muscleGroups, movementPattern: def.movementPattern }),
         updatedAt: now,
       });
       updated++;
     } else {
-      // Add new exercise
-      await db.exercises.add({
+      const newEx: Exercise = {
         id: crypto.randomUUID(),
         name: def.name,
         muscleGroups: def.muscleGroups,
@@ -313,17 +346,25 @@ async function migrateProgressionExercises(): Promise<void> {
         isPreset: true,
         createdAt: now,
         updatedAt: now,
-      });
-      added++;
+      };
+      toAdd.push(newEx);
+      byName.set(key, newEx);
     }
   }
 
-  console.log(`Progression migration: updated ${updated}, added ${added} exercises`);
+  if (toAdd.length > 0) await db.exercises.bulkAdd(toAdd);
+  if (updated > 0 || toAdd.length > 0) {
+    console.log(`Progression sync: updated ${updated}, added ${toAdd.length} exercises`);
+  }
 }
 
 /**
  * Remove duplicate exercises (same name, case-insensitive).
- * Keeps the one with progressionMemberships if available, otherwise the first.
+ * Keeps the one with progressionMemberships if available, otherwise the oldest.
+ * Every reference to a removed duplicate (session exercises, PRs, template
+ * exercises, and other exercises' parentId) is repointed to the kept exercise.
+ * Template exercises pointing at an exercise that no longer exists for some other
+ * reason can't be recovered and are left alone.
  * Runs on every startup to clean up any past duplication bugs.
  */
 async function deduplicateExercises(): Promise<void> {
@@ -340,7 +381,7 @@ async function deduplicateExercises(): Promise<void> {
     }
   }
 
-  let removed = 0;
+  const remap = new Map<string, string>(); // duplicate id -> kept id
   for (const [, group] of nameGroups) {
     if (group.length <= 1) continue;
 
@@ -352,7 +393,6 @@ async function deduplicateExercises(): Promise<void> {
       return a.createdAt - b.createdAt; // prefer oldest
     });
 
-    // Keep the first, delete the rest
     const keep = group[0];
     for (let i = 1; i < group.length; i++) {
       const dup = group[i];
@@ -362,26 +402,48 @@ async function deduplicateExercises(): Promise<void> {
           progressionMemberships: dup.progressionMemberships,
           progressionLevel: dup.progressionLevel,
         });
+        keep.progressionMemberships = dup.progressionMemberships;
       }
-      // Reassign any session references from duplicate to keeper
-      await db.sessionExercises
-        .where('exerciseId')
-        .equals(dup.id)
-        .modify({ exerciseId: keep.id });
-      // Reassign any PRs
-      await db.prs
-        .where('exerciseId')
-        .equals(dup.id)
-        .modify({ exerciseId: keep.id });
-      // Delete the duplicate
-      await db.exercises.delete(dup.id);
-      removed++;
+      remap.set(dup.id, keep.id);
     }
   }
 
-  if (removed > 0) {
-    console.log(`Deduplication: removed ${removed} duplicate exercises`);
+  if (remap.size === 0) return;
+  const dupIds = [...remap.keys()];
+  const resolve = (id: string) => remap.get(id) ?? id;
+
+  // Reassign session references and PRs
+  await db.sessionExercises
+    .where('exerciseId')
+    .anyOf(dupIds)
+    .modify((se) => { se.exerciseId = resolve(se.exerciseId); });
+  await db.prs
+    .where('exerciseId')
+    .anyOf(dupIds)
+    .modify((pr) => { pr.exerciseId = resolve(pr.exerciseId); });
+
+  // Reassign variations whose parent was a duplicate
+  await db.exercises
+    .where('parentId')
+    .anyOf(dupIds)
+    .modify((ex) => {
+      const parent = resolve(ex.parentId!);
+      ex.parentId = parent === ex.id ? undefined : parent;
+    });
+
+  // Reassign template exercises
+  const templates = await db.templates.toArray();
+  for (const t of templates) {
+    if (!t.exercises.some((te) => remap.has(te.exerciseId))) continue;
+    await db.templates.update(t.id, {
+      exercises: t.exercises.map((te) =>
+        remap.has(te.exerciseId) ? { ...te, exerciseId: resolve(te.exerciseId) } : te
+      ),
+    });
   }
+
+  await db.exercises.bulkDelete(dupIds);
+  console.log(`Deduplication: removed ${dupIds.length} duplicate exercises`);
 }
 
 /**
@@ -389,16 +451,18 @@ async function deduplicateExercises(): Promise<void> {
  * Lets new presets (e.g. Kelso Shrug) reach existing installs, not just fresh ones.
  */
 async function addNewPresetExercises(): Promise<void> {
-  const exerciseCount = await db.exercises.count();
-  if (exerciseCount === 0) return; // fresh install — seed will handle it
-
   const existing = await db.exercises.toArray();
+  if (existing.length === 0) return; // fresh install — seed will handle it
+
   const existingNames = new Set(existing.map((e) => e.name.toLowerCase()));
 
   const now = Date.now();
-  const toAdd = presetExercises
-    .filter((def) => !existingNames.has(def.name.toLowerCase()))
-    .map((def) => ({
+  const toAdd: Exercise[] = [];
+  for (const def of presetExercises) {
+    const key = def.name.toLowerCase();
+    if (existingNames.has(key)) continue;
+    existingNames.add(key); // guard against duplicate names within presetExercises
+    toAdd.push({
       id: crypto.randomUUID(),
       name: def.name,
       muscleGroups: def.muscleGroups,
@@ -408,7 +472,8 @@ async function addNewPresetExercises(): Promise<void> {
       isPreset: true,
       createdAt: now,
       updatedAt: now,
-    }));
+    });
+  }
 
   if (toAdd.length > 0) {
     await db.exercises.bulkAdd(toAdd);

@@ -66,7 +66,6 @@ export function ProgressionList() {
         placeholder="Search progressions..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        autoFocus
       />
 
       <div className={styles.categories}>

@@ -65,11 +65,13 @@
 }
 
 .md {
+  min-height: 44px;
   padding: var(--space-sm) var(--space-md);
   font-size: var(--text-base);
 }
 
 .lg {
+  min-height: 48px;
   padding: var(--space-md) var(--space-lg);
   font-size: var(--text-lg);
 }

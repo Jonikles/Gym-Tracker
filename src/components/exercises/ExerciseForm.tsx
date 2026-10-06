@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Button, Input, Select } from '../common';
+import { formatMuscleGroup } from '../common/format';
 import type { Exercise, ExerciseField, MuscleGroup } from '../../types';
 import { MUSCLE_GROUP_CATEGORIES } from '../../types/exercise';
 import { useExercises } from '../../hooks/useExercises';
@@ -87,11 +88,6 @@ export function ExerciseForm({ exercise, onSubmit, onCancel }: ExerciseFormProps
     setDefaultFields((prev) =>
       prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field]
     );
-  };
-
-  // Format muscle group for display (replace hyphens with spaces, capitalize)
-  const formatMuscleGroup = (mg: MuscleGroup): string => {
-    return mg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
   return (

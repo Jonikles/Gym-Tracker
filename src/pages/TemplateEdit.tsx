@@ -1,26 +1,30 @@
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { TemplateForm } from '../components/templates';
-import { useTemplate } from '../hooks/useTemplates';
+import { SkeletonList } from '../components/common';
+import { db } from '../db';
 
 export function TemplateEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const template = useTemplate(id);
+  // undefined = loading, null = not found
+  const template = useLiveQuery(
+    async () => (id ? (await db.templates.get(id)) ?? null : null),
+    [id]
+  );
 
   if (!id) {
     return <Navigate to="/templates" replace />;
   }
 
-  // useLiveQuery returns undefined while loading
   if (template === undefined) {
     return (
       <div className="page">
-        <p>Loading...</p>
+        <SkeletonList count={4} lines={2} />
       </div>
     );
   }
 
-  // Template not found (null after loading)
   if (template === null) {
     return <Navigate to="/templates" replace />;
   }

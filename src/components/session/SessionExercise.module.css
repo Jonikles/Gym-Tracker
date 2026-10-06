@@ -2,7 +2,7 @@
   background-color: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-md);
+  padding: var(--space-sm) var(--space-sm) var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -15,53 +15,82 @@
 .header {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
+  min-height: 44px;
 }
 
-.moveButtons {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.moveBtn {
+/* Tapping the title collapses / expands the card */
+.titleRow {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 20px;
+  gap: var(--space-xs);
   padding: 0;
   background: none;
   border: none;
-  color: var(--color-text-muted);
-  font-size: 10px;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: 14px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.name {
+  display: block;
+  font-size: var(--text-base);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* 44×44 icon buttons (move, notes, remove) */
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
   border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.moveBtn:hover:not(:disabled) {
-  color: var(--color-text);
-  background-color: var(--color-bg-tertiary);
-}
-
-.moveBtn:disabled {
+.iconBtn:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-.titleRow {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  cursor: pointer;
+@media (hover: hover) and (pointer: fine) {
+  .iconBtn:hover:not(:disabled) {
+    color: var(--color-text);
+    background-color: var(--color-bg-tertiary);
+  }
 }
 
-.name {
-  font-size: var(--text-base);
-  font-weight: 600;
-  margin: 0;
+.removeBtn {
+  font-size: var(--text-xl);
+  line-height: 1;
 }
 
 .groupBadge {
@@ -72,28 +101,50 @@
   border-radius: var(--radius-sm);
 }
 
-.setCount {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  margin-left: auto;
-}
-
 .sets {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
 }
 
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.collapsed {
+  display: none;
+}
+
 .actions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-sm);
-  padding-top: var(--space-sm);
+  padding-top: var(--space-xs);
+}
+
+.actionBtn {
+  min-height: 44px;
+}
+
+.subHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .target {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  padding: var(--space-xs) 0;
+}
+
+.switchBtn {
+  min-height: 44px;
+  margin-left: auto;
 }
 
 .missing {
@@ -142,6 +193,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .progressionLabel {

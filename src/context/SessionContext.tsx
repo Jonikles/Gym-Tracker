@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -51,10 +52,14 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+/** Stable empty array so the memoized context value doesn't change while loading */
+const EMPTY_SESSION_EXERCISES: SessionExercise[] = [];
+
 export function SessionProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const activeSession = useActiveSession();
-  const sessionExercises = useSessionExercises(activeSession?.id) ?? [];
+  const liveSessionExercises = useSessionExercises(activeSession?.id);
+  const sessionExercises = liveSessionExercises ?? EMPTY_SESSION_EXERCISES;
   const [isLoading, setIsLoading] = useState(false);
 
   const startFromRoutine = useCallback(async (routineId: string) => {
@@ -141,26 +146,45 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await ungroupAllSessionExercises(activeSession.id, groupId);
   }, [activeSession]);
 
+  const value = useMemo<SessionContextValue>(
+    () => ({
+      activeSession,
+      sessionExercises,
+      isLoading,
+      startFromRoutine,
+      startBlank,
+      complete,
+      abandon,
+      importTemplate,
+      addExercise,
+      removeExercise,
+      reorderExercises,
+      switchProgressionLevel: switchProgression,
+      groupExercises,
+      ungroupExercise,
+      ungroupAll,
+    }),
+    [
+      activeSession,
+      sessionExercises,
+      isLoading,
+      startFromRoutine,
+      startBlank,
+      complete,
+      abandon,
+      importTemplate,
+      addExercise,
+      removeExercise,
+      reorderExercises,
+      switchProgression,
+      groupExercises,
+      ungroupExercise,
+      ungroupAll,
+    ]
+  );
+
   return (
-    <SessionContext.Provider
-      value={{
-        activeSession,
-        sessionExercises,
-        isLoading,
-        startFromRoutine,
-        startBlank,
-        complete,
-        abandon,
-        importTemplate,
-        addExercise,
-        removeExercise,
-        reorderExercises,
-        switchProgressionLevel: switchProgression,
-        groupExercises,
-        ungroupExercise,
-        ungroupAll,
-      }}
-    >
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );

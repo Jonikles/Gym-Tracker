@@ -29,19 +29,6 @@
   margin-top: var(--space-xs);
 }
 
-.type {
-  font-size: var(--text-sm);
-  padding: 2px 8px;
-  background-color: var(--color-bg-tertiary);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
-}
-
-.stat {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
 .headerActions {
   display: flex;
   gap: var(--space-sm);
@@ -80,6 +67,7 @@
 .moreMenuOption {
   display: block;
   width: 100%;
+  min-height: 44px;
   padding: var(--space-sm) var(--space-md);
   font-family: inherit;
   font-size: var(--text-sm);
@@ -112,6 +100,7 @@
 }
 
 .tab {
+  min-height: 40px;
   padding: var(--space-sm) var(--space-md);
   font-size: var(--text-sm);
   font-family: inherit;
@@ -239,4 +228,26 @@
   .dayControls > * {
     max-width: none !important;
   }
+}
+
+.moreBtn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.removeDayBtn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.notFound {
+  color: var(--color-text-muted);
+}
+
+.actionError {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-top: calc(-1 * var(--space-md));
 }

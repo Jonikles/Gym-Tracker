@@ -1,19 +1,22 @@
+import { memo } from 'react';
 import { Button } from '../common';
 import { SessionExercise } from './SessionExercise';
 import type { SessionExercise as SessionExerciseType, TemplateExercise } from '../../types';
 import styles from './ExerciseGroup.module.css';
 
 interface ExerciseGroupProps {
+  groupId: string;
   groupType: 'superset' | 'circuit';
   exercises: SessionExerciseType[];
   templateExerciseMap: Map<string, TemplateExercise>;
   onRemoveExercise: (sessionExerciseId: string) => void;
   onSwitchProgression?: (sessionExerciseId: string, newExerciseId: string) => Promise<string | undefined>;
   showValidation?: boolean;
-  onUngroup?: () => void;
+  onUngroup?: (groupId: string) => void;
 }
 
-export function ExerciseGroup({
+export const ExerciseGroup = memo(function ExerciseGroup({
+  groupId,
   groupType,
   exercises,
   templateExerciseMap,
@@ -33,7 +36,7 @@ export function ExerciseGroup({
           {groupType === 'superset' ? 'Superset' : 'Circuit'}
         </div>
         {onUngroup && (
-          <Button variant="ghost" size="sm" onClick={onUngroup} className={styles.ungroupBtn}>
+          <Button variant="ghost" onClick={() => onUngroup(groupId)} className={styles.ungroupBtn}>
             Unlink
           </Button>
         )}
@@ -49,7 +52,7 @@ export function ExerciseGroup({
               key={se.id}
               sessionExercise={se}
               templateExercise={templateExercise}
-              onRemove={() => onRemoveExercise(se.id)}
+              onRemove={onRemoveExercise}
               onSwitchProgression={onSwitchProgression}
               showValidation={showValidation}
             />
@@ -58,4 +61,4 @@ export function ExerciseGroup({
       </div>
     </div>
   );
-}
+});

@@ -118,3 +118,15 @@
   font-size: 11px;
   color: #555;
 }
+
+/* Hides the card while it is being captured (the card itself stays unstyled
+   so the html-to-image clone renders normally) */
+.offscreen {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 440px;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}

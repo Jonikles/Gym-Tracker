@@ -1,5 +1,3 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
 import type { Routine } from '../../types';
 import { Card } from '../common';
 import styles from './RoutineCard.module.css';
@@ -7,27 +5,13 @@ import styles from './RoutineCard.module.css';
 interface RoutineCardProps {
   routine: Routine;
   onClick?: () => void;
+  /** templateId → name, batch-fetched by the parent list */
+  templateNames?: Map<string, string>;
 }
 
 const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function RoutineCard({ routine, onClick }: RoutineCardProps) {
-  // Get template names for display
-  const templateIds = routine.schedule
-    .map((s) => s.templateId)
-    .filter((id): id is string => !!id);
-
-  const templates = useLiveQuery(
-    async () => {
-      if (templateIds.length === 0) return [];
-      const results = await Promise.all(
-        templateIds.map((id) => db.templates.get(id))
-      );
-      return results.filter((t) => t !== undefined);
-    },
-    [templateIds.join(',')]
-  );
-
+export function RoutineCard({ routine, onClick, templateNames }: RoutineCardProps) {
   const activeDays = routine.schedule.filter((s) => s.templateId);
   const restDays = routine.schedule.filter((s) => !s.templateId);
 
@@ -55,7 +39,7 @@ export function RoutineCard({ routine, onClick }: RoutineCardProps) {
                 className={`${styles.dayDot} ${day.templateId ? styles.active : styles.rest}`}
                 title={
                   day.templateId
-                    ? templates?.find((t) => t?.id === day.templateId)?.name ?? day.label
+                    ? templateNames?.get(day.templateId) ?? day.label
                     : 'Rest'
                 }
               >

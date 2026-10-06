@@ -53,18 +53,11 @@ function calculatePlates(targetWeight: number, barWeight: number): PlateResult[]
 interface PlateCalculatorProps {
   isOpen: boolean;
   onClose: () => void;
-  initialWeight?: number;
-  onSelectWeight?: (weight: number) => void;
 }
 
-export function PlateCalculator({ isOpen, onClose, initialWeight, onSelectWeight }: PlateCalculatorProps) {
-  const [targetWeight, setTargetWeight] = useState(initialWeight?.toString() ?? '');
+export function PlateCalculator({ isOpen, onClose }: PlateCalculatorProps) {
+  const [targetWeight, setTargetWeight] = useState('');
   const [barWeight, setBarWeight] = useState(DEFAULT_BAR_WEIGHT.toString());
-
-  // Recalculate when initialWeight changes (new modal open)
-  useState(() => {
-    if (initialWeight) setTargetWeight(initialWeight.toString());
-  });
 
   const target = parseFloat(targetWeight) || 0;
   const bar = parseFloat(barWeight) || 0;
@@ -207,19 +200,6 @@ export function PlateCalculator({ isOpen, onClose, initialWeight, onSelectWeight
           <div className={styles.error}>
             Target weight must be at least {bar}kg (bar weight)
           </div>
-        )}
-
-        {/* Use weight button */}
-        {onSelectWeight && target > 0 && plates !== null && (
-          <button
-            className={styles.useBtn}
-            onClick={() => {
-              onSelectWeight(target);
-              onClose();
-            }}
-          >
-            Use {target}kg
-          </button>
         )}
       </div>
     </Modal>

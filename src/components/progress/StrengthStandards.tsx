@@ -33,10 +33,8 @@ function useBig3Data(): LiftData[] {
     const results: LiftData[] = [];
 
     for (const [lift, name] of Object.entries(BIG3_EXERCISES) as [Big3Lift, string][]) {
-      // Find exercise by exact name
-      const exercise = await db.exercises
-        .filter((e) => e.name === name)
-        .first();
+      // Find exercise by exact name (indexed)
+      const exercise = await db.exercises.where('name').equals(name).first();
 
       if (!exercise) {
         results.push({ lift, exerciseId: null, e1rm: 0, bestWeight: 0, bestReps: 0 });

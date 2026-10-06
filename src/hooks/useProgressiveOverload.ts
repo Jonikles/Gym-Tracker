@@ -15,10 +15,13 @@ import type { TemplateExercise, ExerciseField } from '../types';
  * @param templateExercise - Optional template exercise with targets (if started from template)
  * @param defaultFields - The exercise's field configuration (weight, reps, time, distance)
  */
+/** Module-level default so callers omitting defaultFields don't get a new array (and a re-run) every render */
+const DEFAULT_FIELDS: ExerciseField[] = ['weight', 'reps'];
+
 export function useProgressiveOverload(
   exerciseId: string,
   templateExercise?: TemplateExercise,
-  defaultFields: ExerciseField[] = ['weight', 'reps']
+  defaultFields: ExerciseField[] = DEFAULT_FIELDS
 ): {
   suggestion: OverloadSuggestion | null;
   isLoading: boolean;
@@ -26,13 +29,22 @@ export function useProgressiveOverload(
   const [suggestion, setSuggestion] = useState<OverloadSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const targetReps = templateExercise?.targetReps;
+  const targetWeight = templateExercise?.weight;
+  // Compare fields by value so a caller passing a fresh-but-equal array doesn't re-trigger
+  const fieldsKey = defaultFields.join(',');
+
   useEffect(() => {
+    let cancelled = false;
+    const fields = fieldsKey ? (fieldsKey.split(',') as ExerciseField[]) : [];
+
     async function loadSuggestion() {
       setIsLoading(true);
 
       try {
         // Get previous session's sets
         const previousSets = await getPreviousSets(exerciseId);
+        if (cancelled) return;
 
         if (previousSets.length === 0) {
           setSuggestion({
@@ -46,24 +58,23 @@ export function useProgressiveOverload(
         // Get weight increment from settings
         let weightIncrement = DEFAULT_WEIGHT_INCREMENT;
         const setting = await db.settings.get('weightIncrement');
+        if (cancelled) return;
         if (setting?.value && typeof setting.value === 'number') {
           weightIncrement = setting.value;
         }
-
-        // Get target reps from template exercise
-        const targetReps = templateExercise?.targetReps;
 
         // Calculate suggestion
         const result = calculateOverloadSuggestion(
           previousSets,
           targetReps,
-          templateExercise?.weight,
+          targetWeight,
           weightIncrement,
-          defaultFields
+          fields
         );
 
         setSuggestion(result);
       } catch (error) {
+        if (cancelled) return;
         console.error('Failed to load overload suggestion:', error);
         setSuggestion(null);
       }
@@ -72,7 +83,10 @@ export function useProgressiveOverload(
     }
 
     loadSuggestion();
-  }, [exerciseId, templateExercise?.sets, templateExercise?.weight, defaultFields]);
+    return () => {
+      cancelled = true;
+    };
+  }, [exerciseId, targetReps, targetWeight, fieldsKey]);
 
   return { suggestion, isLoading };
 }

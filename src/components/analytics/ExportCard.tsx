@@ -1,48 +1,10 @@
-import { useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { toPng } from 'html-to-image';
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import Model from 'react-body-highlighter';
-import type { IExerciseData, Muscle } from 'react-body-highlighter';
 import { useOverallStats, useMuscleDistribution } from '../../hooks/useStats';
-import { useSetting } from '../../hooks/useSettings';
-import type { MuscleGroup } from '../../types/exercise';
+import { formatMuscleGroup, formatCompactNumber } from '../common/format';
+import { TIER_COLORS, MUSCLE_COLORS, buildMuscleHeatmap } from './muscleMap';
 import type { TimePeriod } from './AnalyticsDashboard';
 import styles from './ExportCard.module.css';
-
-const MUSCLE_MAP: Record<MuscleGroup, Muscle | null> = {
-  'calves': 'calves',
-  'quads': 'quadriceps',
-  'hamstrings': 'hamstring',
-  'glutes': 'gluteal',
-  'adductors': 'adductor',
-  'abductors': 'abductors',
-  'lower-abs': 'abs',
-  'upper-abs': 'abs',
-  'obliques': 'obliques',
-  'lower-chest': 'chest',
-  'mid-chest': 'chest',
-  'upper-chest': 'chest',
-  'forearms': 'forearm',
-  'triceps': 'triceps',
-  'biceps': 'biceps',
-  'brachioradialis': 'forearm',
-  'front-delts': 'front-deltoids',
-  'side-delts': 'front-deltoids',
-  'rear-delts': 'back-deltoids',
-  'traps': 'trapezius',
-  'rhomboids': 'upper-back',
-  'lats-upper': 'upper-back',
-  'lats-lower': 'lower-back',
-  'erector-spinae': 'lower-back',
-  'neck': 'neck',
-};
-
-const TIER_COLORS = [
-  '#4a6670',
-  '#22c55e',
-  '#eab308',
-  '#f97316',
-  '#ef4444',
-];
 
 const PERIOD_LABELS: Record<TimePeriod, string> = {
   '1W': 'Last 7 Days',
@@ -53,6 +15,11 @@ const PERIOD_LABELS: Record<TimePeriod, string> = {
   'ALL': 'All Time',
 };
 
+/** How long to wait for the card's data to load before giving up */
+const READY_TIMEOUT_MS = 5000;
+/** Extra settle time for body diagrams to lay out before capture */
+const SETTLE_MS = 200;
+
 export interface ExportCardHandle {
   exportImage: () => Promise<void>;
 }
@@ -62,74 +29,44 @@ interface ExportCardProps {
   period: TimePeriod;
 }
 
+/**
+ * Share-image exporter. Renders nothing (and runs no data queries) until
+ * `exportImage()` is called; then mounts a hidden card, waits for its data,
+ * captures it as a PNG and unmounts it again.
+ */
 export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
   function ExportCard({ days, period }, ref) {
-    const cardRef = useRef<HTMLDivElement>(null);
-    const [exporting, setExporting] = useState(false);
-    // Body diagrams are expensive to render — skip them until the user actually
-    // requests an export instead of always mounting a hidden duplicate.
-    const [everRequested, setEverRequested] = useState(false);
-    const stats = useOverallStats(days);
-    const distribution = useMuscleDistribution(days);
-    const theme = useSetting('theme');
-    const bodyColor = theme === 'light' ? '#c8c8c8' : '#3a3a3a';
+    const [requested, setRequested] = useState(false);
+    const busyRef = useRef(false);
+    const readyResolverRef = useRef<((el: HTMLDivElement) => void) | null>(null);
 
-    // Build tiered heatmap data (same logic as MuscleHeatmap)
-    const tieredData: IExerciseData[] = [];
-    if (distribution && distribution.length > 0) {
-      const muscleVolumes = new Map<Muscle, number>();
-      for (const d of distribution) {
-        const mapped = MUSCLE_MAP[d.muscleGroup as MuscleGroup];
-        if (!mapped) continue;
-        muscleVolumes.set(mapped, (muscleVolumes.get(mapped) ?? 0) + d.volume);
-      }
-      const maxVol = Math.max(...muscleVolumes.values(), 1);
-      for (const [muscle, vol] of muscleVolumes) {
-        const ratio = vol / maxVol;
-        let tier: number;
-        if (ratio > 0.85) tier = 5;
-        else if (ratio > 0.65) tier = 4;
-        else if (ratio > 0.40) tier = 3;
-        else if (ratio > 0.20) tier = 2;
-        else tier = 1;
-        tieredData.push({ name: `tier-${tier}`, muscles: [muscle], frequency: tier });
-      }
-    }
-
-    // Top 3 muscle groups
-    const topMuscles = distribution
-      ? distribution.slice(0, 3).map((d) => ({
-          name: d.muscleGroup
-            .split('-')
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-            .join(' '),
-          pct: d.percentage,
-        }))
-      : [];
-
-    const formatVolume = (kg: number) => {
-      if (kg >= 1000000) return `${(kg / 1000000).toFixed(1)}M`;
-      if (kg >= 1000) return `${(kg / 1000).toFixed(1)}k`;
-      return `${kg}`;
-    };
+    const handleReady = useCallback((el: HTMLDivElement) => {
+      readyResolverRef.current?.(el);
+      readyResolverRef.current = null;
+    }, []);
 
     const exportImage = useCallback(async () => {
-      if (!cardRef.current || exporting) return;
-      setExporting(true);
-      setEverRequested(true);
+      if (busyRef.current) return;
+      busyRef.current = true;
 
       try {
-        // Make card visible for capture
-        const el = cardRef.current;
-        el.style.position = 'fixed';
-        el.style.left = '0';
-        el.style.top = '0';
-        el.style.zIndex = '-9999';
-        el.style.opacity = '1';
-        el.style.pointerEvents = 'none';
+        // Start loading the capture library while the card renders
+        const htmlToImagePromise = import('html-to-image');
 
-        // Wait for render
-        await new Promise((r) => setTimeout(r, 200));
+        const el = await new Promise<HTMLDivElement>((resolve, reject) => {
+          const timer = window.setTimeout(() => {
+            readyResolverRef.current = null;
+            reject(new Error('Export card did not render in time'));
+          }, READY_TIMEOUT_MS);
+          readyResolverRef.current = (node) => {
+            window.clearTimeout(timer);
+            resolve(node);
+          };
+          setRequested(true);
+        });
+
+        const { toPng } = await htmlToImagePromise;
+        await new Promise((r) => setTimeout(r, SETTLE_MS));
 
         const dataUrl = await toPng(el, {
           pixelRatio: 2,
@@ -137,14 +74,6 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
           width: 440,
           height: el.scrollHeight,
         });
-
-        // Hide card again
-        el.style.position = '';
-        el.style.left = '';
-        el.style.top = '';
-        el.style.zIndex = '';
-        el.style.opacity = '';
-        el.style.pointerEvents = '';
 
         // Try Web Share API first (mobile)
         if (navigator.share && navigator.canShare) {
@@ -160,8 +89,10 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
               });
               return;
             }
-          } catch {
-            // Share cancelled or failed, fall through to download
+          } catch (err) {
+            // User cancelled the share sheet — don't fall through to a download
+            if (err instanceof DOMException && err.name === 'AbortError') return;
+            // Otherwise fall through to download
           }
         }
 
@@ -170,112 +101,149 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
         link.download = `gym-tracker-${period.toLowerCase()}.png`;
         link.href = dataUrl;
         link.click();
+      } catch (err) {
+        console.error('Export failed:', err);
       } finally {
-        setExporting(false);
+        readyResolverRef.current = null;
+        busyRef.current = false;
+        setRequested(false);
       }
-    }, [exporting, period]);
+    }, [period]);
 
     useImperativeHandle(ref, () => ({ exportImage }), [exportImage]);
 
-    if (!stats) return null;
-
-    const dateStr = new Date().toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    if (!requested) return null;
 
     return (
-      <div
-        ref={cardRef}
-        className={styles.card}
-        style={{ position: 'absolute', left: '-9999px', opacity: 0 }}
-      >
-        {/* Header */}
-        <div className={styles.cardHeader}>
-          <span className={styles.appName}>GymTracker</span>
-          <span className={styles.periodLabel}>{PERIOD_LABELS[period]}</span>
-        </div>
-
-        {/* Stats row */}
-        <div className={styles.statsRow}>
-          <div className={styles.stat}>
-            <span className={styles.statNum}>{stats.totalSessions}</span>
-            <span className={styles.statLbl}>Workouts</span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statNum}>{formatVolume(stats.totalVolume)}<small> kg</small></span>
-            <span className={styles.statLbl}>Volume</span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statNum}>{stats.totalSets}</span>
-            <span className={styles.statLbl}>Sets</span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statNum}>{stats.totalPRs}</span>
-            <span className={styles.statLbl}>PRs</span>
-          </div>
-        </div>
-
-        {/* Extra stats */}
-        <div className={styles.statsRow}>
-          <div className={styles.stat}>
-            <span className={styles.statNum}>{stats.avgDurationMin}<small>m</small></span>
-            <span className={styles.statLbl}>Avg Session</span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statNum}>{stats.currentStreak}</span>
-            <span className={styles.statLbl}>Day Streak</span>
-          </div>
-          <div className={styles.stat}>
-            <span className={styles.statNum}>{stats.consistencyRate}<small>%</small></span>
-            <span className={styles.statLbl}>Consistency</span>
-          </div>
-        </div>
-
-        {/* Body heatmap — only mounted once an export is actually requested */}
-        {everRequested && tieredData.length > 0 && (
-          <div className={styles.heatmap}>
-            <div className={styles.heatmapView}>
-              <Model
-                data={tieredData}
-                type="anterior"
-                bodyColor={bodyColor}
-                highlightedColors={TIER_COLORS}
-                svgStyle={{ width: '100%', height: 'auto' }}
-              />
-            </div>
-            <div className={styles.heatmapView}>
-              <Model
-                data={tieredData}
-                type="posterior"
-                bodyColor={bodyColor}
-                highlightedColors={TIER_COLORS}
-                svgStyle={{ width: '100%', height: 'auto' }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Top muscles */}
-        {topMuscles.length > 0 && (
-          <div className={styles.topMuscles}>
-            <span className={styles.topLabel}>Most Trained</span>
-            <div className={styles.topList}>
-              {topMuscles.map((m, i) => (
-                <span key={m.name} className={styles.topItem}>
-                  {i === 0 ? '' : i === 1 ? '' : ''} {m.name} {m.pct}%
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className={styles.cardFooter}>
-          <span>{dateStr}</span>
-        </div>
+      // The wrapper hides the card; the card itself carries no hiding styles,
+      // so the captured clone renders normally and nothing needs restoring.
+      <div className={styles.offscreen} aria-hidden="true">
+        <ExportCardContent days={days} period={period} onReady={handleReady} />
       </div>
     );
   }
 );
+
+interface ExportCardContentProps {
+  days: number;
+  period: TimePeriod;
+  onReady: (el: HTMLDivElement) => void;
+}
+
+function ExportCardContent({ days, period, onReady }: ExportCardContentProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const stats = useOverallStats(days);
+  const distribution = useMuscleDistribution(days);
+  const loaded = stats !== undefined && distribution !== undefined;
+
+  useEffect(() => {
+    if (loaded && cardRef.current) onReady(cardRef.current);
+  }, [loaded, onReady]);
+
+  if (!stats) return null;
+
+  const { tieredData } = buildMuscleHeatmap(distribution ?? []);
+
+  // Top 3 muscle groups
+  const topMuscles = distribution
+    ? distribution.slice(0, 3).map((d) => ({
+        name: formatMuscleGroup(d.muscleGroup),
+        pct: d.percentage,
+      }))
+    : [];
+
+  const dateStr = new Date().toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  return (
+    <div ref={cardRef} className={styles.card}>
+      {/* Header */}
+      <div className={styles.cardHeader}>
+        <span className={styles.appName}>GymTracker</span>
+        <span className={styles.periodLabel}>{PERIOD_LABELS[period]}</span>
+      </div>
+
+      {/* Stats row */}
+      <div className={styles.statsRow}>
+        <div className={styles.stat}>
+          <span className={styles.statNum}>{stats.totalSessions}</span>
+          <span className={styles.statLbl}>Workouts</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statNum}>{formatCompactNumber(stats.totalVolume)}<small> kg</small></span>
+          <span className={styles.statLbl}>Volume</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statNum}>{stats.totalSets}</span>
+          <span className={styles.statLbl}>Sets</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statNum}>{stats.totalPRs}</span>
+          <span className={styles.statLbl}>PRs</span>
+        </div>
+      </div>
+
+      {/* Extra stats */}
+      <div className={styles.statsRow}>
+        <div className={styles.stat}>
+          <span className={styles.statNum}>{stats.avgDurationMin}<small>m</small></span>
+          <span className={styles.statLbl}>Avg Session</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statNum}>{stats.currentStreak}</span>
+          <span className={styles.statLbl}>Day Streak</span>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statNum}>{stats.consistencyRate}<small>%</small></span>
+          <span className={styles.statLbl}>Consistency</span>
+        </div>
+      </div>
+
+      {/* Body heatmap */}
+      {tieredData.length > 0 && (
+        <div className={styles.heatmap}>
+          <div className={styles.heatmapView}>
+            <Model
+              data={tieredData}
+              type="anterior"
+              bodyColor={MUSCLE_COLORS.body}
+              highlightedColors={TIER_COLORS}
+              svgStyle={{ width: '100%', height: 'auto' }}
+            />
+          </div>
+          <div className={styles.heatmapView}>
+            <Model
+              data={tieredData}
+              type="posterior"
+              bodyColor={MUSCLE_COLORS.body}
+              highlightedColors={TIER_COLORS}
+              svgStyle={{ width: '100%', height: 'auto' }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Top muscles */}
+      {topMuscles.length > 0 && (
+        <div className={styles.topMuscles}>
+          <span className={styles.topLabel}>Most Trained</span>
+          <div className={styles.topList}>
+            {topMuscles.map((m) => (
+              <span key={m.name} className={styles.topItem}>
+                {m.name} {m.pct}%
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className={styles.cardFooter}>
+        <span>{dateStr}</span>
+      </div>
+    </div>
+  );
+}

@@ -2,7 +2,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button, ConfirmDialog } from '../components/common';
 import { useRoutine, useTodaysTemplate } from '../hooks/useRoutines';
 import {
-  useActiveSession,
   startSessionFromTemplate,
   skipWorkout,
   markSick,
@@ -11,7 +10,7 @@ import {
 import { useSessionContext } from '../context/SessionContext';
 import { useSetting } from '../hooks/useSettings';
 import { useStreaks } from '../hooks/useStreaks';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import styles from './Home.module.css';
 
 function StreakDisplay() {
@@ -40,8 +39,7 @@ function StreakDisplay() {
 
 export function Home() {
   const navigate = useNavigate();
-  const activeSession = useActiveSession();
-  const { startBlank, isLoading } = useSessionContext();
+  const { activeSession, startBlank, isLoading } = useSessionContext();
 
   // Get active routine from settings
   const activeRoutineId = useSetting('activeRoutineId');
@@ -58,6 +56,23 @@ export function Home() {
 
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [showSickConfirm, setShowSickConfirm] = useState(false);
+
+  // Guards against double taps starting two workouts / logging twice
+  const [isBusy, setIsBusy] = useState(false);
+  const busyRef = useRef(false);
+  const runGuarded = async (action: () => Promise<void>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setIsBusy(true);
+    try {
+      await action();
+    } finally {
+      busyRef.current = false;
+      setIsBusy(false);
+    }
+  };
+  const busy = isBusy || isLoading;
+  const handleStartBlank = () => runGuarded(startBlank);
 
   // If there's an active session, show continue button
   if (activeSession) {
@@ -119,7 +134,7 @@ export function Home() {
         </div>
 
         <div className={styles.otherOptions}>
-          <Button variant="secondary" onClick={startBlank} disabled={isLoading}>
+          <Button variant="secondary" onClick={handleStartBlank} disabled={busy}>
             Start Another Workout
           </Button>
         </div>
@@ -129,23 +144,26 @@ export function Home() {
     );
   }
 
-  const handleStartFromTemplate = async () => {
-    if (!todaysWorkout) return;
-    await startSessionFromTemplate(todaysWorkout.template.id, todaysWorkout.routine.id);
-    navigate('/workout');
-  };
+  const handleStartFromTemplate = () =>
+    runGuarded(async () => {
+      if (!todaysWorkout) return;
+      await startSessionFromTemplate(todaysWorkout.template.id, todaysWorkout.routine.id);
+      navigate('/workout');
+    });
 
-  const handleSkip = async () => {
-    if (!todaysWorkout) return;
-    await skipWorkout(todaysWorkout.routine.id, todaysWorkout.template.id);
-    setShowSkipConfirm(false);
-  };
+  const handleSkip = () =>
+    runGuarded(async () => {
+      if (!todaysWorkout) return;
+      await skipWorkout(todaysWorkout.routine.id, todaysWorkout.template.id);
+      setShowSkipConfirm(false);
+    });
 
-  const handleSick = async () => {
-    if (!todaysWorkout) return;
-    await markSick(todaysWorkout.routine.id, todaysWorkout.template.id);
-    setShowSickConfirm(false);
-  };
+  const handleSick = () =>
+    runGuarded(async () => {
+      if (!todaysWorkout) return;
+      await markSick(todaysWorkout.routine.id, todaysWorkout.template.id);
+      setShowSickConfirm(false);
+    });
 
   // No active routine selected
   if (!activeRoutineId || !activeRoutine) {
@@ -164,7 +182,7 @@ export function Home() {
           <div className={styles.divider}>
             <span>or</span>
           </div>
-          <Button variant="secondary" onClick={startBlank} disabled={isLoading}>
+          <Button variant="secondary" onClick={handleStartBlank} disabled={busy}>
             Start Blank Workout
           </Button>
         </div>
@@ -191,7 +209,7 @@ export function Home() {
         </div>
 
         <div className={styles.otherOptions}>
-          <Button variant="secondary" onClick={startBlank} disabled={isLoading}>
+          <Button variant="secondary" onClick={handleStartBlank} disabled={busy}>
             Start Unplanned Workout
           </Button>
         </div>
@@ -218,30 +236,32 @@ export function Home() {
       </div>
 
       <div className={styles.startSection}>
-        <Button size="lg" onClick={handleStartFromTemplate} disabled={isLoading}>
-          Start Workout
+        <Button size="lg" onClick={handleStartFromTemplate} disabled={busy} aria-busy={isBusy}>
+          {isBusy ? 'Starting…' : 'Start Workout'}
         </Button>
 
         <div className={styles.skipButtons}>
           <Button
-            variant="ghost"
-            size="sm"
+            variant="secondary"
             onClick={() => setShowSkipConfirm(true)}
+            disabled={busy}
+            className={styles.secondaryAction}
           >
-            Skip
+            Skip today
           </Button>
           <Button
-            variant="ghost"
-            size="sm"
+            variant="secondary"
             onClick={() => setShowSickConfirm(true)}
+            disabled={busy}
+            className={styles.secondaryAction}
           >
-            Sick
+            Sick day
           </Button>
         </div>
       </div>
 
       <div className={styles.otherOptions}>
-        <Button variant="secondary" onClick={startBlank} disabled={isLoading}>
+        <Button variant="secondary" onClick={handleStartBlank} disabled={busy}>
           Blank Workout
         </Button>
       </div>

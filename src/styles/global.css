@@ -9,7 +9,7 @@
 
 /* CSS Variables */
 :root {
-  /* Dark theme (default) */
+  /* Dark theme (only theme) */
   --color-bg: #0a0a0a;
   --color-bg-secondary: #141414;
   --color-bg-tertiary: #1e1e1e;
@@ -61,31 +61,6 @@
   --transition-normal: 250ms ease;
 }
 
-/* Light theme overrides */
-[data-theme="light"] {
-  --color-bg: #ffffff;
-  --color-bg-secondary: #f5f5f5;
-  --color-bg-tertiary: #e5e5e5;
-  --color-text: #171717;
-  --color-text-secondary: #525252;
-  --color-text-muted: #a3a3a3;
-  --color-border: #d4d4d4;
-  --color-border-focus: #a3a3a3;
-  --color-accent: #171717;
-  --color-accent-muted: #a3a3a3;
-  --color-success: #16a34a;
-  --color-error: #dc2626;
-  --color-warning: #d97706;
-
-  --muscle-body: #c8c8c8;
-  --muscle-highlight: #dc2626;
-
-  --overlay-hover: rgba(0, 0, 0, 0.05);
-  --overlay-separator: rgba(0, 0, 0, 0.1);
-
-  color-scheme: light;
-}
-
 /* Hide number input spinners */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
@@ -102,7 +77,7 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color-scheme: dark; /* overridden by [data-theme="light"] */
+  color-scheme: dark;
 }
 
 body {

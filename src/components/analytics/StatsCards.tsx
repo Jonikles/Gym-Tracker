@@ -1,4 +1,5 @@
 import { useOverallStats } from '../../hooks/useStats';
+import { formatCompactNumber } from '../common/format';
 import styles from './Analytics.module.css';
 
 interface StatsCardsProps {
@@ -12,20 +13,25 @@ export function StatsCards({ days }: StatsCardsProps) {
     return null;
   }
 
-  const formatVolume = (kg: number) => {
-    if (kg >= 1000000) return `${(kg / 1000000).toFixed(1)}M kg`;
-    if (kg >= 1000) return `${(kg / 1000).toFixed(1)}k kg`;
-    return `${kg} kg`;
-  };
-
   return (
     <div className={styles.statsGrid}>
+      {/* Full-width streak tile keeps the remaining 6 tiles in an even grid */}
+      <div className={`${styles.statCard} ${styles.statCardWide}`}>
+        <span className={styles.statCardLabel}>Day Streak</span>
+        <span className={`${styles.statCardValue} ${stats.currentStreak > 0 ? styles.streak : ''}`}>
+          {stats.currentStreak}
+          <span className={styles.statCardUnit}>{stats.currentStreak === 1 ? ' day' : ' days'}</span>
+        </span>
+      </div>
       <div className={styles.statCard}>
         <span className={styles.statCardValue}>{stats.totalSessions}</span>
         <span className={styles.statCardLabel}>Workouts</span>
       </div>
       <div className={styles.statCard}>
-        <span className={styles.statCardValue}>{formatVolume(stats.totalVolume)}</span>
+        <span className={styles.statCardValue}>
+          {formatCompactNumber(stats.totalVolume)}
+          <span className={styles.statCardUnit}> kg</span>
+        </span>
         <span className={styles.statCardLabel}>Total Volume</span>
       </div>
       <div className={styles.statCard}>
@@ -37,17 +43,17 @@ export function StatsCards({ days }: StatsCardsProps) {
         <span className={styles.statCardLabel}>PRs Achieved</span>
       </div>
       <div className={styles.statCard}>
-        <span className={`${styles.statCardValue} ${stats.currentStreak > 0 ? styles.streak : ''}`}>
-          {stats.currentStreak}
+        <span className={styles.statCardValue}>
+          {stats.avgDurationMin}
+          <span className={styles.statCardUnit}>m</span>
         </span>
-        <span className={styles.statCardLabel}>Day Streak</span>
-      </div>
-      <div className={styles.statCard}>
-        <span className={styles.statCardValue}>{stats.avgDurationMin}m</span>
         <span className={styles.statCardLabel}>Avg Duration</span>
       </div>
       <div className={styles.statCard}>
-        <span className={styles.statCardValue}>{stats.consistencyRate}%</span>
+        <span className={styles.statCardValue}>
+          {stats.consistencyRate}
+          <span className={styles.statCardUnit}>%</span>
+        </span>
         <span className={styles.statCardLabel}>Consistency</span>
       </div>
     </div>

@@ -50,7 +50,6 @@ export function TemplateList() {
                     placeholder="Search templates..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    autoFocus
                 />
                 <Select
                     value={sortOrder}

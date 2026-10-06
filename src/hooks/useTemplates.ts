@@ -91,9 +91,10 @@ export async function updateTemplate(
     }
   }
 
+  const { name, ...rest } = input;
   await db.templates.update(id, {
-    ...input,
-    name: input.name?.trim(),
+    ...rest,
+    ...(name !== undefined ? { name: name.trim() } : {}),
     updatedAt: Date.now(),
   });
 }

@@ -37,7 +37,9 @@ export function useProgressionHistory(progressionId: string): ProgressionHistory
 
     // Strategy 2: Find via exerciseId match (pre-v5 data)
     const allSE = await db.sessionExercises
-      .filter((se) => exerciseIds.has(se.exerciseId) && !se.progressionId)
+      .where('exerciseId')
+      .anyOf([...exerciseIds])
+      .filter((se) => !se.progressionId)
       .toArray();
 
     const combined = [...v5Matches, ...allSE];

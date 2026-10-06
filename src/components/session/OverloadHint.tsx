@@ -1,19 +1,33 @@
-import { useProgressiveOverload } from '../../hooks/useProgressiveOverload';
-import type { TemplateExercise, ExerciseField } from '../../types';
+import { useMemo } from 'react';
+import { calculateOverloadSuggestion, DEFAULT_WEIGHT_INCREMENT } from '../../utils/overload';
+import { useSetting } from '../../hooks/useSettings';
+import type { TemplateExercise, ExerciseField, Set } from '../../types';
 import styles from './OverloadHint.module.css';
 
 interface OverloadHintProps {
-  exerciseId: string;
+  /** Sets from the last completed session of this exercise (undefined while loading) */
+  previousSets: Set[] | undefined;
   templateExercise?: TemplateExercise;
   defaultFields?: ExerciseField[];
 }
 
-export function OverloadHint({ exerciseId, templateExercise, defaultFields }: OverloadHintProps) {
-  const { suggestion, isLoading } = useProgressiveOverload(exerciseId, templateExercise, defaultFields);
+export function OverloadHint({ previousSets, templateExercise, defaultFields }: OverloadHintProps) {
+  const weightIncrementSetting = useSetting('weightIncrement');
+  const weightIncrement =
+    typeof weightIncrementSetting === 'number' && weightIncrementSetting > 0
+      ? weightIncrementSetting
+      : DEFAULT_WEIGHT_INCREMENT;
 
-  if (isLoading) {
-    return null;
-  }
+  const suggestion = useMemo(() => {
+    if (!previousSets || previousSets.length === 0) return null;
+    return calculateOverloadSuggestion(
+      previousSets,
+      templateExercise?.targetReps,
+      templateExercise?.weight,
+      weightIncrement,
+      defaultFields
+    );
+  }, [previousSets, templateExercise?.targetReps, templateExercise?.weight, weightIncrement, defaultFields]);
 
   if (!suggestion || suggestion.type === 'no_data') {
     return null;

@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, Input, Select } from '../common';
-import { useExercise } from '../../hooks/useExercises';
+import { db } from '../../db';
 import { useProgressionExercises } from '../../hooks/useProgressions';
 import { PROGRESSION_MAP } from '../../data/progressions';
-import type { TemplateExercise, TemplateSet, IntensityTechnique } from '../../types';
+import type { TemplateExercise, TemplateSet, IntensityTechnique, Exercise } from '../../types';
 import styles from './TemplateExerciseList.module.css';
 
 // Set type options - Normal, Warmup, or Failure (which then shows technique dropdown)
@@ -139,6 +140,8 @@ function TargetRepsInput({ value, onChange }: { value: string; onChange: (val: s
 
 interface TemplateExerciseRowProps {
   exercise: TemplateExercise;
+  /** undefined = still loading, null = exercise no longer exists */
+  exerciseData: Exercise | null | undefined;
   onUpdate: (updates: Partial<TemplateExercise>) => void;
   onRemove: () => void;
   onMoveUp?: () => void;
@@ -149,6 +152,7 @@ interface TemplateExerciseRowProps {
 
 function TemplateExerciseRow({
   exercise,
+  exerciseData,
   onUpdate,
   onRemove,
   onMoveUp,
@@ -156,7 +160,6 @@ function TemplateExerciseRow({
   canMoveUp,
   canMoveDown,
 }: TemplateExerciseRowProps) {
-  const exerciseData = useExercise(exercise.exerciseId);
   const [showNotes, setShowNotes] = useState(!!exercise.notes);
   const isProgression = !!exercise.progressionId;
   const progressionDef = isProgression ? PROGRESSION_MAP[exercise.progressionId!] : null;
@@ -232,12 +235,12 @@ function TemplateExerciseRow({
               className={styles.progressionLevelSelect}
             />
           ) : (
-            <span className={styles.exerciseName}>
-              {exerciseData?.name ?? 'Loading...'}
+            <span className={`${styles.exerciseName} ${exerciseData === null ? styles.exerciseMissing : ''}`}>
+              {exerciseData === undefined ? '…' : exerciseData?.name ?? 'Exercise missing'}
             </span>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={onRemove} title="Remove exercise">
+        <Button variant="ghost" size="sm" onClick={onRemove} title="Remove exercise" aria-label="Remove exercise" className={styles.removeExerciseBtn}>
           ×
         </Button>
       </div>
@@ -307,8 +310,16 @@ function TemplateExerciseRow({
   );
 }
 
+/** Template exercise with an optional client-only stable key (assigned by TemplateForm) */
+export type KeyedTemplateExercise = TemplateExercise & { uid?: string };
+
+/** Stable React key for a row — uid when present, else a content-derived fallback */
+function rowKey(ex: KeyedTemplateExercise): string {
+  return ex.uid ?? `${ex.exerciseId}-${ex.progressionId ?? ''}-${ex.order}`;
+}
+
 interface TemplateExerciseListProps {
-  exercises: TemplateExercise[];
+  exercises: KeyedTemplateExercise[];
   onUpdate: (exerciseId: string, updates: Partial<TemplateExercise>, order?: number) => void;
   onRemove: (exerciseId: string, order?: number) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
@@ -327,6 +338,18 @@ export function TemplateExerciseList({
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const sortedExercises = [...exercises].sort((a, b) => a.order - b.order);
+
+  // Batch-fetch exercise data for all rows in one query
+  const exerciseIdsKey = [...new Set(exercises.map((e) => e.exerciseId))].sort().join(',');
+  const exerciseMap = useLiveQuery(async () => {
+    const ids = exerciseIdsKey ? exerciseIdsKey.split(',') : [];
+    const found = await db.exercises.bulkGet(ids);
+    const map = new Map<string, Exercise>();
+    for (const ex of found) if (ex) map.set(ex.id, ex);
+    return map;
+  }, [exerciseIdsKey]);
+  const dataFor = (ex: TemplateExercise): Exercise | null | undefined =>
+    exerciseMap ? exerciseMap.get(ex.exerciseId) ?? null : undefined;
 
   const toggleSelectIndex = (index: number) => {
     setSelectedIndices((prev) => {
@@ -428,8 +451,9 @@ export function TemplateExerciseList({
                     const gIndex = sortedExercises.indexOf(gm);
                     return (
                       <TemplateExerciseRow
-                        key={`${gm.order}`}
+                        key={rowKey(gm)}
                         exercise={gm}
+                        exerciseData={dataFor(gm)}
                         onUpdate={(updates) => onUpdate(gm.exerciseId, updates, gm.progressionId ? gm.order : undefined)}
                         onRemove={() => onRemove(gm.exerciseId, gm.progressionId ? gm.order : undefined)}
                         onMoveUp={() => moveExercise(gIndex, -1)}
@@ -449,7 +473,7 @@ export function TemplateExerciseList({
             if (isSelectMode) {
               return (
                 <div
-                  key={`${exercise.order}`}
+                  key={rowKey(exercise)}
                   className={`${styles.selectableRow} ${selectedIndices.has(index) ? styles.selectedRow : ''}`}
                   onClick={() => toggleSelectIndex(index)}
                 >
@@ -458,6 +482,7 @@ export function TemplateExerciseList({
                   </div>
                   <TemplateExerciseRow
                     exercise={exercise}
+                    exerciseData={dataFor(exercise)}
                     onUpdate={(updates) => onUpdate(exercise.exerciseId, updates, exercise.progressionId ? exercise.order : undefined)}
                     onRemove={() => onRemove(exercise.exerciseId, exercise.progressionId ? exercise.order : undefined)}
                   />
@@ -467,8 +492,9 @@ export function TemplateExerciseList({
 
             return (
               <TemplateExerciseRow
-                key={`${exercise.order}`}
+                key={rowKey(exercise)}
                 exercise={exercise}
+                exerciseData={dataFor(exercise)}
                 onUpdate={(updates) => onUpdate(exercise.exerciseId, updates, exercise.progressionId ? exercise.order : undefined)}
                 onRemove={() => onRemove(exercise.exerciseId, exercise.progressionId ? exercise.order : undefined)}
                 onMoveUp={() => moveExercise(index, -1)}

@@ -2,20 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import type { Exercise } from '../../types';
 import { PROGRESSION_MAP } from '../../data/progressions';
 import { Card } from '../common';
+import { formatMuscleGroup, formatLabel } from '../common/format';
 import styles from './ExerciseCard.module.css';
-
-// Helper to format muscle group keys for display
-function formatMuscleGroup(mg: string): string {
-  return mg
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-// Helper to capitalize first letter
-function formatLabel(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
 
 /** Map from progressionId → level → exerciseId, built by parent for nav */
 export type ProgressionLevelMap = Map<string, Map<number, string>>;

@@ -39,8 +39,16 @@ export function useProgressionAchievements() {
       .filter((e) => e.progressionMemberships !== undefined && e.progressionMemberships.length > 0)
       .toArray();
 
-    const sessionExercises = await db.sessionExercises.toArray();
-    const usedExerciseIds = new Set(sessionExercises.map((se) => se.exerciseId));
+    // Which progression exercises have been used — indexed lookup on exerciseId
+    // (keys only) instead of loading the whole sessionExercises table
+    const usedExerciseIds = new Set(
+      exercises.length > 0
+        ? ((await db.sessionExercises
+            .where('exerciseId')
+            .anyOf(exercises.map((e) => e.id))
+            .keys()) as string[])
+        : []
+    );
 
     for (const exercise of exercises) {
       if (!usedExerciseIds.has(exercise.id)) continue;
@@ -104,7 +112,8 @@ export async function getLastUsedExerciseForProgression(
 
   // Find all session exercises matching any exercise in this progression
   const allSE = await db.sessionExercises
-    .filter((se) => exerciseIds.has(se.exerciseId))
+    .where('exerciseId')
+    .anyOf([...exerciseIds])
     .toArray();
 
   if (allSE.length === 0) return undefined;

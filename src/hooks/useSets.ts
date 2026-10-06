@@ -62,17 +62,13 @@ export function useSessionSets(sessionId: string | undefined) {
       
       const sessionExerciseIds = sessionExercises.map((se) => se.id);
       
-      // Get all sets for these exercises
-      const allSets: Set[] = [];
-      for (const seId of sessionExerciseIds) {
-        const sets = await db.sets
-          .where('sessionExerciseId')
-          .equals(seId)
-          .toArray();
-        allSets.push(...sets);
-      }
-      
-      return allSets;
+      if (sessionExerciseIds.length === 0) return [] as Set[];
+
+      // Get all sets for these exercises in one indexed query
+      return db.sets
+        .where('sessionExerciseId')
+        .anyOf(sessionExerciseIds)
+        .toArray();
     },
     [sessionId]
   );
@@ -148,8 +144,22 @@ export async function createSet(input: CreateSetInput): Promise<string> {
   return set.id;
 }
 
+const UPDATABLE_SET_KEYS = [
+  'weight',
+  'reps',
+  'time',
+  'distance',
+  'isWarmup',
+  'intensityTechnique',
+  'techniqueData',
+] as const satisfies readonly (keyof UpdateSetInput)[];
+
 /**
- * Update an existing set
+ * Update an existing set.
+ *
+ * Every key PRESENT in `input` is written, including ones explicitly set to
+ * undefined — so `{ weight: undefined }` clears the weight. Keys that are
+ * absent from the object are left untouched.
  */
 export async function updateSet(
   setId: string,
@@ -157,22 +167,24 @@ export async function updateSet(
 ): Promise<void> {
   const updates: Partial<Set> = {};
 
-  if (input.weight !== undefined) updates.weight = input.weight;
-  if (input.reps !== undefined) updates.reps = input.reps;
-  if (input.time !== undefined) updates.time = input.time;
-  if (input.distance !== undefined) updates.distance = input.distance;
-  if (input.isWarmup !== undefined) updates.isWarmup = input.isWarmup;
-  if (input.intensityTechnique !== undefined) updates.intensityTechnique = input.intensityTechnique;
-  if (input.techniqueData !== undefined) updates.techniqueData = input.techniqueData;
+  for (const key of UPDATABLE_SET_KEYS) {
+    if (key in input) {
+      (updates as Record<string, unknown>)[key] = input[key];
+    }
+  }
 
+  if (Object.keys(updates).length === 0) return;
   await db.sets.update(setId, updates);
 }
 
 /**
- * Delete a set
+ * Delete a set (and any PRs it earned)
  */
 export async function deleteSet(setId: string): Promise<void> {
-  await db.sets.delete(setId);
+  await db.transaction('rw', [db.sets, db.prs], async () => {
+    await db.prs.where('setId').equals(setId).delete();
+    await db.sets.delete(setId);
+  });
 }
 
 /**

@@ -169,20 +169,3 @@
   padding: var(--space-md);
 }
 
-/* ── Use weight button ── */
-.useBtn {
-  width: 100%;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-accent);
-  color: var(--color-bg);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-.useBtn:hover {
-  opacity: 0.9;
-}

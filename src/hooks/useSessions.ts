@@ -5,6 +5,8 @@ import { advanceRollingPosition } from './useRoutines';
 import { detectAndSaveExercisePRs } from '../utils/pr';
 import { detectAndSaveProgressionAdvancements } from '../utils/progression';
 import { getLastUsedExerciseForProgression } from './useProgressions';
+import { useToday } from './useToday';
+import { startOfLocalDay, startOfNextLocalDay } from '../utils/session';
 
 /**
  * Filter options for session queries
@@ -93,11 +95,13 @@ export function useSessionExercises(sessionId: string | undefined) {
  */
 export function useActiveSession() {
   return useLiveQuery(async () => {
-    const sessions = await db.sessions
+    // Most recent incomplete session — walks the startedAt index newest-first
+    // and stops at the first match instead of materializing every session.
+    return db.sessions
+      .orderBy('startedAt')
+      .reverse()
       .filter((s) => s.completedAt == null)
-      .toArray();
-    // Return the most recent incomplete session
-    return sessions.sort((a, b) => b.startedAt - a.startedAt)[0];
+      .first();
   }, []);
 }
 
@@ -282,56 +286,119 @@ export async function startBlankSession(): Promise<string> {
  * v1.5: PRs are now detected and saved on completion (not during logging)
  */
 export async function completeSession(sessionId: string): Promise<void> {
-  const session = await db.sessions.get(sessionId);
-  if (!session) throw new Error('Session not found');
+  // One readwrite transaction for PR detection + status update + rolling advance,
+  // so a double tap serializes: the second call sees completedAt and returns
+  // without creating duplicate PRs or advancing the routine twice.
+  await db.transaction(
+    'rw',
+    [db.sessions, db.sessionExercises, db.sets, db.prs, db.exercises, db.routines],
+    async () => {
+      const session = await db.sessions.get(sessionId);
+      if (!session) throw new Error('Session not found');
+      if (session.completedAt != null) return; // already completed — idempotent
 
-  // Detect and save all PRs for this session's sets
-  const sessionExercises = await db.sessionExercises
-    .where('sessionId')
-    .equals(sessionId)
-    .toArray();
+      const sessionExercises = await db.sessionExercises
+        .where('sessionId')
+        .equals(sessionId)
+        .toArray();
 
-  for (const se of sessionExercises) {
-    const sets = await db.sets
-      .where('sessionExerciseId')
-      .equals(se.id)
-      .toArray();
+      const allSets = sessionExercises.length > 0
+        ? await db.sets.where('sessionExerciseId').anyOf(sessionExercises.map((se) => se.id)).toArray()
+        : [];
+      const setsBySE = new Map<string, Set[]>();
+      for (const set of allSets) {
+        const list = setsBySE.get(set.sessionExerciseId) ?? [];
+        list.push(set);
+        setsBySE.set(set.sessionExerciseId, list);
+      }
 
-    // Detect and save weight/reps/e1rm PRs — one row per type per exercise for
-    // the whole session, even if multiple sets in it beat the previous record.
-    const prEligibleSets = sets.filter(
-      (set) =>
-        !set.isWarmup &&
-        set.weight &&
-        set.reps &&
-        ['standard', 'failure', 'forcedreps'].includes(set.intensityTechnique ?? 'standard')
-    );
-    if (prEligibleSets.length > 0) {
-      await detectAndSaveExercisePRs(prEligibleSets, se.exerciseId);
-    }
+      for (const se of sessionExercises) {
+        const sets = (setsBySE.get(se.id) ?? []).sort((a, b) => a.order - b.order);
 
-    // Detect and save progression level-ups
-    for (const set of sets) {
-      if (set.isWarmup) continue;
-      if (set.weight || set.reps || set.time || set.distance) {
-        await detectAndSaveProgressionAdvancements(se.exerciseId, set.id);
+        // Weight/reps/e1rm PRs — one row per type per exercise for the whole
+        // session. Eligibility filtering happens inside (shared with the preview).
+        if (sets.length > 0) {
+          await detectAndSaveExercisePRs(sets, se.exerciseId);
+        }
+
+        // Progression level-up is an exercise-level event: detect once per
+        // exercise, credited to the first working set with data (same as preview).
+        const firstSetWithData = sets.find(
+          (set) => !set.isWarmup && (set.weight || set.reps || set.time || set.distance)
+        );
+        if (firstSetWithData) {
+          await detectAndSaveProgressionAdvancements(se.exerciseId, firstSetWithData.id);
+        }
+      }
+
+      const now = Date.now();
+      await db.sessions.update(sessionId, {
+        status: 'completed',
+        completedAt: now,
+        updatedAt: now,
+      });
+
+      // If from a rolling routine, advance the position
+      if (session.routineId) {
+        const routine = await db.routines.get(session.routineId);
+        if (routine?.type === 'rolling') {
+          await advanceRollingPosition(session.routineId);
+        }
       }
     }
-  }
+  );
+}
 
-  await db.sessions.update(sessionId, {
-    status: 'completed',
-    completedAt: Date.now(),
-    updatedAt: Date.now(),
-  });
+/**
+ * Record a skipped/sick day for a routine. Idempotent per routine per day: if a
+ * skipped/sick session already exists today for this routine, it is reused
+ * (its status updated if different) and the rolling position isn't advanced again.
+ */
+async function markRoutineDay(
+  routineId: string,
+  templateId: string | undefined,
+  status: 'skipped' | 'sick'
+): Promise<string> {
+  return db.transaction('rw', [db.sessions, db.routines], async () => {
+    const now = Date.now();
+    const dayStart = startOfLocalDay(now);
+    const dayEnd = startOfNextLocalDay(now);
 
-  // If from a rolling routine, advance the position
-  if (session.routineId) {
-    const routine = await db.routines.get(session.routineId);
-    if (routine?.type === 'rolling') {
-      await advanceRollingPosition(session.routineId);
+    const existing = await db.sessions
+      .where('startedAt')
+      .between(dayStart, dayEnd, true, false)
+      .filter((s) => s.routineId === routineId && (s.status === 'skipped' || s.status === 'sick'))
+      .first();
+
+    if (existing) {
+      if (existing.status !== status) {
+        await db.sessions.update(existing.id, { status, updatedAt: now });
+      }
+      return existing.id;
     }
-  }
+
+    const sessionId = crypto.randomUUID();
+    const session: Session = {
+      id: sessionId,
+      routineId,
+      templateId,
+      status,
+      startedAt: now,
+      completedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await db.sessions.add(session);
+
+    // If from a rolling routine, advance the position
+    const routine = await db.routines.get(routineId);
+    if (routine?.type === 'rolling') {
+      await advanceRollingPosition(routineId);
+    }
+
+    return sessionId;
+  });
 }
 
 /**
@@ -342,29 +409,7 @@ export async function skipWorkout(
   routineId: string,
   templateId?: string
 ): Promise<string> {
-  const now = Date.now();
-  const sessionId = crypto.randomUUID();
-
-  const session: Session = {
-    id: sessionId,
-    routineId,
-    templateId,
-    status: 'skipped',
-    startedAt: now,
-    completedAt: now,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await db.sessions.add(session);
-
-  // If from a rolling routine, advance the position
-  const routine = await db.routines.get(routineId);
-  if (routine?.type === 'rolling') {
-    await advanceRollingPosition(routineId);
-  }
-
-  return sessionId;
+  return markRoutineDay(routineId, templateId, 'skipped');
 }
 
 /**
@@ -375,29 +420,7 @@ export async function markSick(
   routineId: string,
   templateId?: string
 ): Promise<string> {
-  const now = Date.now();
-  const sessionId = crypto.randomUUID();
-
-  const session: Session = {
-    id: sessionId,
-    routineId,
-    templateId,
-    status: 'sick',
-    startedAt: now,
-    completedAt: now,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  await db.sessions.add(session);
-
-  // If from a rolling routine, advance the position
-  const routine = await db.routines.get(routineId);
-  if (routine?.type === 'rolling') {
-    await advanceRollingPosition(routineId);
-  }
-
-  return sessionId;
+  return markRoutineDay(routineId, templateId, 'sick');
 }
 
 /**
@@ -412,26 +435,26 @@ export async function abandonSession(sessionId: string): Promise<void> {
  * Delete a session and all its data
  */
 export async function deleteSession(sessionId: string): Promise<void> {
-  // Get all session exercises
-  const sessionExercises = await db.sessionExercises
-    .where('sessionId')
-    .equals(sessionId)
-    .toArray();
+  await db.transaction('rw', [db.sessions, db.sessionExercises, db.sets, db.prs], async () => {
+    // Get all session exercises
+    const seIds = (await db.sessionExercises
+      .where('sessionId')
+      .equals(sessionId)
+      .primaryKeys()) as string[];
 
-  // Get all sets for those exercises
-  const setIds: string[] = [];
-  for (const se of sessionExercises) {
-    const sets = await db.sets
-      .where('sessionExerciseId')
-      .equals(se.id)
-      .toArray();
-    setIds.push(...sets.map((s) => s.id));
-  }
+    // Get all sets for those exercises (one indexed query)
+    const setIds = seIds.length > 0
+      ? ((await db.sets.where('sessionExerciseId').anyOf(seIds).primaryKeys()) as string[])
+      : [];
 
-  // Delete in order: sets, session exercises, session
-  await db.sets.bulkDelete(setIds);
-  await db.sessionExercises.bulkDelete(sessionExercises.map((se) => se.id));
-  await db.sessions.delete(sessionId);
+    // Delete in order: PRs earned by these sets, sets, session exercises, session
+    if (setIds.length > 0) {
+      await db.prs.where('setId').anyOf(setIds).delete();
+    }
+    await db.sets.bulkDelete(setIds);
+    await db.sessionExercises.bulkDelete(seIds);
+    await db.sessions.delete(sessionId);
+  });
 }
 
 /**
@@ -488,15 +511,20 @@ export async function switchProgressionLevel(
 export async function removeExerciseFromSession(
   sessionExerciseId: string
 ): Promise<void> {
-  // Delete all sets for this exercise
-  const sets = await db.sets
-    .where('sessionExerciseId')
-    .equals(sessionExerciseId)
-    .toArray();
-  await db.sets.bulkDelete(sets.map((s) => s.id));
+  await db.transaction('rw', [db.sessionExercises, db.sets, db.prs], async () => {
+    // Delete all sets for this exercise, and any PRs they earned
+    const setIds = (await db.sets
+      .where('sessionExerciseId')
+      .equals(sessionExerciseId)
+      .primaryKeys()) as string[];
+    if (setIds.length > 0) {
+      await db.prs.where('setId').anyOf(setIds).delete();
+      await db.sets.bulkDelete(setIds);
+    }
 
-  // Delete the session exercise
-  await db.sessionExercises.delete(sessionExerciseId);
+    // Delete the session exercise
+    await db.sessionExercises.delete(sessionExerciseId);
+  });
 }
 
 /**
@@ -779,6 +807,17 @@ export async function repeatSession(sourceSessionId: string): Promise<string> {
   const newExercises: SessionExercise[] = [];
   const newSets: Set[] = [];
 
+  // All source sets in one indexed query, grouped by session exercise
+  const allSourceSets = sorted.length > 0
+    ? await db.sets.where('sessionExerciseId').anyOf(sorted.map((se) => se.id)).toArray()
+    : [];
+  const sourceSetsBySE = new Map<string, Set[]>();
+  for (const s of allSourceSets) {
+    const list = sourceSetsBySE.get(s.sessionExerciseId) ?? [];
+    list.push(s);
+    sourceSetsBySE.set(s.sessionExerciseId, list);
+  }
+
   for (const se of sorted) {
     const newSEId = crypto.randomUUID();
     newExercises.push({
@@ -795,11 +834,7 @@ export async function repeatSession(sourceSessionId: string): Promise<string> {
     });
 
     // Copy sets: keep weight and structure, clear reps (user fills in)
-    const sourceSets = await db.sets
-      .where('sessionExerciseId')
-      .equals(se.id)
-      .toArray();
-    const sortedSets = [...sourceSets].sort((a, b) => a.order - b.order);
+    const sortedSets = [...(sourceSetsBySE.get(se.id) ?? [])].sort((a, b) => a.order - b.order);
 
     for (const s of sortedSets) {
       newSets.push({
@@ -829,26 +864,20 @@ export async function repeatSession(sourceSessionId: string): Promise<string> {
  * v1.4: Check if there's already a workout logged for today
  */
 export function useTodaysSession(routineId: string | null | undefined) {
+  // Re-runs at local midnight / on app resume so "today" never goes stale
+  const today = useToday();
   return useLiveQuery(
     async () => {
       if (!routineId) return undefined;
 
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-      const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+      const endOfDay = startOfNextLocalDay(today);
 
-      const sessions = await db.sessions
-        .filter(
-          (s) =>
-            s.routineId === routineId &&
-            s.startedAt >= startOfDay &&
-            s.startedAt < endOfDay &&
-            s.completedAt != null
-        )
-        .toArray();
-
-      return sessions[0];
+      return db.sessions
+        .where('startedAt')
+        .between(today, endOfDay, true, false)
+        .filter((s) => s.routineId === routineId && s.completedAt != null)
+        .first();
     },
-    [routineId]
+    [routineId, today]
   );
 }

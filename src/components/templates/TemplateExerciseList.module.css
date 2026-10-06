@@ -30,13 +30,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 20px;
+  width: 44px;
+  height: 28px;
+  font-size: 12px;
   padding: 0;
   background: none;
   border: none;
   color: var(--color-text-muted);
-  font-size: 10px;
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: color var(--transition-fast), background-color var(--transition-fast);
@@ -99,14 +99,6 @@
 .settingLabel {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-}
-
-.repsInput {
-  width: 80px;
-}
-
-.weightInput {
-  width: 100px;
 }
 
 /* Target reps split input: two fields sharing an edge */
@@ -221,10 +213,6 @@
   flex-wrap: wrap;
 }
 
-.repsInput {
-  width: 80px;
-}
-
 .setTypeSelect {
   min-width: 100px;
 }
@@ -234,8 +222,9 @@
 }
 
 .removeSetBtn {
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   padding: 0;
   font-size: var(--text-lg);
   font-family: inherit;
@@ -253,6 +242,7 @@
 
 .addSetBtn {
   align-self: flex-start;
+  min-height: 40px;
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--text-sm);
   font-family: inherit;
@@ -276,6 +266,7 @@
 }
 
 .notesBtn {
+  min-height: 44px;
   padding: 0;
   font-size: var(--text-sm);
   font-family: inherit;
@@ -354,6 +345,7 @@
 }
 
 .ungroupBtn {
+  min-height: 44px;
   font-size: var(--text-xs);
   background: none;
   border: none;
@@ -436,4 +428,15 @@
     width: 100%;
     min-width: auto;
   }
+}
+
+.exerciseMissing {
+  color: var(--color-error);
+  font-style: italic;
+}
+
+.removeExerciseBtn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: var(--text-lg);
 }

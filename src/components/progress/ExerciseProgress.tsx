@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../common';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Button, SkeletonList } from '../common';
 import { ProgressChart } from './Charts';
 import { PRHistory } from './PRHistory';
-import { useExercise } from '../../hooks/useExercises';
+import { db } from '../../db';
 import { useExerciseHistory } from '../../hooks/useAnalytics';
 import styles from './ExerciseProgress.module.css';
 
@@ -13,7 +14,11 @@ interface ExerciseProgressProps {
 
 export function ExerciseProgress({ exerciseId }: ExerciseProgressProps) {
   const navigate = useNavigate();
-  const exercise = useExercise(exerciseId);
+  // undefined = loading, null = not found
+  const exercise = useLiveQuery(
+    () => db.exercises.get(exerciseId).then((e) => e ?? null),
+    [exerciseId]
+  );
   const [includeWarmups, setIncludeWarmups] = useState(false);
   const [includeVariations, setIncludeVariations] = useState(false);
 
@@ -22,10 +27,21 @@ export function ExerciseProgress({ exerciseId }: ExerciseProgressProps) {
     includeParentVariations: includeVariations,
   });
 
-  if (!exercise) {
+  if (exercise === undefined) {
     return (
       <div className={styles.container}>
-        <p>Loading...</p>
+        <SkeletonList count={3} lines={2} />
+      </div>
+    );
+  }
+
+  if (exercise === null) {
+    return (
+      <div className={styles.container}>
+        <p className={styles.empty}>Exercise not found.</p>
+        <Button variant="secondary" onClick={() => navigate('/progress')}>
+          Back to Progress
+        </Button>
       </div>
     );
   }

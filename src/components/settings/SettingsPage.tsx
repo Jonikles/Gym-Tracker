@@ -9,8 +9,78 @@ import {
   clearAllData,
   factoryReset,
 } from '../../hooks/useSettings';
-import { seedDatabase } from '../../db/seed';
 import styles from './Settings.module.css';
+
+/**
+ * Decimal number input that keeps its own text while typing (so "2." or an
+ * empty field are allowed mid-edit) and commits a parsed value only when valid.
+ * Empty / invalid text on blur reverts to the stored value.
+ */
+function DecimalSettingInput({
+  value,
+  onCommit,
+  allowZero = true,
+  placeholder,
+  ariaLabel,
+}: {
+  value: number | undefined;
+  onCommit: (value: number) => void;
+  allowZero?: boolean;
+  placeholder?: string;
+  ariaLabel: string;
+}) {
+  const format = (v: number | undefined) => (v ? String(v) : '');
+  const [text, setText] = useState(() => format(value));
+  const [focused, setFocused] = useState(false);
+
+  // Follow external changes (reset, import) while not editing
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (!focused) setText(format(value));
+  }
+
+  const parse = (t: string): number | null => {
+    if (t === '' || t === '.') return null;
+    const n = parseFloat(t);
+    if (!Number.isFinite(n) || n < 0) return null;
+    if (!allowZero && n === 0) return null;
+    return n;
+  };
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      autoComplete="off"
+      aria-label={ariaLabel}
+      value={text}
+      placeholder={placeholder}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => {
+        // Accept digits and a single decimal separator (comma → dot for EU keyboards)
+        const filtered = e.target.value
+          .replace(',', '.')
+          .replace(/[^0-9.]/g, '')
+          .replace(/(\..*?)\./g, '$1');
+        setText(filtered);
+        const parsed = parse(filtered);
+        if (parsed !== null && !filtered.endsWith('.') && parsed !== value) onCommit(parsed);
+      }}
+      onBlur={() => {
+        setFocused(false);
+        const parsed = parse(text);
+        if (parsed === null) {
+          setText(format(value));
+        } else {
+          if (parsed !== value) onCommit(parsed);
+          setText(String(parsed));
+        }
+      }}
+      className={styles.numberInput}
+    />
+  );
+}
 
 const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday' },
@@ -63,6 +133,7 @@ export function SettingsPage() {
     setTimeout(() => setImportMessage(null), 5000);
   };
 
+  // Errors are caught and shown by ConfirmDialog; it closes itself on success
   const handleConfirm = async () => {
     if (confirmAction === 'resetSettings') {
       await resetSettings();
@@ -70,10 +141,10 @@ export function SettingsPage() {
       await clearAllData();
     } else if (confirmAction === 'factoryReset') {
       await factoryReset();
-      // Re-seed preset exercises
+      // Re-seed preset exercises (seed data loaded on demand, not in this chunk)
+      const { seedDatabase } = await import('../../db/seed');
       await seedDatabase();
     }
-    setConfirmAction(null);
   };
 
   const getConfirmProps = () => {
@@ -120,20 +191,11 @@ export function SettingsPage() {
               <span className={styles.settingLabel}>Weight Increment</span>
               <span className={styles.settingDesc}>Default weight step for progressive overload suggestions</span>
             </div>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={String(settings.weightIncrement)}
-              onChange={(e) => {
-                const filtered = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
-                const parsed = parseFloat(filtered);
-                if (!isNaN(parsed)) {
-                  updateSetting('weightIncrement', parsed);
-                } else if (filtered === '' || filtered === '.') {
-                  updateSetting('weightIncrement', 0);
-                }
-              }}
-              style={{ width: 100 }}
+            <DecimalSettingInput
+              value={settings.weightIncrement}
+              onCommit={(v) => updateSetting('weightIncrement', v)}
+              allowZero={false}
+              ariaLabel="Weight increment (kg)"
             />
           </div>
         </Card>
@@ -147,21 +209,11 @@ export function SettingsPage() {
               <span className={styles.settingLabel}>Bodyweight (kg)</span>
               <span className={styles.settingDesc}>Used for strength standards and relative strength calculations</span>
             </div>
-            <Input
-              type="text"
-              inputMode="decimal"
-              value={settings.bodyweight ? String(settings.bodyweight) : ''}
+            <DecimalSettingInput
+              value={settings.bodyweight}
+              onCommit={(v) => updateSetting('bodyweight', v)}
               placeholder="0"
-              onChange={(e) => {
-                const filtered = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1');
-                const parsed = parseFloat(filtered);
-                if (!isNaN(parsed)) {
-                  updateSetting('bodyweight', parsed);
-                } else if (filtered === '' || filtered === '.') {
-                  updateSetting('bodyweight', 0);
-                }
-              }}
-              style={{ width: 100 }}
+              ariaLabel="Bodyweight (kg)"
             />
           </div>
         </Card>
@@ -170,26 +222,6 @@ export function SettingsPage() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Display</h2>
         <Card>
-          <div className={styles.settingRow}>
-            <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Theme</span>
-              <span className={styles.settingDesc}>Switch between dark and light mode</span>
-            </div>
-            <div className={styles.themeToggle}>
-              <button
-                className={`${styles.themeBtn} ${settings.theme === 'dark' ? styles.themeBtnActive : ''}`}
-                onClick={() => updateSetting('theme', 'dark')}
-              >
-                Dark
-              </button>
-              <button
-                className={`${styles.themeBtn} ${settings.theme === 'light' ? styles.themeBtnActive : ''}`}
-                onClick={() => updateSetting('theme', 'light')}
-              >
-                Light
-              </button>
-            </div>
-          </div>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
               <span className={styles.settingLabel}>Week Start Day</span>

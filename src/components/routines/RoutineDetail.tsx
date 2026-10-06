@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useBlocker } from 'react-router-dom';
-import { Button, Modal, ConfirmDialog, Select } from '../common';
+import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Button, Modal, ConfirmDialog, Select, SkeletonList } from '../common';
+import { useUnsavedChangesBlocker } from '../common/useUnsavedChangesBlocker';
 import { RoutineForm, type RoutineFormData } from './RoutineForm';
 import { RoutineCalendar } from './RoutineCalendar';
+import { db } from '../../db';
 import {
-  useRoutine,
   updateRoutine,
   deleteRoutine,
   duplicateRoutine,
@@ -65,7 +67,7 @@ function ScheduleDayRow({
           onChange={(e) => onUpdate({ label: e.target.value || undefined })}
         />
         {showRemove && onRemove && (
-          <Button variant="ghost" size="sm" onClick={onRemove}>
+          <Button variant="ghost" size="sm" onClick={onRemove} className={styles.removeDayBtn} aria-label="Remove day">
             ×
           </Button>
         )}
@@ -82,7 +84,11 @@ function ScheduleDayRow({
 
 export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const navigate = useNavigate();
-  const routine = useRoutine(routineId);
+  // undefined = loading, null = not found
+  const routine = useLiveQuery(
+    () => db.routines.get(routineId).then((r) => r ?? null),
+    [routineId]
+  );
   const templates = useTemplates() ?? [];
   const activeRoutineId = useSetting('activeRoutineId');
   const weekStartDay = useSetting('weekStartDay') as number;
@@ -95,6 +101,7 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   const [activeTab, setActiveTab] = useState<'schedule' | 'calendar'>('schedule');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Local schedule state for editing
@@ -110,7 +117,13 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   }, [routine?.id]);
 
   // Block navigation when there are unsaved changes
-  const blocker = useBlocker(hasChanges);
+  const { allowNextNavigation, dialog: unsavedChangesDialog } = useUnsavedChangesBlocker(
+    hasChanges,
+    {
+      message: 'You have unsaved schedule changes. Leave without saving?',
+      onDiscard: () => setHasChanges(false),
+    }
+  );
 
   // Close "more" menu on outside click
   useEffect(() => {
@@ -124,10 +137,21 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, [showMoreMenu]);
 
-  if (!routine) {
+  if (routine === undefined) {
     return (
       <div className={styles.container}>
-        <p>Loading routine...</p>
+        <SkeletonList count={4} lines={2} />
+      </div>
+    );
+  }
+
+  if (routine === null) {
+    return (
+      <div className={styles.container}>
+        <p className={styles.notFound}>Routine not found. It may have been deleted.</p>
+        <Button variant="secondary" onClick={() => navigate('/routines')}>
+          Back to Routines
+        </Button>
       </div>
     );
   }
@@ -143,13 +167,22 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
   };
 
   const handleDuplicate = async () => {
-    const newId = await duplicateRoutine(routineId);
-    navigate(`/routines/${newId}`);
+    setActionError(null);
+    try {
+      const newId = await duplicateRoutine(routineId);
+      navigate(`/routines/${newId}`);
+    } catch (err) {
+      console.error('Duplicate routine failed:', err);
+      setActionError(err instanceof Error ? err.message : 'Could not duplicate routine');
+    }
   };
 
+  // Throws are caught and shown by ConfirmDialog
   const handleDelete = async () => {
-    sessionStorage.removeItem('draftRoutineId');
     await deleteRoutine(routineId);
+    sessionStorage.removeItem('draftRoutineId');
+    // Routine is gone — unsaved schedule edits are moot, skip the blocker
+    allowNextNavigation();
     navigate('/routines');
   };
 
@@ -207,18 +240,13 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
 
   const handleConfirmIncomplete = async () => {
     if (isDraft) {
-      sessionStorage.removeItem('draftRoutineId');
       await deleteRoutine(routineId);
+      sessionStorage.removeItem('draftRoutineId');
     }
     setHasChanges(false);
+    // hasChanges is still true in this render — bypass the blocker explicitly
+    allowNextNavigation();
     navigate('/routines');
-  };
-
-  const handleDiscardAndLeave = () => {
-    setHasChanges(false);
-    if (blocker.state === 'blocked') {
-      blocker.proceed();
-    }
   };
 
   // For fixed routines, sort days starting from weekStartDay
@@ -251,6 +279,8 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
                             size="sm"
                             onClick={() => setShowMoreMenu(!showMoreMenu)}
                             title="More options"
+                            aria-label="More options"
+                            className={styles.moreBtn}
                         >
                             ⋮
                         </Button>
@@ -291,6 +321,12 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
                 </div>
             </div>
         </header>
+
+      {actionError && (
+        <p className={styles.actionError} role="alert">
+          {actionError}
+        </p>
+      )}
 
       {/* Tab Navigation */}
       <div className={styles.tabs}>
@@ -402,15 +438,7 @@ export function RoutineDetail({ routineId }: RoutineDetailProps) {
       />
 
       {/* Navigation blocker when unsaved changes */}
-      <ConfirmDialog
-        isOpen={blocker.state === 'blocked'}
-        onClose={() => blocker.reset?.()}
-        onConfirm={handleDiscardAndLeave}
-        title="Unsaved Changes"
-        message="You have unsaved schedule changes. Leave without saving?"
-        confirmLabel="Discard & Leave"
-        variant="danger"
-      />
+      {unsavedChangesDialog}
     </div>
   );
 }

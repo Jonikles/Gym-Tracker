@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template, BodyMeasurement } from '../types';
+import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template } from '../types';
 
 /**
  * GymTrackerDB - Dexie database instance with all tables
@@ -13,7 +13,6 @@ export class GymTrackerDB extends Dexie {
   sets!: Table<Set, string>;
   prs!: Table<PR, string>;
   settings!: Table<Setting, string>;
-  measurements!: Table<BodyMeasurement, string>;
 
   constructor() {
     super('GymTrackerDB');
@@ -120,8 +119,26 @@ export class GymTrackerDB extends Dexie {
       await tx.table('templates').toCollection().modify((t) => { delete t.isArchived; });
       await tx.table('routines').toCollection().modify((r) => { delete r.isArchived; });
     });
+
+    // Version 8 - Added setId index to prs (so PRs can be found/deleted by set
+    // without full-table scans, and cleaned up when their sets are deleted).
+    // Dropped the measurements table (body measurements feature was removed).
+    this.version(8).stores({
+      exercises: 'id, name, parentId, *muscleGroups, equipment',
+      templates: 'id, name',
+      routines: 'id, name, type',
+      sessions: 'id, routineId, templateId, startedAt, completedAt',
+      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
+      sets: 'id, sessionExerciseId, order',
+      prs: 'id, exerciseId, type, achievedAt, setId',
+      settings: 'key',
+      measurements: null,
+    });
   }
 }
+
+/** Current Dexie schema version (keep in sync with the highest this.version() above) */
+export const SCHEMA_VERSION = 8;
 
 // Single database instance
 export const db = new GymTrackerDB();

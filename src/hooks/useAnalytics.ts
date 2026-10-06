@@ -53,14 +53,10 @@ export function useExerciseHistory(
       }
 
       // Get all session exercises for these exercises
-      const allSessionExercises = [];
-      for (const id of exerciseIds) {
-        const ses = await db.sessionExercises
-          .where('exerciseId')
-          .equals(id)
-          .toArray();
-        allSessionExercises.push(...ses);
-      }
+      const allSessionExercises = await db.sessionExercises
+        .where('exerciseId')
+        .anyOf(exerciseIds)
+        .toArray();
 
       if (allSessionExercises.length === 0) return null;
 
@@ -80,11 +76,20 @@ export function useExerciseHistory(
 
       // Get all sets
       const allSets: { set: Set; sessionDate: number; sessionId: string }[] = [];
-      for (const se of validSessionExercises) {
-        const sets = await db.sets
+      const fetchedSets = validSessionExercises.length > 0
+        ? await db.sets
           .where('sessionExerciseId')
-          .equals(se.id)
-          .toArray();
+          .anyOf(validSessionExercises.map((se) => se.id))
+          .toArray()
+        : [];
+      const setsBySE = new Map<string, Set[]>();
+      for (const set of fetchedSets) {
+        const list = setsBySE.get(set.sessionExerciseId) ?? [];
+        list.push(set);
+        setsBySE.set(set.sessionExerciseId, list);
+      }
+      for (const se of validSessionExercises) {
+        const sets = setsBySE.get(se.id) ?? [];
         const session = sessionMap.get(se.sessionId)!;
         for (const set of sets) {
           if (!options?.includeWarmups && set.isWarmup) continue;
@@ -171,30 +176,38 @@ export function useExerciseHistory(
  */
 export function useExercisesWithHistory() {
   return useLiveQuery(async () => {
-    const exercises = await db.exercises.toArray();
+    // One read of sessionExercises + one bulkGet of their sessions, grouped in
+    // memory — instead of ~2 queries per exercise in the library.
+    const sessionExercises = await db.sessionExercises.toArray();
+    if (sessionExercises.length === 0) return [];
 
-    const result = [];
+    const sessionIds = [...new globalThis.Set(sessionExercises.map((se) => se.sessionId))];
+    const sessions = await db.sessions.bulkGet(sessionIds);
+    const completedSessionIds = new globalThis.Set(
+      sessions.filter((s) => s?.completedAt).map((s) => s!.id)
+    );
 
-    for (const exercise of exercises) {
-      const sessionExercises = await db.sessionExercises
-        .where('exerciseId')
-        .equals(exercise.id)
-        .toArray();
-
-      // Only include exercises that have been used
-      if (sessionExercises.length > 0) {
-        // Count unique completed sessions
-        const sessionIds = [...new Set(sessionExercises.map((se) => se.sessionId))];
-        const sessions = await db.sessions.bulkGet(sessionIds);
-        const completedCount = sessions.filter((s) => s?.completedAt).length;
-
-        if (completedCount > 0) {
-          result.push({
-            exercise,
-            sessionCount: completedCount,
-          });
-        }
+    // exerciseId -> unique completed sessions it appeared in
+    const sessionsByExercise = new Map<string, globalThis.Set<string>>();
+    for (const se of sessionExercises) {
+      if (!completedSessionIds.has(se.sessionId)) continue;
+      let ids = sessionsByExercise.get(se.exerciseId);
+      if (!ids) {
+        ids = new globalThis.Set<string>();
+        sessionsByExercise.set(se.exerciseId, ids);
       }
+      ids.add(se.sessionId);
+    }
+    if (sessionsByExercise.size === 0) return [];
+
+    const exercises = await db.exercises.bulkGet([...sessionsByExercise.keys()]);
+    const result = [];
+    for (const exercise of exercises) {
+      if (!exercise) continue;
+      result.push({
+        exercise,
+        sessionCount: sessionsByExercise.get(exercise.id)!.size,
+      });
     }
 
     return result.sort((a, b) => b.sessionCount - a.sessionCount);

@@ -1,8 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react';
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
-import { runMigrations, isFreshInstall } from './db/migrations';
-import { seedDatabase } from './db/seed';
-import { useThemeEffect } from './hooks/useTheme';
+import { createBrowserRouter, RouterProvider, Outlet, useLocation } from 'react-router-dom';
 import { Nav, ErrorBoundary, SkeletonList } from './components/common';
 import { UpdatePrompt } from './components/common/UpdatePrompt';
 import { SessionProvider } from './context/SessionContext';
@@ -10,21 +7,74 @@ import { UndoProvider } from './context/UndoContext';
 import './styles/global.css';
 import './styles/theme.css';
 
+// Page chunk loaders — shared by lazy() and idle-time prefetching
+const loadHome = () => import('./pages/Home');
+const loadExercises = () => import('./pages/Exercises');
+const loadExerciseDetail = () => import('./pages/ExerciseDetail');
+const loadTemplates = () => import('./pages/Templates');
+const loadTemplateDetail = () => import('./pages/TemplateDetail');
+const loadTemplateEdit = () => import('./pages/TemplateEdit');
+const loadProgressions = () => import('./pages/Progressions');
+const loadRoutines = () => import('./pages/Routines');
+const loadWorkout = () => import('./pages/Workout');
+const loadHistory = () => import('./pages/History');
+const loadProgress = () => import('./pages/Progress');
+const loadAnalytics = () => import('./pages/Analytics');
+const loadSettings = () => import('./pages/Settings');
+const loadNotFound = () => import('./pages/NotFound');
+
+const PAGE_LOADERS: Array<() => Promise<unknown>> = [
+  loadWorkout,
+  loadHistory,
+  loadExercises,
+  loadTemplates,
+  loadRoutines,
+  loadProgress,
+  loadAnalytics,
+  loadSettings,
+  loadExerciseDetail,
+  loadTemplateDetail,
+  loadTemplateEdit,
+  loadProgressions,
+  loadHome,
+  loadNotFound,
+];
+
 // Lazy-loaded pages
-const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
-const Exercises = lazy(() => import('./pages/Exercises').then(m => ({ default: m.Exercises })));
-const ExerciseDetailPage = lazy(() => import('./pages/ExerciseDetail').then(m => ({ default: m.ExerciseDetailPage })));
-const Templates = lazy(() => import('./pages/Templates').then(m => ({ default: m.Templates })));
-const TemplateDetailPage = lazy(() => import('./pages/TemplateDetail').then(m => ({ default: m.TemplateDetailPage })));
-const TemplateEditPage = lazy(() => import('./pages/TemplateEdit').then(m => ({ default: m.TemplateEditPage })));
-const Progressions = lazy(() => import('./pages/Progressions').then(m => ({ default: m.Progressions })));
-const Routines = lazy(() => import('./pages/Routines').then(m => ({ default: m.Routines })));
-const Workout = lazy(() => import('./pages/Workout').then(m => ({ default: m.Workout })));
-const History = lazy(() => import('./pages/History').then(m => ({ default: m.History })));
-const Progress = lazy(() => import('./pages/Progress').then(m => ({ default: m.Progress })));
-const Analytics = lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
-const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
-const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
+const Home = lazy(() => loadHome().then(m => ({ default: m.Home })));
+const Exercises = lazy(() => loadExercises().then(m => ({ default: m.Exercises })));
+const ExerciseDetailPage = lazy(() => loadExerciseDetail().then(m => ({ default: m.ExerciseDetailPage })));
+const Templates = lazy(() => loadTemplates().then(m => ({ default: m.Templates })));
+const TemplateDetailPage = lazy(() => loadTemplateDetail().then(m => ({ default: m.TemplateDetailPage })));
+const TemplateEditPage = lazy(() => loadTemplateEdit().then(m => ({ default: m.TemplateEditPage })));
+const Progressions = lazy(() => loadProgressions().then(m => ({ default: m.Progressions })));
+const Routines = lazy(() => loadRoutines().then(m => ({ default: m.Routines })));
+const Workout = lazy(() => loadWorkout().then(m => ({ default: m.Workout })));
+const History = lazy(() => loadHistory().then(m => ({ default: m.History })));
+const Progress = lazy(() => loadProgress().then(m => ({ default: m.Progress })));
+const Analytics = lazy(() => loadAnalytics().then(m => ({ default: m.Analytics })));
+const Settings = lazy(() => loadSettings().then(m => ({ default: m.Settings })));
+const NotFound = lazy(() => loadNotFound().then(m => ({ default: m.NotFound })));
+
+/** Warm all page chunks in idle time so first visits to a tab are instant */
+function prefetchPages() {
+  type IdleWindow = Window & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  };
+  const w = window as IdleWindow;
+  const schedule = (cb: () => void) =>
+    w.requestIdleCallback ? w.requestIdleCallback(cb, { timeout: 3000 }) : window.setTimeout(cb, 500);
+
+  const queue = [...PAGE_LOADERS];
+  const next = () => {
+    const loader = queue.shift();
+    if (!loader) return;
+    loader()
+      .catch(() => { /* ignore — real navigation will retry */ })
+      .finally(() => schedule(next));
+  };
+  schedule(next);
+}
 
 function PageLoader() {
   return (
@@ -34,19 +84,23 @@ function PageLoader() {
   );
 }
 
+/** Error boundary that resets whenever the route changes */
+function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
+}
+
 /** Root layout — wraps all routes with providers, nav, error boundary */
 function RootLayout() {
-  useThemeEffect();
-
   return (
     <SessionProvider>
       <UndoProvider>
         <Nav />
-        <ErrorBoundary>
+        <RouteErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Outlet />
           </Suspense>
-        </ErrorBoundary>
+        </RouteErrorBoundary>
       </UndoProvider>
     </SessionProvider>
   );
@@ -84,22 +138,28 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function initializeDatabase() {
+    let cancelled = false;
+
+    async function init() {
       try {
-        const fresh = await isFreshInstall();
-        await runMigrations();
-        if (fresh) {
-          await seedDatabase();
-        }
+        // Dynamic import keeps seed/progression data out of the main chunk
+        const { initializeDatabase } = await import('./db/migrations');
+        await initializeDatabase();
+        if (cancelled) return;
         setIsLoading(false);
+        prefetchPages();
       } catch (err) {
         console.error('Database initialization failed:', err);
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : 'Failed to initialize database');
         setIsLoading(false);
       }
     }
 
-    initializeDatabase();
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (isLoading) {

@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Routine, RoutineDay, RoutineType } from '../types';
 import { matchesAllWords } from '../utils/search';
+import { useToday } from './useToday';
 
 /**
  * Filter options for routine queries
@@ -70,50 +71,39 @@ export function useRoutine(id: string | undefined) {
 }
 
 /**
- * Get the template for today based on active routines
- * Takes weekStartDay setting into account
+ * Get today's scheduled template from the ACTIVE routine (the `activeRoutineId`
+ * setting). Fixed routines use today's weekday; rolling routines use their
+ * current position. Returns undefined when no routine is active, today is a
+ * rest day, or the scheduled template no longer exists.
+ *
+ * `weekStartDay` doesn't affect which template is picked (schedule days are
+ * keyed by real weekday); it's kept as a parameter for API compatibility.
+ * Recomputes when the date changes (via useToday).
  */
 export function useTodaysTemplate(weekStartDay: number = 0) {
+  const today = useToday();
   return useLiveQuery(async () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday
+    const activeSetting = await db.settings.get('activeRoutineId');
+    const activeRoutineId = activeSetting?.value;
+    if (typeof activeRoutineId !== 'string' || !activeRoutineId) return undefined;
 
-    // Check fixed routines first
-    const fixedRoutines = await db.routines
-      .filter((r) => r.type === 'fixed')
-      .toArray();
+    const routine = await db.routines.get(activeRoutineId);
+    if (!routine) return undefined;
 
-    for (const routine of fixedRoutines) {
-      const todaySchedule = routine.schedule.find((s) => s.dayIndex === dayOfWeek);
-      if (todaySchedule?.templateId) {
-        const template = await db.templates.get(todaySchedule.templateId);
-        if (template) {
-          return { routine, template, scheduleDay: todaySchedule };
-        }
-      }
+    let scheduleDay: RoutineDay | undefined;
+    if (routine.type === 'fixed') {
+      const dayOfWeek = new Date(today).getDay(); // 0 = Sunday
+      scheduleDay = routine.schedule.find((s) => s.dayIndex === dayOfWeek);
+    } else {
+      const len = routine.schedule.length;
+      scheduleDay = len > 0 ? routine.schedule[(routine.currentPosition ?? 0) % len] : undefined;
     }
 
-    // Check rolling routines
-    const rollingRoutines = await db.routines
-      .filter((r) => r.type === 'rolling')
-      .toArray();
-
-    if (rollingRoutines.length > 0) {
-      // Get the first rolling routine (user should ideally have one)
-      const routine = rollingRoutines[0];
-      const currentPos = routine.currentPosition ?? 0;
-      const scheduleDay = routine.schedule[currentPos];
-
-      if (scheduleDay?.templateId) {
-        const template = await db.templates.get(scheduleDay.templateId);
-        if (template) {
-          return { routine, template, scheduleDay };
-        }
-      }
-    }
-
-    return undefined;
-  }, [weekStartDay]);
+    if (!scheduleDay?.templateId) return undefined;
+    const template = await db.templates.get(scheduleDay.templateId);
+    if (!template) return undefined;
+    return { routine, template, scheduleDay };
+  }, [weekStartDay, today]);
 }
 
 /**

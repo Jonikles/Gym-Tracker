@@ -4,14 +4,6 @@
   gap: var(--space-xl);
 }
 
-.header {
-    display: flex;
-    align-items: center; /* This should vertically center everything */
-    justify-content: space-between;
-    gap: var(--space-md);
-    flex-wrap: wrap;
-}
-
 .headerContent {
   flex: 1;
 }
@@ -28,11 +20,6 @@
   margin-top: var(--space-xs);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-}
-
-.actions {
-  display: flex;
-  gap: var(--space-sm);
 }
 
 .exercises {
@@ -120,24 +107,6 @@
   padding: var(--space-lg);
 }
 
-.dangerZone {
-  margin-top: var(--space-xl);
-  padding: var(--space-md);
-  background-color: rgba(239, 68, 68, 0.05);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--radius-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.dangerZone h3 {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--color-error);
-  margin: 0;
-}
-
 /* Routine warning dialog */
 .routineWarning {
   display: flex;
@@ -176,18 +145,97 @@
 
 .warningActions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-sm);
   padding-top: var(--space-sm);
   border-top: 1px solid var(--color-border);
 }
 
-@media (max-width: 600px) {
-  .header {
-    flex-direction: column;
-  }
+/* Header — left-aligned: "← Back" + ⋮ on top, title below */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
 
-  .actions {
-    flex-wrap: wrap;
-  }
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  margin-left: calc(-1 * var(--space-sm));
+}
+
+.backBtn {
+  min-height: 44px;
+}
+
+.startBtn {
+  width: 100%;
+  margin-top: var(--space-sm);
+}
+
+.actionError {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+}
+
+.exerciseMissing {
+  color: var(--color-error);
+  font-style: italic;
+}
+
+/* More-options menu (same pattern as RoutineDetail) */
+.moreMenuWrapper {
+  position: relative;
+}
+
+.moreBtn {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: var(--text-xl);
+  line-height: 1;
+}
+
+.moreMenuDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  z-index: 10;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.moreMenuOption {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-sm) var(--space-md);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+}
+
+.moreMenuOption:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.moreMenuOption:not(:last-child) {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.moreMenuDanger {
+  color: var(--color-error);
 }

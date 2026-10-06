@@ -1,39 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { Button, Card, ConfirmDialog } from '../common';
-import { deleteSession, repeatSession, useSession, useSessionExercises, useActiveSession } from '../../hooks/useSessions';
+import { deleteSession, repeatSession, useSession, useSessionExercises } from '../../hooks/useSessions';
+import { useSessionContext } from '../../context/SessionContext';
 import { useRoutine } from '../../hooks/useRoutines';
-import { useSets } from '../../hooks/useSets';
+import { useSets, useSessionSets } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
 import { usePRsForSession } from '../../hooks/usePRs';
+import { db } from '../../db';
 import { formatPRType } from '../../utils/pr';
+import { getSetVolume } from '../../utils/volume';
+import { formatLongDate, formatTime, formatDuration, formatVolume } from './format';
 import type { SessionExercise as SessionExerciseType, Set, PR } from '../../types';
 import styles from './SessionDetail.module.css';
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
-function formatTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatDuration(startedAt: number, completedAt?: number): string {
-  if (!completedAt) return 'Incomplete';
-  const mins = Math.floor((completedAt - startedAt) / 1000 / 60);
-  if (mins < 60) return `${mins} minutes`;
-  const hrs = Math.floor(mins / 60);
-  const remainMins = mins % 60;
-  return `${hrs}h ${remainMins}m`;
-}
 
 /** Format seconds into a readable time string */
 function formatSeconds(seconds: number): string {
@@ -75,6 +55,10 @@ function formatSetData(set: Set): string {
   else if (hasWeight && !hasReps && !hasTime && !hasDistance) {
     parts.push(`${set.weight}kg`);
   }
+  // Reps + Time (e.g. AMRAP)
+  else if (hasReps && hasTime && !hasWeight) {
+    parts.push(`${set.reps} reps in ${formatSeconds(set.time!)}`);
+  }
   // Reps only (bodyweight: "12 reps")
   else if (hasReps && !hasWeight) {
     parts.push(`${set.reps} reps`);
@@ -87,10 +71,6 @@ function formatSetData(set: Set): string {
   // Distance only
   else if (hasDistance && !hasWeight && !hasReps && !hasTime) {
     parts.push(formatDistance(set.distance!));
-  }
-  // Reps + Time (e.g. AMRAP)
-  else if (hasReps && hasTime && !hasWeight) {
-    parts.push(`${set.reps} reps in ${formatSeconds(set.time!)}`);
   }
   // Fallback: show whatever is available
   else {
@@ -106,16 +86,15 @@ function formatSetData(set: Set): string {
 
 /** Compute a meaningful volume summary for an exercise's working sets */
 function computeVolumeSummary(sets: Set[]): string {
-  // Check what kind of data these sets have
   const hasAnyWeight = sets.some((s) => s.weight && s.weight > 0);
   const hasAnyReps = sets.some((s) => s.reps && s.reps > 0);
   const hasAnyTime = sets.some((s) => s.time && s.time > 0);
   const hasAnyDistance = sets.some((s) => s.distance && s.distance > 0);
 
-  // Weight × Reps = total kg volume
+  // Weight × Reps = total kg volume (technique-aware, matches analytics)
   if (hasAnyWeight && hasAnyReps) {
-    const vol = sets.reduce((sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 0), 0);
-    return `${vol.toLocaleString()}kg vol`;
+    const vol = sets.reduce((sum, s) => sum + getSetVolume(s), 0);
+    return `${formatVolume(vol)} vol`;
   }
 
   // Weight × Time = total kg·s
@@ -151,8 +130,6 @@ function computeVolumeSummary(sets: Set[]): string {
   return '';
 }
 
-// v1.4.1: Receive PRs as prop instead of calling hook per-set
-// v1.4.2: Added setNumber prop
 function SetDisplay({ set, prs, setNumber }: { set: Set; prs: PR[]; setNumber: number }) {
   return (
     <div className={`${styles.set} ${set.isWarmup ? styles.warmup : ''}`}>
@@ -171,7 +148,7 @@ function SetDisplay({ set, prs, setNumber }: { set: Set; prs: PR[]; setNumber: n
         <div className={styles.prBadges}>
           {prs.map((pr) => (
             <span key={pr.id} className={`${styles.prBadge} ${styles[pr.type]}`}>
-              {formatPRType(pr.type)} PR
+              {pr.type === 'progression' ? 'LVL UP' : `${formatPRType(pr.type)} PR`}
             </span>
           ))}
         </div>
@@ -180,7 +157,6 @@ function SetDisplay({ set, prs, setNumber }: { set: Set; prs: PR[]; setNumber: n
   );
 }
 
-// v1.4.1: Receive prsBySetId map as prop
 function ExerciseDisplay({
   sessionExercise,
   prsBySetId,
@@ -195,7 +171,6 @@ function ExerciseDisplay({
   const workingSets = sets.filter((s) => !s.isWarmup);
   const warmupSets = sets.filter((s) => s.isWarmup);
 
-  // Compute volume summary
   const volumeSummary = computeVolumeSummary(workingSets);
 
   return (
@@ -250,11 +225,31 @@ export function SessionDetail({ sessionId }: SessionDetailProps) {
   const session = useSession(sessionId);
   const sessionExercises = useSessionExercises(sessionId) ?? [];
   const routine = useRoutine(session?.routineId);
+  const templateId = session?.templateId;
+  const templateName = useLiveQuery(
+    async () => (templateId ? (await db.templates.get(templateId))?.name : undefined),
+    [templateId]
+  );
+  const allSets = useSessionSets(sessionId);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
-  const activeSession = useActiveSession();
-  // v1.4.1: Get ALL PRs for this session in one query (fixes blank page bug)
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const { activeSession } = useSessionContext();
+  // Get ALL PRs for this session in one query
   const sessionPRs = usePRsForSession(sessionId);
+
+  // Close the ⋮ menu on outside tap
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMoreMenu]);
 
   // Create a map of setId -> PRs for quick lookup
   const prsBySetId = useMemo(() => {
@@ -269,10 +264,18 @@ export function SessionDetail({ sessionId }: SessionDetailProps) {
     return map;
   }, [sessionPRs]);
 
-  // Group exercises for display
   const sortedExercises = useMemo(() => {
     return [...sessionExercises].sort((a, b) => a.order - b.order);
   }, [sessionExercises]);
+
+  // Summary: working sets + technique-aware volume (same rules as analytics)
+  const summary = useMemo(() => {
+    const working = (allSets ?? []).filter((s) => !s.isWarmup);
+    return {
+      setCount: working.length,
+      volume: working.reduce((sum, s) => sum + getSetVolume(s), 0),
+    };
+  }, [allSets]);
 
   if (!session) {
     return (
@@ -288,6 +291,7 @@ export function SessionDetail({ sessionId }: SessionDetailProps) {
   };
 
   const handleRepeat = async () => {
+    if (isRepeating) return;
     setIsRepeating(true);
     try {
       await repeatSession(sessionId);
@@ -297,36 +301,78 @@ export function SessionDetail({ sessionId }: SessionDetailProps) {
     }
   };
 
-return (
+  // Same title as the History card
+  const routineName = routine?.name;
+  const title = routineName && templateName
+    ? `${routineName} – ${templateName}`
+    : routineName ?? templateName ?? 'Blank Workout';
+
+  const summaryParts = [
+    formatDuration(session.startedAt, session.completedAt),
+    `${sortedExercises.length} exercise${sortedExercises.length === 1 ? '' : 's'}`,
+    `${summary.setCount} set${summary.setCount === 1 ? '' : 's'}`,
+  ];
+  if (summary.volume > 0) summaryParts.push(formatVolume(summary.volume));
+
+  return (
     <div className={styles.container}>
-        <header className={styles.header}>
-            <Button variant="ghost" onClick={() => navigate('/history')}>
-                ← Back
-            </Button>
-            <div className={styles.headerContent}>
-                <h1 className={styles.title}>{routine?.name ?? 'Workout'}</h1>
-                <div className={styles.meta}>
-                        <span>{formatDate(session.startedAt)}</span>
-                        <span>{formatTime(session.startedAt)}</span>
-                        <span className={session.completedAt ? styles.completed : styles.incomplete}>
-                        {formatDuration(session.startedAt, session.completedAt)}
-                        </span>
-                </div>
-            </div>
-            <div className={styles.actions}>
-                {!activeSession && (
-                  <Button variant="primary" onClick={handleRepeat} disabled={isRepeating}>
-                    {isRepeating ? 'Starting...' : 'Repeat'}
-                  </Button>
-                )}
-                <Button variant="secondary" onClick={() => navigate(`/history/${sessionId}/edit`)}>
+      <header className={styles.header}>
+        <div className={styles.topBar}>
+          <Button variant="ghost" onClick={() => navigate('/history')} className={styles.backBtn}>
+            ← Back
+          </Button>
+          <div className={styles.actions}>
+            {!activeSession && (
+              <Button variant="primary" onClick={handleRepeat} disabled={isRepeating} className={styles.actionBtn}>
+                {isRepeating ? 'Starting...' : 'Repeat'}
+              </Button>
+            )}
+            <div className={styles.moreMenuWrapper} ref={moreMenuRef}>
+              <Button
+                variant="ghost"
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                title="More options"
+                aria-label="More options"
+                aria-expanded={showMoreMenu}
+                className={styles.moreBtn}
+              >
+                ⋮
+              </Button>
+              {showMoreMenu && (
+                <div className={styles.moreMenuDropdown}>
+                  <button
+                    className={styles.moreMenuOption}
+                    onClick={() => { setShowMoreMenu(false); navigate(`/history/${sessionId}/edit`); }}
+                  >
                     Edit
-                </Button>
-                <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
+                  </button>
+                  <button
+                    className={`${styles.moreMenuOption} ${styles.moreMenuDanger}`}
+                    onClick={() => { setShowMoreMenu(false); setShowDeleteConfirm(true); }}
+                  >
                     Delete
-                </Button>
+                  </button>
+                </div>
+              )}
             </div>
-        </header>
+          </div>
+        </div>
+        <h1 className={styles.title}>{title}</h1>
+        <div className={styles.meta}>
+          {formatLongDate(session.startedAt)} · {formatTime(session.startedAt)}
+        </div>
+      </header>
+
+      <div className={styles.summary}>
+        {summaryParts.map((part, i) => (
+          <span
+            key={i}
+            className={i === 0 ? (session.completedAt ? styles.completed : styles.incomplete) : undefined}
+          >
+            {part}
+          </span>
+        ))}
+      </div>
 
       {session.notes && (
         <div className={styles.notes}>

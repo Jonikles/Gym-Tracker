@@ -43,22 +43,6 @@
   align-items: center;
 }
 
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.toggleInput {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-accent);
-  cursor: pointer;
-}
-
 .count {
   font-size: var(--text-sm);
   color: var(--color-text-muted);

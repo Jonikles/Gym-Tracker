@@ -52,10 +52,7 @@ export function useCurrentPRs(exerciseId: string | undefined) {
  */
 export function useRecentPRs(limit: number = 10) {
   return useLiveQuery(async () => {
-    const prs = await db.prs.toArray();
-    return prs
-      .sort((a, b) => b.achievedAt - a.achievedAt)
-      .slice(0, limit);
+    return db.prs.orderBy('achievedAt').reverse().limit(limit).toArray();
   }, [limit]);
 }
 
@@ -84,61 +81,33 @@ export function usePRsForSession(sessionId: string | undefined) {
     async () => {
       if (!sessionId) return [];
 
-      // Get all session exercises
-      const sessionExercises = await db.sessionExercises
-        .where('sessionId')
-        .equals(sessionId)
-        .toArray();
-
-      // Get all sets for those exercises
-      const setIds: string[] = [];
-      for (const se of sessionExercises) {
-        const sets = await db.sets
-          .where('sessionExerciseId')
-          .equals(se.id)
-          .toArray();
-        setIds.push(...sets.map((s) => s.id));
-      }
-
-      // Get all PRs for those sets
-      const allPRs: PR[] = [];
-      for (const setId of setIds) {
-        const prs = await db.prs.filter((pr) => pr.setId === setId).toArray();
-        allPRs.push(...prs);
-      }
-
-      return allPRs;
+      return loadPRsForSession(sessionId);
     },
     [sessionId]
   );
+}
+
+/** All PRs earned by a session's sets — three indexed queries, no per-set loops */
+async function loadPRsForSession(sessionId: string): Promise<PR[]> {
+  const seIds = (await db.sessionExercises
+    .where('sessionId')
+    .equals(sessionId)
+    .primaryKeys()) as string[];
+  if (seIds.length === 0) return [];
+
+  const setIds = (await db.sets
+    .where('sessionExerciseId')
+    .anyOf(seIds)
+    .primaryKeys()) as string[];
+  if (setIds.length === 0) return [];
+
+  return db.prs.where('setId').anyOf(setIds).toArray();
 }
 
 /**
  * Get PRs achieved in a session
  */
 export async function getPRsForSession(sessionId: string): Promise<PR[]> {
-  // Get all session exercises
-  const sessionExercises = await db.sessionExercises
-    .where('sessionId')
-    .equals(sessionId)
-    .toArray();
-
-  // Get all sets for those exercises
-  const allPRs: PR[] = [];
-  for (const se of sessionExercises) {
-    const sets = await db.sets
-      .where('sessionExerciseId')
-      .equals(se.id)
-      .toArray();
-
-    for (const set of sets) {
-      const prs = await db.prs
-        .where('setId')
-        .equals(set.id)
-        .toArray();
-      allPRs.push(...prs);
-    }
-  }
-
+  const allPRs = await loadPRsForSession(sessionId);
   return allPRs.sort((a, b) => b.achievedAt - a.achievedAt);
 }

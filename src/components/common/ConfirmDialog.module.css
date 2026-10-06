@@ -8,3 +8,17 @@
   justify-content: flex-end;
   gap: var(--space-sm);
 }
+
+.error {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-top: calc(-1 * var(--space-sm));
+  margin-bottom: var(--space-md);
+}
+
+.error {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-top: calc(-1 * var(--space-sm));
+  margin-bottom: var(--space-md);
+}

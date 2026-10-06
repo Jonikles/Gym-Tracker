@@ -16,42 +16,6 @@
   font-size: var(--text-xl);
 }
 
-.genderToggle {
-  display: flex;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.genderBtn {
-  padding: var(--space-xs) var(--space-sm);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  font-family: inherit;
-  border: none;
-  background: var(--color-bg);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.genderBtn:not(:last-child) {
-  border-right: 1px solid var(--color-border);
-}
-
-.genderBtn:hover {
-  background: var(--color-bg-secondary);
-}
-
-.genderBtnActive {
-  background: var(--color-accent);
-  color: var(--color-bg);
-}
-
-.genderBtnActive:hover {
-  background: var(--color-accent);
-}
-
 /* ── Bodyweight prompt ── */
 .setupPrompt {
   text-align: center;
@@ -213,12 +177,6 @@
   letter-spacing: 0.05em;
 }
 
-/* ── Standards table ── */
-.standardsTable {
-  width: 100%;
-  margin-top: var(--space-xs);
-}
-
 .standardsToggle {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
@@ -226,7 +184,8 @@
   border: none;
   cursor: pointer;
   font-family: inherit;
-  padding: 0;
+  min-height: 44px;
+  padding: 0 var(--space-xs);
   text-decoration: underline;
 }
 
@@ -266,28 +225,4 @@
 .standardCellActive {
   outline: 2px solid currentColor;
   outline-offset: -2px;
-}
-
-/* ── Wilks-like summary ── */
-.summaryRow {
-  display: flex;
-  gap: var(--space-md);
-  justify-content: center;
-}
-
-.summaryItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.summaryValue {
-  font-size: var(--text-lg);
-  font-weight: 700;
-}
-
-.summaryLabel {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
 }

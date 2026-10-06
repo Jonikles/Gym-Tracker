@@ -1,5 +1,6 @@
 import { db } from './index';
-import type { Exercise, Setting, MuscleGroup, ExerciseField, ProgressionMembership } from '../types';
+import type { Exercise, Setting, SettingsMap, MuscleGroup, ExerciseField, ProgressionMembership } from '../types';
+import { defaultSettings } from '../hooks/useSettings';
 import { PROGRESSION_EXERCISES } from '../data/progression-exercises';
 
 /**
@@ -352,18 +353,19 @@ export const presetExercises: ExerciseDefinition[] = [
     { name: 'One-Arm Hang', muscleGroups: ['forearms', 'lats-upper', 'obliques'], movementPattern: 'vertical-pull', equipment: 'bodyweight', defaultFields: ['time'] },
 ];
 
+
 /**
- * Default settings for new installs
- * v1.2: Removed theme (dark mode only)
+ * Settings written on a fresh install. Values come from the app-wide
+ * defaultSettings (useSettings.ts) so the two can't drift; every other setting
+ * simply falls back to its default when unset.
  */
-const defaultSettings: Omit<Setting, 'updatedAt'>[] = [
-  { key: 'weightIncrement', value: 2.5 },
-  { key: 'weekStartDay', value: 0 }, // 0 = Sunday
-];
+const SEEDED_SETTING_KEYS = ['weightIncrement', 'weekStartDay'] as const satisfies readonly (keyof SettingsMap)[];
 
 /**
  * Seed the database with preset exercises and default settings
- * Only runs on fresh install
+ * Only runs on fresh install. Idempotent: the exercise insert happens inside a
+ * transaction that first checks the table is empty, so concurrent or repeated
+ * calls can't create duplicate exercises.
  */
 export async function seedDatabase(): Promise<void> {
   const now = Date.now();
@@ -410,15 +412,20 @@ export async function seedDatabase(): Promise<void> {
     }
   }
 
-  await db.exercises.bulkAdd(exercisesToInsert);
-  console.log(`Seeded ${exercisesToInsert.length} exercises (including progressions)`);
-
-  // Seed default settings (use bulkPut to upsert - avoids conflict if settings exist)
-  const settingsToInsert: Setting[] = defaultSettings.map((setting) => ({
-    ...setting,
+  const settingsToInsert: Setting[] = SEEDED_SETTING_KEYS.map((key) => ({
+    key,
+    value: defaultSettings[key],
     updatedAt: now,
   }));
 
-  await db.settings.bulkPut(settingsToInsert);
-  console.log(`Seeded ${settingsToInsert.length} default settings`);
+  await db.transaction('rw', [db.exercises, db.settings], async () => {
+    if ((await db.exercises.count()) > 0) {
+      console.log('Seed skipped: exercises already present');
+      return;
+    }
+    await db.exercises.bulkAdd(exercisesToInsert);
+    // bulkPut upserts — avoids conflict if settings exist
+    await db.settings.bulkPut(settingsToInsert);
+    console.log(`Seeded ${exercisesToInsert.length} exercises (including progressions) and ${settingsToInsert.length} default settings`);
+  });
 }

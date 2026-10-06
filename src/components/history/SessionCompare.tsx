@@ -5,24 +5,10 @@ import { useSession, useSessionExercises } from '../../hooks/useSessions';
 import { useRoutine } from '../../hooks/useRoutines';
 import { useSets } from '../../hooks/useSets';
 import { useExercise } from '../../hooks/useExercises';
+import { getSetVolume } from '../../utils/volume';
+import { formatDate, formatDuration } from './format';
 import type { SessionExercise, Set } from '../../types';
 import styles from './SessionCompare.module.css';
-
-function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function formatDuration(startedAt: number, completedAt?: number): string {
-  if (!completedAt) return 'Incomplete';
-  const mins = Math.floor((completedAt - startedAt) / 1000 / 60);
-  if (mins < 60) return `${mins}min`;
-  const hrs = Math.floor(mins / 60);
-  return `${hrs}h ${mins % 60}m`;
-}
 
 function ExerciseCompare({
   leftSE,
@@ -40,8 +26,9 @@ function ExerciseCompare({
   const leftWorking = leftSets.filter((s) => !s.isWarmup);
   const rightWorking = rightSets.filter((s) => !s.isWarmup);
   // Volume comparison
-  const leftVol = leftWorking.reduce((sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 0), 0);
-  const rightVol = rightWorking.reduce((sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 0), 0);
+  // Technique-aware volume (matches analytics)
+  const leftVol = leftWorking.reduce((sum, s) => sum + getSetVolume(s), 0);
+  const rightVol = rightWorking.reduce((sum, s) => sum + getSetVolume(s), 0);
   const volDiff = rightVol - leftVol;
 
   return (

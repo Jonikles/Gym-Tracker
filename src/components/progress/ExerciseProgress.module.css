@@ -39,6 +39,7 @@
 .toggle {
   display: flex;
   align-items: center;
+  min-height: 44px;
   gap: var(--space-sm);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);

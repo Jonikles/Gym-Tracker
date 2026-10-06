@@ -148,6 +148,7 @@
   background: none;
   border: none;
   cursor: pointer;
+  min-height: 40px;
   padding: 0;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -166,6 +167,7 @@
 .progressionNavBtn {
   font-size: var(--text-sm);
   font-family: inherit;
+  min-height: 40px;
   padding: 4px 12px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -207,4 +209,10 @@
 
 .variationItem:hover {
   background-color: var(--color-bg-tertiary);
+}
+
+.actionError {
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-md);
 }

@@ -20,12 +20,6 @@
   margin: 0;
 }
 
-.meta {
-  font-size: var(--text-sm);
-  color: var(--color-text-secondary);
-  margin-top: var(--space-xs);
-}
-
 .timeSection {
   display: flex;
   gap: var(--space-md);
@@ -85,6 +79,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+}
+
+.addSet,
+.removeBtn {
+  min-height: 44px;
+}
+
+.addSet {
+  align-self: flex-start;
 }
 
 .addExercise {

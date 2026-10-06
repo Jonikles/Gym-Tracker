@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db';
 import { Input, Select, Button, Modal } from '../common';
 import { RoutineCard } from './RoutineCard';
 import { RoutineForm, type RoutineFormData } from './RoutineForm';
@@ -35,6 +37,18 @@ export function RoutineList() {
   };
 
   const routines = useRoutines(filters);
+
+  // Batch-fetch template names for all cards in one query
+  const templateIdsKey = [
+    ...new Set(routines.flatMap((r) => r.schedule.map((s) => s.templateId).filter((id): id is string => !!id))),
+  ].sort().join(',');
+  const templateNames = useLiveQuery(async () => {
+    const ids = templateIdsKey ? templateIdsKey.split(',') : [];
+    const templates = await db.templates.bulkGet(ids);
+    const map = new Map<string, string>();
+    for (const t of templates) if (t) map.set(t.id, t.name);
+    return map;
+  }, [templateIdsKey]);
 
   // If there's a draft routine in progress, redirect to it
   useEffect(() => {
@@ -98,7 +112,6 @@ export function RoutineList() {
           placeholder="Search routines..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          autoFocus
         />
         <Select
           value={typeFilter}
@@ -140,6 +153,7 @@ export function RoutineList() {
                 )}
                 <RoutineCard
                     routine={routine}
+                    templateNames={templateNames}
                     onClick={() => navigate(`/routines/${routine.id}`)}
                 />
             </div>

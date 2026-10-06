@@ -20,11 +20,6 @@
   margin: 0;
 }
 
-.count {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
 .filters {
     display: flex;
     flex-wrap: wrap;
@@ -50,6 +45,7 @@
 
 .clearFilters {
   align-self: flex-start;
+  min-height: 44px;
   padding: var(--space-xs) var(--space-sm);
   font-family: inherit;
   font-size: var(--text-sm);
@@ -91,8 +87,23 @@
   color: var(--color-text-muted);
 }
 
-.sessionCount {
+.itemRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: var(--space-sm);
+}
+
+.latestBest {
   font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sessionCount {
+  font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 

@@ -29,7 +29,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     const handleClose = () => onClose();
     dialog.addEventListener('close', handleClose);
     return () => dialog.removeEventListener('close', handleClose);
-  }, [onClose]);
+  }, [isOpen, onClose]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === dialogRef.current) {

@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Button, Card, ConfirmDialog, Modal } from '../common';
+import { Button, Card, ConfirmDialog, Modal, SkeletonList } from '../common';
+import { formatMuscleGroup, formatLabel } from '../common/format';
 import { ExerciseForm, type ExerciseFormData } from './ExerciseForm';
 import {
   useExercise,
@@ -18,29 +19,22 @@ import { ExerciseImage } from './ExerciseImage';
 import { db } from '../../db';
 import styles from './ExerciseDetail.module.css';
 
-// Helper to format muscle group keys for display
-function formatMuscleGroup(mg: string): string {
-  return mg
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-// Helper to capitalize first letter
-function formatLabel(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
 export function ExerciseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const exercise = useExercise(id);
+  // undefined = loading, null = not found
+  const exercise = useLiveQuery(
+    async () => (id ? (await db.exercises.get(id)) ?? null : null),
+    [id]
+  );
   const variations = useExerciseVariations(exercise?.id);
   const parentExercise = useExercise(exercise?.parentId);
   const currentPRs = useCurrentPRs(exercise?.id);
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
 
   // Get the progression IDs this exercise belongs to
   const progressionIds = exercise?.progressionMemberships?.map((pm) => pm.progressionId) ?? [];
@@ -75,12 +69,24 @@ export function ExerciseDetail() {
     return map;
   }, [siblingExercises]);
 
-  if (!exercise) {
+  if (exercise === undefined) {
     return (
-      <div className={styles.container}>
-        <div className={styles.notFound}>
-          <p>Exercise not found</p>
-          <Button onClick={() => navigate('/exercises')}>Back to Library</Button>
+      <div className="page">
+        <div className={styles.container}>
+          <SkeletonList count={3} lines={3} />
+        </div>
+      </div>
+    );
+  }
+
+  if (exercise === null) {
+    return (
+      <div className="page">
+        <div className={styles.container}>
+          <div className={styles.notFound}>
+            <p>Exercise not found</p>
+            <Button onClick={() => navigate('/exercises')}>Back to Library</Button>
+          </div>
         </div>
       </div>
     );
@@ -91,15 +97,25 @@ export function ExerciseDetail() {
     setIsEditing(false);
   };
 
+  // Throws (e.g. exercise in use) are caught and shown by ConfirmDialog
   const handleDelete = async () => {
     await deleteExercise(exercise.id);
-    setShowDeleteConfirm(false);
     navigate('/exercises');
   };
 
   const handleDuplicate = async () => {
-    const newId = await duplicateExercise(exercise.id);
-    navigate(`/exercises/${newId}`);
+    if (duplicating) return;
+    setActionError(null);
+    setDuplicating(true);
+    try {
+      const newId = await duplicateExercise(exercise.id);
+      navigate(`/exercises/${newId}`);
+    } catch (err) {
+      console.error('Duplicate failed:', err);
+      setActionError(err instanceof Error ? err.message : 'Could not duplicate exercise');
+    } finally {
+      setDuplicating(false);
+    }
   };
 
   return (
@@ -115,7 +131,7 @@ export function ExerciseDetail() {
                 <Button variant="secondary" onClick={() => setIsEditing(true)}>
                   Edit
                 </Button>
-                <Button variant="ghost" onClick={handleDuplicate}>
+                <Button variant="ghost" onClick={handleDuplicate} disabled={duplicating}>
                   Duplicate
                 </Button>
                 <Button variant="danger" onClick={() => setShowDeleteConfirm(true)}>
@@ -125,6 +141,12 @@ export function ExerciseDetail() {
             )}
           </div>
         </header>
+
+        {actionError && (
+          <p className={styles.actionError} role="alert">
+            {actionError}
+          </p>
+        )}
 
       <Card className={styles.mainCard}>
         <div className={styles.titleRow}>

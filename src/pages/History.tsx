@@ -1,4 +1,4 @@
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { SessionHistory, SessionDetail, SessionEditor, SessionCompare } from '../components/history';
 
 export function History() {
@@ -16,6 +16,8 @@ export function History() {
         </div>
       );
     }
+    // Missing a/b params — never fall through to SessionDetail("compare")
+    return <Navigate to="/history" replace />;
   }
 
   if (id && action === 'edit') {

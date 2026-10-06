@@ -1,49 +1,16 @@
 import { useState, useCallback } from 'react';
 import Model from 'react-body-highlighter';
-import type { IExerciseData, Muscle, IMuscleStats } from 'react-body-highlighter';
+import type { Muscle, IMuscleStats } from 'react-body-highlighter';
 import { useMuscleDistribution, useMuscleExerciseBreakdown } from '../../hooks/useStats';
-import { useSetting } from '../../hooks/useSettings';
-import type { MuscleGroup } from '../../types/exercise';
+import {
+  REVERSE_MUSCLE_MAP,
+  TIER_COLORS,
+  TIER_LABELS,
+  MUSCLE_COLORS,
+  buildMuscleHeatmap,
+  volumeTier,
+} from './muscleMap';
 import styles from './Analytics.module.css';
-
-/**
- * Map app MuscleGroup keys → react-body-highlighter Muscle names.
- */
-const MUSCLE_MAP: Record<MuscleGroup, Muscle | null> = {
-  'calves': 'calves',
-  'quads': 'quadriceps',
-  'hamstrings': 'hamstring',
-  'glutes': 'gluteal',
-  'adductors': 'adductor',
-  'abductors': 'abductors',
-  'lower-abs': 'abs',
-  'upper-abs': 'abs',
-  'obliques': 'obliques',
-  'lower-chest': 'chest',
-  'mid-chest': 'chest',
-  'upper-chest': 'chest',
-  'forearms': 'forearm',
-  'triceps': 'triceps',
-  'biceps': 'biceps',
-  'brachioradialis': 'forearm',
-  'front-delts': 'front-deltoids',
-  'side-delts': 'front-deltoids',
-  'rear-delts': 'back-deltoids',
-  'traps': 'trapezius',
-  'rhomboids': 'upper-back',
-  'lats-upper': 'upper-back',
-  'lats-lower': 'lower-back',
-  'erector-spinae': 'lower-back',
-  'neck': 'neck',
-};
-
-/** Reverse map: library Muscle → all app MuscleGroup keys that map to it. */
-const REVERSE_MUSCLE_MAP: Record<string, MuscleGroup[]> = {};
-for (const [mg, muscle] of Object.entries(MUSCLE_MAP) as [MuscleGroup, Muscle | null][]) {
-  if (!muscle) continue;
-  if (!REVERSE_MUSCLE_MAP[muscle]) REVERSE_MUSCLE_MAP[muscle] = [];
-  REVERSE_MUSCLE_MAP[muscle].push(mg);
-}
 
 /** Human-readable labels for library muscle names. */
 const MUSCLE_LABELS: Record<string, string> = {
@@ -67,22 +34,6 @@ const MUSCLE_LABELS: Record<string, string> = {
   'neck': 'Neck',
 };
 
-const TIER_COLORS = [
-  '#4a6670', // tier 1: dim blue-gray
-  '#22c55e', // tier 2: green
-  '#eab308', // tier 3: yellow
-  '#f97316', // tier 4: orange
-  '#ef4444', // tier 5: red
-];
-
-const TIER_LABELS = [
-  { color: '#ef4444', label: 'Highest' },
-  { color: '#f97316', label: 'High' },
-  { color: '#eab308', label: 'Moderate' },
-  { color: '#22c55e', label: 'Low' },
-  { color: '#4a6670', label: 'Minimal' },
-];
-
 interface MuscleHeatmapProps {
   days: number;
 }
@@ -90,7 +41,6 @@ interface MuscleHeatmapProps {
 export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
   const distribution = useMuscleDistribution(days);
   const [selectedMuscle, setSelectedMuscle] = useState<Muscle | null>(null);
-  const theme = useSetting('theme');
 
   // Get the app-level muscle groups for the selected library muscle
   const selectedMuscleGroups = selectedMuscle
@@ -114,46 +64,11 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
     );
   }
 
-  // 1. Aggregate volumes per library-muscle
-  const muscleVolumes = new Map<Muscle, number>();
-  for (const d of distribution) {
-    const mapped = MUSCLE_MAP[d.muscleGroup as MuscleGroup];
-    if (!mapped) continue;
-    muscleVolumes.set(mapped, (muscleVolumes.get(mapped) ?? 0) + d.volume);
-  }
-
-  // 2. Normalize
-  const maxVol = Math.max(...muscleVolumes.values(), 1);
-
-  // 3. Tier assignment
-  const tieredData: IExerciseData[] = [];
-  for (const [muscle, vol] of muscleVolumes) {
-    const ratio = vol / maxVol;
-    let tier: number;
-    if (ratio > 0.85) tier = 5;
-    else if (ratio > 0.65) tier = 4;
-    else if (ratio > 0.40) tier = 3;
-    else if (ratio > 0.20) tier = 2;
-    else tier = 1;
-
-    tieredData.push({
-      name: `tier-${tier}`,
-      muscles: [muscle],
-      frequency: tier,
-    });
-  }
+  const { muscleVolumes, maxVol, tieredData } = buildMuscleHeatmap(distribution);
 
   // Get tier color for the selected muscle (for the drill-down header accent)
   const selectedTierColor = selectedMuscle
-    ? (() => {
-        const vol = muscleVolumes.get(selectedMuscle) ?? 0;
-        const ratio = vol / maxVol;
-        if (ratio > 0.85) return TIER_COLORS[4];
-        if (ratio > 0.65) return TIER_COLORS[3];
-        if (ratio > 0.40) return TIER_COLORS[2];
-        if (ratio > 0.20) return TIER_COLORS[1];
-        return TIER_COLORS[0];
-      })()
+    ? TIER_COLORS[volumeTier((muscleVolumes.get(selectedMuscle) ?? 0) / maxVol) - 1]
     : undefined;
 
   const selectedLabel = selectedMuscle
@@ -165,7 +80,7 @@ export function MuscleHeatmap({ days }: MuscleHeatmapProps) {
     return `${kg}`;
   };
 
-  const bodyColor = theme === 'light' ? '#c8c8c8' : '#3a3a3a';
+  const bodyColor = MUSCLE_COLORS.body;
 
   return (
     <div className={styles.chart}>

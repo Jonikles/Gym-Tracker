@@ -8,7 +8,7 @@ interface SkeletonProps {
 }
 
 /** Shimmer loading placeholder */
-export function Skeleton({
+function Skeleton({
   width = '100%',
   height = '1rem',
   borderRadius = 'var(--radius-md)',
@@ -23,7 +23,7 @@ export function Skeleton({
 }
 
 /** Pre-built skeleton for a card-like row */
-export function SkeletonCard({ lines = 2 }: { lines?: number }) {
+function SkeletonCard({ lines = 2 }: { lines?: number }) {
   return (
     <div className={styles.card}>
       <Skeleton width="60%" height="1rem" />

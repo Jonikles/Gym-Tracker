@@ -6,6 +6,9 @@ import { ExercisePicker } from '../exercises';
 import { SessionExercise } from './SessionExercise';
 import { ExerciseGroup } from './ExerciseGroup';
 import { PlateCalculator } from './PlateCalculator';
+import { flushPendingSaves } from './pendingSaves';
+import { groupSetsBySessionExercise, setHasEmptyRequiredField } from './setValidation';
+import { formatElapsed, formatTime } from '../history/format';
 import { useSessionContext } from '../../context/SessionContext';
 import { useUndo } from '../../context/UndoContext';
 import { useExercise } from '../../hooks/useExercises';
@@ -13,18 +16,23 @@ import { useRoutine } from '../../hooks/useRoutines';
 import { useTemplates } from '../../hooks/useTemplates';
 import { useSessionSets } from '../../hooks/useSets';
 import { updateSessionNotes } from '../../hooks/useSessions';
-import type { TemplateExercise, ExerciseField } from '../../types';
+import type { TemplateExercise, ExerciseField, SessionExercise as SessionExerciseType, Set as SetType } from '../../types';
 import styles from './ActiveSession.module.css';
 
-// Helper to format elapsed time
-function formatTime(seconds: number): string {
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  if (hrs > 0) {
-    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+const DEFAULT_FIELDS: ExerciseField[] = ['weight', 'reps'];
+
+/** Running clock — isolated so only this tiny component re-renders every second */
+function ElapsedTimer({ startedAt }: { startedAt: number }) {
+  const [elapsed, setElapsed] = useState(() => Math.floor((Date.now() - startedAt) / 1000));
+
+  useEffect(() => {
+    const tick = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [startedAt]);
+
+  return <span className={styles.timer}>{formatElapsed(elapsed)}</span>;
 }
 
 /** Lightweight name-only label for select mode */
@@ -32,6 +40,31 @@ function ExerciseNameLabel({ exerciseId }: { exerciseId: string }) {
   const exercise = useExercise(exerciseId);
   return <span className={styles.selectExerciseName}>{exercise?.name ?? 'Loading...'}</span>;
 }
+
+type ValidationType = 'no-exercises' | 'no-sets' | 'empty-fields';
+
+/** Check all exercises have ≥1 set and every set has its required fields */
+function validateWorkout(
+  sessionExercises: SessionExerciseType[],
+  setsBySE: Map<string, SetType[]>,
+  fieldsMap: Map<string, ExerciseField[]>
+): ValidationType | null {
+  if (sessionExercises.length === 0) return 'no-exercises';
+  let hasEmpty = false;
+  for (const se of sessionExercises) {
+    const sets = setsBySE.get(se.id);
+    if (!sets || sets.length === 0) return 'no-sets';
+    const fields = fieldsMap.get(se.exerciseId) ?? DEFAULT_FIELDS;
+    if (!hasEmpty && sets.some((s) => setHasEmptyRequiredField(s, fields))) hasEmpty = true;
+  }
+  return hasEmpty ? 'empty-fields' : null;
+}
+
+const VALIDATION_MESSAGES: Record<ValidationType, string> = {
+  'no-exercises': 'Add at least one exercise before completing',
+  'no-sets': 'Every exercise needs at least one set',
+  'empty-fields': 'Fill in all set fields before completing',
+};
 
 export function ActiveSession() {
   const {
@@ -52,24 +85,29 @@ export function ActiveSession() {
 
   // Wrap removeExercise with undo support
   const handleRemoveExercise = useCallback(async (sessionExerciseId: string) => {
-    // Save data for undo before deleting
+    // Make sure the snapshot includes edits that are still debouncing
+    await flushPendingSaves();
     const se = await db.sessionExercises.get(sessionExerciseId);
+    if (!se) return;
     const sets = await db.sets.where('sessionExerciseId').equals(sessionExerciseId).toArray();
-    const exercise = se ? await db.exercises.get(se.exerciseId) : null;
+    const exercise = await db.exercises.get(se.exerciseId);
 
     await removeExercise(sessionExerciseId);
 
     showUndo(`${exercise?.name ?? 'Exercise'} removed`, async () => {
-      // Restore the session exercise and its sets
-      if (se) await db.sessionExercises.add(se);
-      if (sets.length > 0) await db.sets.bulkAdd(sets);
+      await db.transaction('rw', db.sessions, db.sessionExercises, db.sets, async () => {
+        // Only restore into a workout that is still in progress
+        const session = await db.sessions.get(se.sessionId);
+        if (!session || session.completedAt != null) return;
+        await db.sessionExercises.put(se);
+        if (sets.length > 0) await db.sets.bulkPut(sets);
+      });
     });
   }, [removeExercise, showUndo]);
 
   const routine = useRoutine(activeSession?.routineId);
   const allTemplates = useTemplates() ?? [];
 
-  // Get template if session has one
   const template = useLiveQuery(
     async () => {
       if (!activeSession?.templateId) return undefined;
@@ -86,98 +124,43 @@ export function ActiveSession() {
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [notes, setNotes] = useState(activeSession?.notes ?? '');
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const [elapsed, setElapsed] = useState(0);
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showValidation, setShowValidation] = useState(false);
-  const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  // Track which type of validation error is active: 'no-exercises' | 'no-sets' | 'empty-fields' | null
-  const [validationType, setValidationType] = useState<string | null>(null);
+  const [validationType, setValidationType] = useState<ValidationType | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const busyRef = useRef(false);
+  const showValidation = validationType !== null;
 
-  // Get all sets for validation
-  const allSets = useSessionSets(activeSession?.id) ?? [];
+  const allSets = useSessionSets(activeSession?.id);
+
+  // Group sets by sessionExerciseId once per change (instead of filtering per exercise)
+  const setsBySE = useMemo(() => groupSetsBySessionExercise(allSets ?? []), [allSets]);
 
   // Build exerciseId -> defaultFields map for validation
+  const exerciseIdsKey = sessionExercises.map((se) => se.exerciseId).join(',');
   const exerciseFieldsMap = useLiveQuery(
     async () => {
-      const exerciseIds = [...new Set(sessionExercises.map((se) => se.exerciseId))];
+      const exerciseIds = [...new Set(exerciseIdsKey.split(',').filter(Boolean))];
       const exercises = await db.exercises.bulkGet(exerciseIds);
       const map = new Map<string, ExerciseField[]>();
       for (const ex of exercises) {
-        if (ex) map.set(ex.id, ex.defaultFields ?? ['weight', 'reps']);
+        if (ex) map.set(ex.id, ex.defaultFields ?? DEFAULT_FIELDS);
       }
       return map;
     },
-    [sessionExercises.map((se) => se.exerciseId).join(',')]
+    [exerciseIdsKey]
   );
 
-  // Dismiss handler for the X button — always clears regardless of type
-  const dismissValidation = useCallback(() => {
-    setShowValidation(false);
-    setValidationMessage(null);
-    setValidationType(null);
-  }, []);
+  const dismissValidation = useCallback(() => setValidationType(null), []);
 
-  // Auto-dismiss "no-exercises" error when an exercise is added
+  // Auto-dismiss the validation banner once the problem it reports is fixed
   useEffect(() => {
-    if (validationType === 'no-exercises' && sessionExercises.length > 0) {
-      dismissValidation();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionExercises.length]);
-
-  // Auto-dismiss "no-sets" error when ALL exercises have at least one set
-  useEffect(() => {
-    if (validationType !== 'no-sets' || sessionExercises.length === 0) return;
-
-    const allHaveSets = sessionExercises.every(
-      (se) => allSets.some((s) => s.sessionExerciseId === se.id)
-    );
-    if (allHaveSets) {
-      dismissValidation();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allSets.length]);
-
-  // Auto-dismiss "empty-fields" error only when ALL fields are actually filled
-  const setsFieldSignature = allSets.map(s => `${s.weight}-${s.reps}-${s.time}-${s.distance}`).join(',');
-  useEffect(() => {
-    if (validationType !== 'empty-fields' || !exerciseFieldsMap) return;
-
-    // Re-check: are all fields now filled?
-    let stillHasEmpty = false;
-    for (const se of sessionExercises) {
-      const fields = exerciseFieldsMap.get(se.exerciseId) ?? ['weight', 'reps'];
-      const setsForExercise = allSets.filter((s) => s.sessionExerciseId === se.id);
-      for (const set of setsForExercise) {
-        for (const field of fields) {
-          if (field === 'weight' && (set.weight === undefined || set.weight === null)) stillHasEmpty = true;
-          if (field === 'reps' && (set.reps === undefined || set.reps === null)) stillHasEmpty = true;
-          if (field === 'time' && (set.time === undefined || set.time === null)) stillHasEmpty = true;
-          if (field === 'distance' && (set.distance === undefined || set.distance === null)) stillHasEmpty = true;
-        }
-      }
-    }
-
-    if (!stillHasEmpty) {
-      dismissValidation();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setsFieldSignature]);
-
-  // Running timer
-  useEffect(() => {
-    if (!activeSession) return;
-
-    // Initialize elapsed time
-    setElapsed(Math.floor((Date.now() - activeSession.startedAt) / 1000));
-
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - activeSession.startedAt) / 1000));
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeSession?.startedAt]);
+    if (!validationType || !exerciseFieldsMap || !allSets) return;
+    const current = validateWorkout(sessionExercises, setsBySE, exerciseFieldsMap);
+    if (validationType === 'no-exercises' && current !== 'no-exercises') setValidationType(null);
+    else if (validationType === 'no-sets' && current !== 'no-sets' && current !== 'no-exercises') setValidationType(null);
+    else if (validationType === 'empty-fields' && current === null) setValidationType(null);
+  }, [validationType, sessionExercises, setsBySE, exerciseFieldsMap, allSets]);
 
   // Create a map for template exercise lookup.
   // Keys by exerciseId AND by progressionId (prefixed with "prog:") for progression slots.
@@ -204,19 +187,14 @@ export function ActiveSession() {
       if (exercise.groupId) {
         if (processedGroupIds.has(exercise.groupId)) continue;
         processedGroupIds.add(exercise.groupId);
-
-        const groupExercises = sorted.filter((e) => e.groupId === exercise.groupId);
         groups.push({
           type: 'group',
-          exercises: groupExercises,
+          exercises: sorted.filter((e) => e.groupId === exercise.groupId),
           groupId: exercise.groupId,
           groupType: exercise.groupType,
         });
       } else {
-        groups.push({
-          type: 'single',
-          exercises: [exercise],
-        });
+        groups.push({ type: 'single', exercises: [exercise] });
       }
     }
 
@@ -233,28 +211,32 @@ export function ActiveSession() {
     [sessionExercises]
   );
 
+  // Read the latest order through a ref so the callback stays stable for memoized cards
+  const standaloneOrderRef = useRef(standaloneOrder);
+  useEffect(() => {
+    standaloneOrderRef.current = standaloneOrder;
+  }, [standaloneOrder]);
+
   const handleMoveExercise = useCallback(
     (id: string, direction: -1 | 1) => {
-      const index = standaloneOrder.indexOf(id);
+      const order = standaloneOrderRef.current;
+      const index = order.indexOf(id);
       const targetIndex = index + direction;
-      if (index === -1 || targetIndex < 0 || targetIndex >= standaloneOrder.length) return;
+      if (index === -1 || targetIndex < 0 || targetIndex >= order.length) return;
 
-      const newOrder = [...standaloneOrder];
+      const newOrder = [...order];
       [newOrder[index], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[index]];
       reorderExercises(newOrder);
     },
-    [standaloneOrder, reorderExercises]
+    [reorderExercises]
   );
 
   // Selection mode handlers for superset/circuit grouping
   const toggleSelect = useCallback((sessionExerciseId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(sessionExerciseId)) {
-        next.delete(sessionExerciseId);
-      } else {
-        next.add(sessionExerciseId);
-      }
+      if (next.has(sessionExerciseId)) next.delete(sessionExerciseId);
+      else next.add(sessionExerciseId);
       return next;
     });
   }, []);
@@ -275,61 +257,35 @@ export function ActiveSession() {
     setIsSelectMode(false);
   }, []);
 
-  // Handle complete button click — validate all sets have required fields filled
-  const handleCompleteClick = useCallback(() => {
-    // Block completing an empty workout
-    if (sessionExercises.length === 0) {
-      setShowValidation(true);
-      setValidationMessage('Add at least one exercise before completing');
-      setValidationType('no-exercises');
-      return;
+  // Complete: flush debounced edits, validate against the DB, then confirm
+  const handleCompleteClick = useCallback(async () => {
+    if (busyRef.current || !activeSession) return;
+    busyRef.current = true;
+    setIsValidating(true);
+    try {
+      await flushPendingSaves();
+
+      const seIds = sessionExercises.map((se) => se.id);
+      const [freshSets, exercises] = await Promise.all([
+        seIds.length > 0 ? db.sets.where('sessionExerciseId').anyOf(seIds).toArray() : Promise.resolve([] as SetType[]),
+        db.exercises.bulkGet([...new Set(sessionExercises.map((se) => se.exerciseId))]),
+      ]);
+      const fieldsMap = new Map<string, ExerciseField[]>();
+      for (const ex of exercises) if (ex) fieldsMap.set(ex.id, ex.defaultFields ?? DEFAULT_FIELDS);
+
+      const problem = validateWorkout(sessionExercises, groupSetsBySessionExercise(freshSets), fieldsMap);
+      setValidationType(problem);
+      if (!problem) setShowCompleteConfirm(true);
+    } finally {
+      busyRef.current = false;
+      setIsValidating(false);
     }
+  }, [activeSession, sessionExercises]);
 
-    if (!exerciseFieldsMap) {
-      return; // Fields map still loading, do nothing
-    }
-
-    // Check every exercise has at least one set, and every set has required fields filled
-    let hasEmpty = false;
-    let hasExerciseWithNoSets = false;
-    for (const se of sessionExercises) {
-      const fields = exerciseFieldsMap.get(se.exerciseId) ?? ['weight', 'reps'];
-      const setsForExercise = allSets.filter((s) => s.sessionExerciseId === se.id);
-
-      if (setsForExercise.length === 0) {
-        hasExerciseWithNoSets = true;
-        continue;
-      }
-
-      for (const set of setsForExercise) {
-        for (const field of fields) {
-          if (field === 'weight' && (set.weight === undefined || set.weight === null)) hasEmpty = true;
-          if (field === 'reps' && (set.reps === undefined || set.reps === null)) hasEmpty = true;
-          if (field === 'time' && (set.time === undefined || set.time === null)) hasEmpty = true;
-          if (field === 'distance' && (set.distance === undefined || set.distance === null)) hasEmpty = true;
-        }
-      }
-    }
-
-    if (hasExerciseWithNoSets) {
-      setShowValidation(true);
-      setValidationMessage('Every exercise needs at least one set');
-      setValidationType('no-sets');
-      return;
-    }
-
-    if (hasEmpty) {
-      setShowValidation(true);
-      setValidationMessage('Fill in all set fields before completing');
-      setValidationType('empty-fields');
-      return;
-    }
-
-    setShowValidation(false);
-    setValidationMessage(null);
-    setValidationType(null);
-    setShowCompleteConfirm(true);
-  }, [exerciseFieldsMap, sessionExercises, allSets]);
+  const handleConfirmComplete = useCallback(async () => {
+    await flushPendingSaves();
+    await complete();
+  }, [complete]);
 
   const handleOpenNotes = useCallback(() => {
     setNotes(activeSession?.notes ?? '');
@@ -352,6 +308,7 @@ export function ActiveSession() {
   }
 
   const existingExerciseIds = sessionExercises.map((e) => e.exerciseId);
+  const actionsDisabled = isLoading || isValidating;
 
   // Title: template name > routine name > "Workout"
   const title = template?.name ?? routine?.name ?? 'Workout';
@@ -359,71 +316,82 @@ export function ActiveSession() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div>
+        <div className={styles.titleBlock}>
           <h1 className={styles.title}>{title}</h1>
-          <div className={styles.meta}>
-            <span>Started {new Date(activeSession.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-          <div className={styles.timerRow}>
-            <span className={styles.timer}>{formatTime(elapsed)}</span>
-            <button
-              className={styles.plateCalcBtn}
-              onClick={() => setIsPlateCalcOpen(true)}
-              title="Plate Calculator"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="2" width="4" height="20" rx="1" />
-                <rect x="10" y="6" width="4" height="12" rx="1" />
-                <rect x="16" y="4" width="4" height="16" rx="1" />
-              </svg>
-              Plates
-            </button>
-          </div>
+          <ElapsedTimer startedAt={activeSession.startedAt} />
         </div>
         <div className={styles.headerActions}>
           <Button
-            variant="ghost"
-            onClick={handleOpenNotes}
-            disabled={isLoading}
-          >
-            {activeSession.notes ? '📝' : '📋'}
-          </Button>
-          <Button
             variant="secondary"
             onClick={() => setShowAbandonConfirm(true)}
-            disabled={isLoading}
+            disabled={actionsDisabled}
+            className={styles.headerBtn}
           >
             Discard
           </Button>
           <Button
             onClick={handleCompleteClick}
-            disabled={isLoading}
+            disabled={actionsDisabled}
+            aria-busy={isValidating}
+            className={styles.headerBtn}
           >
             Complete
           </Button>
         </div>
       </header>
 
-      {validationMessage && (
-        <div className={styles.validationMessage}>
-          <span>{validationMessage}</span>
-          <button className={styles.validationDismiss} onClick={dismissValidation} title="Dismiss">×</button>
+      <div className={styles.toolbar}>
+        <span className={styles.meta}>
+          Started {formatTime(activeSession.startedAt)}
+        </span>
+        <div className={styles.toolbarActions}>
+          <button
+            type="button"
+            className={styles.toolBtn}
+            onClick={handleOpenNotes}
+            disabled={isLoading}
+            title="Workout notes"
+          >
+            <span aria-hidden="true">{activeSession.notes ? '📝' : '📋'}</span>
+            Notes
+          </button>
+          <button
+            type="button"
+            className={styles.toolBtn}
+            onClick={() => setIsPlateCalcOpen(true)}
+            title="Plate Calculator"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="4" y="2" width="4" height="20" rx="1" />
+              <rect x="10" y="6" width="4" height="12" rx="1" />
+              <rect x="16" y="4" width="4" height="16" rx="1" />
+            </svg>
+            Plates
+          </button>
+        </div>
+      </div>
+
+      {validationType && (
+        <div className={styles.validationMessage} role="alert">
+          <span>{VALIDATION_MESSAGES[validationType]}</span>
+          <button className={styles.validationDismiss} onClick={dismissValidation} title="Dismiss" aria-label="Dismiss">×</button>
         </div>
       )}
 
       <div className={styles.exercises}>
         {groupedExercises.map((group) => {
-          if (group.type === 'group' && group.groupType) {
+          if (group.type === 'group' && group.groupType && group.groupId) {
             return (
               <ExerciseGroup
                 key={group.groupId}
+                groupId={group.groupId}
                 groupType={group.groupType}
                 exercises={group.exercises}
                 templateExerciseMap={templateExerciseMap}
                 onRemoveExercise={handleRemoveExercise}
                 onSwitchProgression={switchProgressionLevel}
                 showValidation={showValidation}
-                onUngroup={() => group.groupId && handleUngroup(group.groupId)}
+                onUngroup={handleUngroup}
               />
             );
           }
@@ -459,10 +427,9 @@ export function ActiveSession() {
               key={exercise.id}
               sessionExercise={exercise}
               templateExercise={templateExercise}
-              onRemove={() => handleRemoveExercise(exercise.id)}
+              onRemove={handleRemoveExercise}
               onSwitchProgression={switchProgressionLevel}
-              onMoveUp={standaloneIndex > -1 ? () => handleMoveExercise(exercise.id, -1) : undefined}
-              onMoveDown={standaloneIndex > -1 ? () => handleMoveExercise(exercise.id, 1) : undefined}
+              onMove={standaloneIndex > -1 ? handleMoveExercise : undefined}
               canMoveUp={standaloneIndex > 0}
               canMoveDown={standaloneIndex > -1 && standaloneIndex < standaloneOrder.length - 1}
               showValidation={showValidation}
@@ -568,7 +535,7 @@ export function ActiveSession() {
       <ConfirmDialog
         isOpen={showCompleteConfirm}
         onClose={() => setShowCompleteConfirm(false)}
-        onConfirm={complete}
+        onConfirm={handleConfirmComplete}
         title="Complete Workout"
         message="Mark this workout as complete? This will save all your sets."
         confirmLabel="Complete"

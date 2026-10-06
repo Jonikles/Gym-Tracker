@@ -8,8 +8,6 @@ function startOfDay(ts: number): number {
   return d.getTime();
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /**
  * Auto-skip scheduled workout days that passed with nothing logged.
  *
@@ -67,43 +65,57 @@ export async function autoSkipMissedWorkouts(): Promise<void> {
     const scheduleLength = routine.schedule.length;
     let positionChanged = false;
 
-    for (let dayStart = checkFrom; dayStart < todayStart; dayStart += DAY_MS) {
+    // Step by local calendar date (not +24h) so 23/25-hour DST days don't drift
+    const cursor = new Date(checkFrom);
+    while (cursor.getTime() < todayStart) {
+      const dayStart = cursor.getTime();
+      const dayEnd = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1).getTime();
+
       let scheduleDay: RoutineDay | undefined;
 
       if (routine.type === 'fixed') {
-        const dayIndex = new Date(dayStart).getDay();
+        const dayIndex = cursor.getDay();
         scheduleDay = routine.schedule.find((d) => d.dayIndex === dayIndex);
       } else if (scheduleLength > 0) {
         scheduleDay = routine.schedule[currentPosition % scheduleLength];
       }
 
-      if (scheduleDay?.templateId) {
-        const dayEnd = dayStart + DAY_MS;
-        const hasSessionThatDay = await db.sessions
-          .where('startedAt')
-          .between(dayStart, dayEnd, true, false)
-          .first();
+      const sessionsThatDay = await db.sessions
+        .where('startedAt')
+        .between(dayStart, dayEnd, true, false)
+        .toArray();
 
-        if (!hasSessionThatDay) {
-          const skipTime = dayStart + 12 * 60 * 60 * 1000; // noon that day
-          const skippedSession: Session = {
-            id: crypto.randomUUID(),
-            routineId: routine.id,
-            templateId: scheduleDay.templateId,
-            status: 'skipped',
-            startedAt: skipTime,
-            completedAt: skipTime,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          await db.sessions.add(skippedSession);
+      let skippedInserted = false;
+      if (scheduleDay?.templateId && sessionsThatDay.length === 0) {
+        const skipTime = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 12).getTime(); // noon that day
+        const skippedSession: Session = {
+          id: crypto.randomUUID(),
+          routineId: routine.id,
+          templateId: scheduleDay.templateId,
+          status: 'skipped',
+          startedAt: skipTime,
+          completedAt: skipTime,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        await db.sessions.add(skippedSession);
+        skippedInserted = true;
+      }
+
+      // Rolling routines: completeSession/skipWorkout/markSick already advanced the
+      // position for any day that had a session of this routine, so only advance
+      // here for days nobody acted on — a rest slot that passed, or a scheduled
+      // slot we just auto-skipped.
+      if (routine.type === 'rolling' && scheduleLength > 0) {
+        const hadRoutineSession = sessionsThatDay.some((s) => s.routineId === routine.id);
+        const isRestSlot = !scheduleDay?.templateId;
+        if (!hadRoutineSession && (isRestSlot || skippedInserted)) {
+          currentPosition = (currentPosition + 1) % scheduleLength;
+          positionChanged = true;
         }
       }
 
-      if (routine.type === 'rolling' && scheduleLength > 0) {
-        currentPosition = (currentPosition + 1) % scheduleLength;
-        positionChanged = true;
-      }
+      cursor.setDate(cursor.getDate() + 1);
     }
 
     if (positionChanged) {

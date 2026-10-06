@@ -1,7 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { getSetVolume } from '../utils/volume';
-import type { Session } from '../types';
+import { isRealWorkout, startOfLocalDay, startOfNextLocalDay } from '../utils/session';
+import { loadStreaks, getActiveRoutineForStreaks } from './useStreaks';
+import { useToday } from './useToday';
+import type { Routine, Session } from '../types';
 
 /**
  * Weekly volume data for charts
@@ -46,7 +49,7 @@ export function useWeeklyVolume(days: number) {
     const sessions = await db.sessions
       .where('startedAt')
       .above(startDate)
-      .filter((s) => !!s.completedAt)
+      .filter(isRealWorkout)
       .toArray();
 
     if (sessions.length === 0) return [];
@@ -127,7 +130,7 @@ export function useWorkoutFrequency(days: number) {
     const sessions = await db.sessions
       .where('startedAt')
       .above(startDate)
-      .filter((s) => !!s.completedAt)
+      .filter(isRealWorkout)
       .toArray();
 
     // Group by week
@@ -174,11 +177,11 @@ export function useMuscleDistribution(days: number) {
       sessions = await db.sessions
         .where('startedAt')
         .above(startDate)
-        .filter((s) => !!s.completedAt)
+        .filter(isRealWorkout)
         .toArray();
     } else {
       sessions = await db.sessions
-        .filter((s) => !!s.completedAt)
+        .filter(isRealWorkout)
         .toArray();
     }
 
@@ -241,23 +244,110 @@ export function useMuscleDistribution(days: number) {
 }
 
 /**
+ * Consistency: % of weeks (calendar weeks starting on weekStartDay) that were
+ * "consistent", measured from max(period start, first real workout) — weeks
+ * before the user ever trained don't count against them.
+ *
+ * - Active fixed routine with scheduled days: a week is consistent when the
+ *   number of days with a real workout is >= the scheduled days in that week
+ *   (only counting days inside the measured range, up to today; today only
+ *   counts once it's done; sick days are excused). Weeks with nothing required
+ *   are left out.
+ * - Otherwise: >= 3 real workouts in the week (fewer if the first week is
+ *   partial). The current in-progress week only counts once it's met.
+ */
+function computeConsistencyRate(
+  allSessions: Session[],
+  periodStart: number,
+  today: number,
+  weekStartDay: number,
+  routine: Routine | undefined
+): number {
+  const real = allSessions.filter(isRealWorkout);
+  if (real.length === 0) return 0;
+  const firstReal = Math.min(...real.map((s) => s.startedAt));
+  const effectiveStart = startOfLocalDay(Math.max(periodStart, firstReal));
+  if (effectiveStart > today) return 0;
+
+  const realDays = new Set(real.map((s) => startOfLocalDay(s.startedAt)));
+  const sickDays = new Set(
+    allSessions.filter((s) => s.status === 'sick').map((s) => startOfLocalDay(s.startedAt))
+  );
+
+  const scheduledWeekdays = new Set(
+    routine?.type === 'fixed'
+      ? routine.schedule.filter((d) => d.templateId).map((d) => d.dayIndex)
+      : []
+  );
+  const useFixedRule = scheduledWeekdays.size > 0;
+  const tomorrow = startOfNextLocalDay(today);
+
+  // Align to the start of the week containing effectiveStart
+  const first = new Date(effectiveStart);
+  const offset = (first.getDay() - weekStartDay + 7) % 7;
+  const weekCursor = new Date(first.getFullYear(), first.getMonth(), first.getDate() - offset);
+
+  let totalWeeks = 0;
+  let consistentWeeks = 0;
+
+  while (weekCursor.getTime() <= today) {
+    const weekStart = weekCursor.getTime();
+    const weekEnd = new Date(weekCursor.getFullYear(), weekCursor.getMonth(), weekCursor.getDate() + 7).getTime();
+    const rangeStart = Math.max(weekStart, effectiveStart);
+    const rangeEnd = Math.min(weekEnd, tomorrow); // exclusive
+    const isCurrentWeek = weekEnd > today;
+
+    if (useFixedRule) {
+      let required = 0;
+      let hit = 0;
+      const d = new Date(rangeStart);
+      while (d.getTime() < rangeEnd) {
+        const day = d.getTime();
+        const done = realDays.has(day);
+        if (done) hit++;
+        if (scheduledWeekdays.has(d.getDay()) && !sickDays.has(day) && (day < today || done)) {
+          required++;
+        }
+        d.setDate(d.getDate() + 1);
+      }
+      if (required > 0) {
+        totalWeeks++;
+        if (hit >= required) consistentWeeks++;
+      }
+    } else {
+      const count = real.filter((s) => s.startedAt >= rangeStart && s.startedAt < rangeEnd).length;
+      let daysAvailable = 0;
+      const d = new Date(rangeStart);
+      while (d.getTime() < weekEnd) {
+        daysAvailable++;
+        d.setDate(d.getDate() + 1);
+      }
+      const required = Math.min(3, daysAvailable);
+      const met = count >= required;
+      if (!isCurrentWeek || met) {
+        totalWeeks++;
+        if (met) consistentWeeks++;
+      }
+    }
+
+    weekCursor.setDate(weekCursor.getDate() + 7);
+  }
+
+  return totalWeeks > 0 ? Math.round((consistentWeeks / totalWeeks) * 100) : 0;
+}
+
+/**
  * Get overall stats for a time period.
  * @param days Number of days to look back (0 = all time).
  */
 export function useOverallStats(days: number) {
+  const today = useToday();
   return useLiveQuery(async () => {
     const startDate = getStartDate(days);
 
-    let sessions;
-    if (startDate > 0) {
-      sessions = await db.sessions
-        .where('startedAt')
-        .above(startDate)
-        .filter((s) => !!s.completedAt)
-        .toArray();
-    } else {
-      sessions = await db.sessions.filter((s) => !!s.completedAt).toArray();
-    }
+    // One ordered read of all sessions serves the period stats, the streak and consistency
+    const allSessions = await db.sessions.orderBy('startedAt').toArray();
+    const sessions = allSessions.filter((s) => isRealWorkout(s) && s.startedAt > startDate);
 
     let prs;
     if (startDate > 0) {
@@ -285,9 +375,8 @@ export function useOverallStats(days: number) {
     const totalVolume = sets.reduce((sum, s) => sum + getSetVolume(s), 0);
     const totalSets = sets.length;
 
-    // Average session duration (only sessions with completedAt)
+    // Average session duration
     const durationsMs = sessions
-      .filter((s) => s.completedAt)
       .map((s) => s.completedAt! - s.startedAt)
       .filter((d) => d > 0 && d < 12 * 60 * 60 * 1000); // cap at 12h to exclude outliers
 
@@ -295,58 +384,23 @@ export function useOverallStats(days: number) {
       ? Math.round(durationsMs.reduce((a, b) => a + b, 0) / durationsMs.length / 60000)
       : 0;
 
-    // Streak calculation (always computed from present, regardless of period)
-    // Skipped/sick days aren't workouts — excluding them means a skipped day
-    // is a hard gap that breaks the streak, same as a day with nothing logged.
-    const isStreakEligible = (s: Session) => !!s.completedAt && s.status !== 'skipped' && s.status !== 'sick';
-    const allSessions = days > 0
-      ? await db.sessions.filter(isStreakEligible).toArray()
-      : sessions.filter(isStreakEligible);
+    // Streak (always computed from present, regardless of period) — shared logic
+    // with useStreaks, measured in workouts.
+    const { currentStreak } = await loadStreaks(today, allSessions);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let currentStreak = 0;
-    const checkDate = new Date(today);
-
-    while (true) {
-      const dayStart = checkDate.getTime();
-      const dayEnd = dayStart + 24 * 60 * 60 * 1000;
-      const hasSession = allSessions.some(
-        (s) => s.startedAt >= dayStart && s.startedAt < dayEnd
-      );
-      if (hasSession) {
-        currentStreak += 1;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else if (currentStreak === 0) {
-        checkDate.setDate(checkDate.getDate() - 1);
-        const yesterdayStart = checkDate.getTime();
-        const yesterdayEnd = yesterdayStart + 24 * 60 * 60 * 1000;
-        const hasYesterday = allSessions.some(
-          (s) => s.startedAt >= yesterdayStart && s.startedAt < yesterdayEnd
-        );
-        if (hasYesterday) {
-          currentStreak = 1;
-          checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-          break;
-        }
-      } else {
-        break;
-      }
-    }
-
-    // Consistency: % of weeks with ≥3 workouts
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
-    const periodStart = startDate > 0 ? startDate : (sessions.length > 0 ? Math.min(...sessions.map(s => s.startedAt)) : Date.now());
-    const totalWeeks = Math.max(1, Math.ceil((Date.now() - periodStart) / weekMs));
-    let consistentWeeks = 0;
-    for (let i = 0; i < totalWeeks; i++) {
-      const wStart = periodStart + i * weekMs;
-      const wEnd = wStart + weekMs;
-      const weekSessions = sessions.filter(s => s.startedAt >= wStart && s.startedAt < wEnd);
-      if (weekSessions.length >= 3) consistentWeeks++;
-    }
-    const consistencyRate = totalWeeks > 0 ? Math.round((consistentWeeks / totalWeeks) * 100) : 0;
+    // Consistency
+    const [{ routine }, weekStartSetting] = await Promise.all([
+      getActiveRoutineForStreaks(),
+      db.settings.get('weekStartDay'),
+    ]);
+    const weekStartDay = typeof weekStartSetting?.value === 'number' ? weekStartSetting.value : 0;
+    const consistencyRate = computeConsistencyRate(
+      allSessions,
+      startDate > 0 ? startOfLocalDay(startDate) : 0,
+      today,
+      weekStartDay,
+      routine
+    );
 
     return {
       totalSessions: sessions.length,
@@ -357,7 +411,7 @@ export function useOverallStats(days: number) {
       avgDurationMin,
       consistencyRate,
     };
-  }, [days]);
+  }, [days, today]);
 }
 
 /**
@@ -388,11 +442,11 @@ export function useMuscleExerciseBreakdown(
         sessions = await db.sessions
           .where('startedAt')
           .above(startDate)
-          .filter((s) => !!s.completedAt)
+          .filter(isRealWorkout)
           .toArray();
       } else {
         sessions = await db.sessions
-          .filter((s) => !!s.completedAt)
+          .filter(isRealWorkout)
           .toArray();
       }
 

@@ -13,7 +13,7 @@
 .nameInput {
   flex: 1;
   min-width: 0;
-  font-size: var(--text-lg);
+  font-size: var(--text-lg); /* ≥16px: no iOS zoom */
   font-weight: 600;
   font-family: inherit;
   color: var(--color-text);
@@ -54,4 +54,8 @@
 .error {
   color: var(--color-error);
   font-size: var(--text-sm);
+}
+
+.backBtn {
+  min-height: 44px;
 }

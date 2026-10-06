@@ -1,21 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { db, SCHEMA_VERSION } from '../db';
 import type { SettingsMap } from '../types';
 
 /**
- * Default settings values
- * v1.2: Removed theme (dark mode only)
+ * Default settings values (also used by seed.ts on fresh installs)
  * v1.4: Added activeRoutineId
  */
 export const defaultSettings: SettingsMap = {
   weightIncrement: 2.5,
   weekStartDay: 0, // Sunday
   activeRoutineId: null, // v1.4: No active routine by default
-  restTimerDuration: 90, // 90 seconds default rest
-  restTimerSound: true,
-  restTimerVibrate: true,
   bodyweight: 0, // 0 = not set
-  theme: 'dark',
   activeRoutineSetAt: null,
   lastAutoSkipCheckAt: null,
 };
@@ -84,7 +79,7 @@ export async function resetSettings(): Promise<void> {
  * Export all data as JSON
  */
 export async function exportData(): Promise<string> {
-  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings, measurements] =
+  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings] =
     await Promise.all([
       db.exercises.toArray(),
       db.templates.toArray(),
@@ -94,11 +89,10 @@ export async function exportData(): Promise<string> {
       db.sets.toArray(),
       db.prs.toArray(),
       db.settings.toArray(),
-      db.measurements.toArray(),
     ]);
 
   const data = {
-    version: 6,
+    version: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     exercises,
     templates,
@@ -108,7 +102,6 @@ export async function exportData(): Promise<string> {
     sets,
     prs,
     settings,
-    measurements,
   };
 
   return JSON.stringify(data, null, 2);
@@ -121,7 +114,13 @@ export async function importData(json: string): Promise<{ success: boolean; mess
   try {
     const data = JSON.parse(json);
 
-    if (!data.version || ![1, 2, 3, 4, 5, 6].includes(data.version)) {
+    // Accept any export from schema v1 up to the current schema version
+    if (
+      typeof data.version !== 'number' ||
+      !Number.isInteger(data.version) ||
+      data.version < 1 ||
+      data.version > SCHEMA_VERSION
+    ) {
       return { success: false, message: 'Invalid or unsupported data format' };
     }
 
@@ -142,7 +141,6 @@ export async function importData(json: string): Promise<{ success: boolean; mess
     validateArray('sets', data.sets);
     validateArray('prs', data.prs);
     validateArray('settings', data.settings);
-    validateArray('measurements', data.measurements);
 
     // Validate required fields on key entities
     if (Array.isArray(data.exercises)) {
@@ -167,30 +165,35 @@ export async function importData(json: string): Promise<{ success: boolean; mess
       return { success: false, message: `Invalid data: ${errors.join('; ')}` };
     }
 
-    // Validation passed — now clear and import
-    await Promise.all([
-      db.exercises.clear(),
-      db.templates.clear(),
-      db.routines.clear(),
-      db.sessions.clear(),
-      db.sessionExercises.clear(),
-      db.sets.clear(),
-      db.prs.clear(),
-      db.settings.clear(),
-      db.measurements.clear(),
-    ]);
+    // Validation passed — now clear and import atomically: if any write fails,
+    // the whole transaction rolls back and the existing data is left untouched.
+    await db.transaction(
+      'rw',
+      [db.exercises, db.templates, db.routines, db.sessions, db.sessionExercises, db.sets, db.prs, db.settings],
+      async () => {
+        await Promise.all([
+          db.exercises.clear(),
+          db.templates.clear(),
+          db.routines.clear(),
+          db.sessions.clear(),
+          db.sessionExercises.clear(),
+          db.sets.clear(),
+          db.prs.clear(),
+          db.settings.clear(),
+        ]);
 
-    await Promise.all([
-      data.exercises?.length > 0 && db.exercises.bulkAdd(data.exercises),
-      data.templates?.length > 0 && db.templates.bulkAdd(data.templates),
-      data.routines?.length > 0 && db.routines.bulkAdd(data.routines),
-      data.sessions?.length > 0 && db.sessions.bulkAdd(data.sessions),
-      data.sessionExercises?.length > 0 && db.sessionExercises.bulkAdd(data.sessionExercises),
-      data.sets?.length > 0 && db.sets.bulkAdd(data.sets),
-      data.prs?.length > 0 && db.prs.bulkAdd(data.prs),
-      data.settings?.length > 0 && db.settings.bulkAdd(data.settings),
-      data.measurements?.length > 0 && db.measurements.bulkAdd(data.measurements),
-    ]);
+        await Promise.all([
+          data.exercises?.length > 0 && db.exercises.bulkAdd(data.exercises),
+          data.templates?.length > 0 && db.templates.bulkAdd(data.templates),
+          data.routines?.length > 0 && db.routines.bulkAdd(data.routines),
+          data.sessions?.length > 0 && db.sessions.bulkAdd(data.sessions),
+          data.sessionExercises?.length > 0 && db.sessionExercises.bulkAdd(data.sessionExercises),
+          data.sets?.length > 0 && db.sets.bulkAdd(data.sets),
+          data.prs?.length > 0 && db.prs.bulkAdd(data.prs),
+          data.settings?.length > 0 && db.settings.bulkAdd(data.settings),
+        ]);
+      }
+    );
 
     return { success: true, message: 'Data imported successfully' };
   } catch (error) {
@@ -226,6 +229,5 @@ export async function factoryReset(): Promise<void> {
     db.sets.clear(),
     db.prs.clear(),
     db.settings.clear(),
-    db.measurements.clear(),
   ]);
 }
