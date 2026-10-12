@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template } from '../types';
+import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template, Task } from '../types';
 
 /**
  * GymTrackerDB - Dexie database instance with all tables
@@ -13,6 +13,7 @@ export class GymTrackerDB extends Dexie {
   sets!: Table<Set, string>;
   prs!: Table<PR, string>;
   settings!: Table<Setting, string>;
+  tasks!: Table<Task, string>;
 
   constructor() {
     super('GymTrackerDB');
@@ -59,7 +60,7 @@ export class GymTrackerDB extends Dexie {
       console.log('Upgrading database to version 3...');
     });
 
-    // Version 4 - Added progressionMemberships to exercises, progression PR type
+    // Version 4 - Added tasks table
     this.version(4).stores({
       exercises: 'id, name, parentId, *muscleGroups, equipment, isArchived',
       templates: 'id, name, isArchived',
@@ -69,76 +70,10 @@ export class GymTrackerDB extends Dexie {
       sets: 'id, sessionExerciseId, order',
       prs: 'id, exerciseId, type, achievedAt',
       settings: 'key',
-    }).upgrade(async () => {
-      console.log('Upgrading database to version 4 - progression exercises...');
-    });
-
-    // Version 5 - Added progressionId index to sessionExercises for progression slots
-    this.version(5).stores({
-      exercises: 'id, name, parentId, *muscleGroups, equipment, isArchived',
-      templates: 'id, name, isArchived',
-      routines: 'id, name, type, isArchived',
-      sessions: 'id, routineId, templateId, startedAt, completedAt',
-      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
-      sets: 'id, sessionExerciseId, order',
-      prs: 'id, exerciseId, type, achievedAt',
-      settings: 'key',
-    }).upgrade(async () => {
-      console.log('Upgrading database to version 5 - progression slots...');
-    });
-
-    // Version 6 - Added body measurements table
-    this.version(6).stores({
-      exercises: 'id, name, parentId, *muscleGroups, equipment, isArchived',
-      templates: 'id, name, isArchived',
-      routines: 'id, name, type, isArchived',
-      sessions: 'id, routineId, templateId, startedAt, completedAt',
-      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
-      sets: 'id, sessionExerciseId, order',
-      prs: 'id, exerciseId, type, achievedAt',
-      settings: 'key',
-      measurements: 'id, date', // NEW table
-    }).upgrade(async () => {
-      console.log('Upgrading database to version 6 - body measurements...');
-    });
-
-    // Version 7 - Removed archive feature (isArchived) entirely
-    this.version(7).stores({
-      exercises: 'id, name, parentId, *muscleGroups, equipment',
-      templates: 'id, name',
-      routines: 'id, name, type',
-      sessions: 'id, routineId, templateId, startedAt, completedAt',
-      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
-      sets: 'id, sessionExerciseId, order',
-      prs: 'id, exerciseId, type, achievedAt',
-      settings: 'key',
-      measurements: 'id, date',
-    }).upgrade(async (tx) => {
-      console.log('Upgrading database to version 7 - removing archive feature...');
-      await tx.table('exercises').toCollection().modify((e) => { delete e.isArchived; });
-      await tx.table('templates').toCollection().modify((t) => { delete t.isArchived; });
-      await tx.table('routines').toCollection().modify((r) => { delete r.isArchived; });
-    });
-
-    // Version 8 - Added setId index to prs (so PRs can be found/deleted by set
-    // without full-table scans, and cleaned up when their sets are deleted).
-    // Dropped the measurements table (body measurements feature was removed).
-    this.version(8).stores({
-      exercises: 'id, name, parentId, *muscleGroups, equipment',
-      templates: 'id, name',
-      routines: 'id, name, type',
-      sessions: 'id, routineId, templateId, startedAt, completedAt',
-      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
-      sets: 'id, sessionExerciseId, order',
-      prs: 'id, exerciseId, type, achievedAt, setId',
-      settings: 'key',
-      measurements: null,
+      tasks: 'id, isCompleted, createdAt, exerciseId, dueExerciseId',
     });
   }
 }
-
-/** Current Dexie schema version (keep in sync with the highest this.version() above) */
-export const SCHEMA_VERSION = 8;
 
 // Single database instance
 export const db = new GymTrackerDB();
