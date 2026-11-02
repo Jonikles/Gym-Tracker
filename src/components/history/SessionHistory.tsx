@@ -7,6 +7,7 @@ import { db } from '../../db';
 import type { Run, Session } from '../../types';
 import { getSetVolume } from '../../utils/volume';
 import { RunCard } from '../running';
+import { useRunRecords } from '../../hooks/useRuns';
 import { CalendarView } from './CalendarView';
 import { HistoryFilterPanel } from './HistoryFilterPanel';
 import { HistoryMoreMenu } from './HistoryMoreMenu';
@@ -190,6 +191,7 @@ export function SessionHistory() {
   // Sessions and runs in one list, ordered by the chosen sort. Runs aren't
   // selectable (bulk delete / compare are for gym sessions), so selection hides them.
   const runs = useMemo(() => (selectionMode ? [] : f.filteredRuns ?? []), [selectionMode, f.filteredRuns]);
+  const runRecords = useRunRecords();
   const { sortBy, sessionPRCounts } = f;
   const items = useMemo<HistoryItem[]>(() => {
     const sessionItems: HistoryItem[] = sessions.map((s) => ({
@@ -359,7 +361,12 @@ export function SessionHistory() {
               <h3 className={`eyebrow ${styles.dateHeader}`}>{group.label}</h3>
               {group.items.map((item) =>
                 item.kind === 'run' ? (
-                  <RunCard key={item.id} run={item.run} onClick={() => navigate(`/running/${item.id}`)} />
+                  <RunCard
+                    key={item.id}
+                    run={item.run}
+                    records={runRecords?.get(item.id)}
+                    onClick={() => navigate(`/running/${item.id}`)}
+                  />
                 ) : (
                   <SessionCard
                     key={item.id}

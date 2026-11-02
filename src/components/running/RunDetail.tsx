@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmDialog } from '../common';
 import { formatLongDate, formatTime } from '../common/format';
-import { deleteRun, updateRunNotes, useRun } from '../../hooks/useRuns';
+import { deleteRun, updateRunNotes, useRun, useRunRecords } from '../../hooks/useRuns';
 import { RUN_KIND_LABELS, formatDistance, formatPace, formatRunTime, paceSecondsPerKm, runPace } from '../../utils/run';
 import type { Run } from '../../types';
 import { PoweredByStrava } from './StravaSync';
@@ -107,6 +107,7 @@ function NotesEditor({ run }: { run: Run }) {
 export function RunDetail({ runId }: { runId: string }) {
   const navigate = useNavigate();
   const run = useRun(runId);
+  const records = useRunRecords()?.get(runId);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (run === undefined) return null;
@@ -139,6 +140,9 @@ export function RunDetail({ runId }: { runId: string }) {
           {RUN_KIND_LABELS[run.kind]} · {formatLongDate(run.startedAt)} · {formatTime(run.startedAt)}
         </span>
         <h1 className="page-title">{run.name}</h1>
+        {records && records.length > 0 && (
+          <span className={`chip chip-pr ${styles.recordChip}`}>🏆 New best: {records.join(', ')}</span>
+        )}
       </header>
 
       <div className={`surface ${styles.statGrid}`}>

@@ -9,10 +9,12 @@ interface RunCardProps {
   onClick: () => void;
   /** Show the date instead of just the time (lists not grouped by day) */
   showDate?: boolean;
+  /** Best times this run set, e.g. ["5 km"] */
+  records?: string[];
 }
 
 /** List card: name, when, distance · time · pace */
-export const RunCard = memo(function RunCard({ run, onClick, showDate }: RunCardProps) {
+export const RunCard = memo(function RunCard({ run, onClick, showDate, records }: RunCardProps) {
   const when = showDate
     ? new Date(run.startedAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
     : formatTime(run.startedAt);
@@ -25,6 +27,11 @@ export const RunCard = memo(function RunCard({ run, onClick, showDate }: RunCard
         <span className={styles.runTopRow}>
           <span className={styles.runName}>{run.name}</span>
           {run.kind !== 'road' && <span className="chip">{RUN_KIND_LABELS[run.kind]}</span>}
+          {records && records.length > 0 && (
+            <span className={`chip chip-pr ${styles.recordChip}`} title={`New best: ${records.join(', ')}`}>
+              🏆 {records.length === 1 ? records[0] : records.length}
+            </span>
+          )}
         </span>
         <span className={`num ${styles.runWhen}`}>{when}</span>
         <span className={styles.runStats}>

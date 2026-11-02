@@ -15,6 +15,7 @@ export const defaultSettings: SettingsMap = {
   stravaAuth: null,
   stravaPendingState: null,
   stravaLastSyncAt: null,
+  runPlan: null,
 };
 
 const isStravaKey = (key: string) => (STRAVA_SETTING_KEYS as readonly string[]).includes(key);

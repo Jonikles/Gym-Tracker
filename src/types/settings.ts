@@ -21,6 +21,18 @@ export interface SettingsMap {
   stravaAuth: StravaAuth | null; // Strava connection (device-only: never exported or reset)
   stravaPendingState: string | null; // Random state of a sign-in in progress
   stravaLastSyncAt: number | null; // Start time (ms) of the newest synced Strava run
+  runPlan: RunPlanState | null; // Active running plan, if any
+}
+
+/**
+ * Progress through a running plan. Sessions are done in order: each day with a
+ * run (on/after the start) or a manual mark completes the next one.
+ */
+export interface RunPlanState {
+  planId: string;
+  startedAt: number; // local midnight of the first plan day
+  days: number[]; // training weekdays, 0 (Sun) – 6 (Sat)
+  marks: { date: number; kind: 'done' | 'skipped' }[]; // date = local midnight
 }
 
 /**

@@ -11,6 +11,7 @@ function describeResult(r: SyncResult): string {
   const parts: string[] = [];
   if (r.added > 0) parts.push(`${r.added} new run${r.added === 1 ? '' : 's'}`);
   if (r.added === 0) parts.push('Up to date');
+  if (r.newRecords.length > 0) parts.push(`🏆 new best ${r.newRecords.join(', ')}`);
   if (r.detailsPending > 0) parts.push(`splits for ${r.detailsPending} more on next sync`);
   return parts.join(' · ');
 }

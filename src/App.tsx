@@ -24,6 +24,7 @@ const loadSettings = () => import('./pages/Settings');
 const loadTasks = () => import('./pages/Tasks');
 const loadRunning = () => import('./pages/Running');
 const loadStravaCallback = () => import('./pages/StravaCallback');
+const loadRunTimer = () => import('./pages/RunTimer');
 const loadNotFound = () => import('./pages/NotFound');
 
 const PAGE_LOADERS: Array<() => Promise<unknown>> = [
@@ -56,6 +57,7 @@ const Progressions = lazy(() => loadProgressions().then(m => ({ default: m.Progr
 const Tasks = lazy(() => loadTasks().then(m => ({ default: m.Tasks })));
 const Running = lazy(() => loadRunning().then(m => ({ default: m.Running })));
 const StravaCallback = lazy(() => loadStravaCallback().then(m => ({ default: m.StravaCallback })));
+const RunTimer = lazy(() => loadRunTimer().then(m => ({ default: m.RunTimer })));
 const Routines = lazy(() => loadRoutines().then(m => ({ default: m.Routines })));
 const Workout = lazy(() => loadWorkout().then(m => ({ default: m.Workout })));
 const History = lazy(() => loadHistory().then(m => ({ default: m.History })));
@@ -154,6 +156,7 @@ const router = createBrowserRouter([
       { path: '/analytics', element: <Analytics /> },
       { path: '/tasks', element: <Tasks /> },
       { path: '/running', element: <Running /> },
+      { path: '/running/timer', element: <RunTimer /> },
       { path: '/running/:runId', element: <Running /> },
       { path: '/strava-callback', element: <StravaCallback /> },
       { path: '/settings', element: <Settings /> },

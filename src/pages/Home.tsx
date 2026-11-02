@@ -16,6 +16,7 @@ import { useToday } from '../hooks/useToday';
 import { db } from '../db';
 import { isRealWorkout, runAsSession, startOfLocalDay } from '../utils/session';
 import { formatDistance } from '../utils/run';
+import { HomePlanCard } from '../components/running/RunPlan';
 import type { Routine, Session, Template, Set as WorkoutSet } from '../types';
 import { formatShortDate, formatTime } from '../components/common/format';
 import styles from './Home.module.css';
@@ -656,6 +657,8 @@ export function Home() {
           or start a blank workout
         </button>
       )}
+
+      <HomePlanCard className={styles.section} />
 
       {weekDays && <WeekStrip days={weekDays} />}
 

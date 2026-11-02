@@ -1,6 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Run, RunKind } from '../types';
+import { computeRunRecords } from '../utils/runStats';
+
+/** runId → best-time distances that run set (e.g. ["5 km"]) */
+export function useRunRecords(): Map<string, string[]> | undefined {
+  return useLiveQuery(async () => computeRunRecords(await db.runs.toArray()), []);
+}
 
 /** All runs, newest first (`undefined` while loading) */
 export function useRuns(): Run[] | undefined {

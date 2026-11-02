@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Button, SkeletonList } from '../common';
 import { useRuns } from '../../hooks/useRuns';
 import { formatDistance } from '../../utils/run';
+import { computeRunRecords } from '../../utils/runStats';
+import { RunningStats } from './RunningStats';
+import { RunPlanSection } from './RunPlan';
 import type { Run } from '../../types';
 import { AddRunModal } from './AddRunModal';
 import { RunCard } from './RunCard';
@@ -39,15 +42,20 @@ export function RunList() {
   const runs = useRuns();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const groups = useMemo(() => groupByMonth(runs ?? []), [runs]);
+  const records = useMemo(() => computeRunRecords(runs ?? []), [runs]);
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h1 className="page-title">Running</h1>
-        <Button variant="secondary" size="sm" onClick={() => setIsAddOpen(true)}>+ Add run</Button>
+        <div className={styles.headerActions}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/running/timer')}>Timer</Button>
+          <Button variant="secondary" size="sm" onClick={() => setIsAddOpen(true)}>+ Add run</Button>
+        </div>
       </header>
 
       <StravaSync />
+      <RunPlanSection />
 
       {runs === undefined ? (
         <SkeletonList count={4} lines={2} />
@@ -55,6 +63,7 @@ export function RunList() {
         <p className={styles.empty}>No runs yet. Sync from Strava or add one by hand.</p>
       ) : (
         <div className={styles.list}>
+          <RunningStats runs={runs} />
           {groups.map(([key, g]) => (
             <section key={key} className={styles.monthGroup} aria-label={g.label}>
               <div className={styles.monthHeader}>
@@ -64,7 +73,13 @@ export function RunList() {
                 </span>
               </div>
               {g.runs.map((run) => (
-                <RunCard key={run.id} run={run} showDate onClick={() => navigate(`/running/${run.id}`)} />
+                <RunCard
+                  key={run.id}
+                  run={run}
+                  showDate
+                  records={records.get(run.id)}
+                  onClick={() => navigate(`/running/${run.id}`)}
+                />
               ))}
             </section>
           ))}

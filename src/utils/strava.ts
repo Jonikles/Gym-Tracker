@@ -1,5 +1,6 @@
 import { db } from '../db';
 import type { Run, RunBestEffort, RunKind, RunSplit, SettingsMap, StravaAuth } from '../types';
+import { computeRunRecords } from './runStats';
 
 /**
  * Strava connection + run sync. All Strava traffic goes through the app's
@@ -243,6 +244,8 @@ export interface SyncResult {
   updated: number;
   /** Runs still waiting for splits / best efforts (fetched on later syncs) */
   detailsPending: number;
+  /** Best times set by the newly added runs, e.g. ["5 km"] */
+  newRecords: string[];
 }
 
 /** Pull new runs from Strava, then fill in splits / best efforts for a batch of runs */
@@ -256,6 +259,7 @@ export async function syncStravaRuns(): Promise<SyncResult> {
   let added = 0;
   let updated = 0;
   let newest = lastSyncAt ?? 0;
+  const addedIds = new Set<string>();
 
   for (let page = 1; page <= 20; page++) {
     const activities = await stravaGet<StravaSummaryActivity[]>('/athlete/activities', {
@@ -272,8 +276,10 @@ export async function syncStravaRuns(): Promise<SyncResult> {
         await db.runs.update(existing.id, { ...fields, updatedAt: now });
         updated++;
       } else {
+        const id = crypto.randomUUID();
+        addedIds.add(id);
         await db.runs.add({
-          id: crypto.randomUUID(),
+          id,
           source: 'strava',
           stravaId: a.id,
           ...fields,
@@ -311,5 +317,13 @@ export async function syncStravaRuns(): Promise<SyncResult> {
     }
   }
 
-  return { added, updated, detailsPending: needDetails.length - fetched };
+  // Best times set by this sync's new runs (needs their best efforts, fetched above)
+  const newRecords = new Set<string>();
+  if (addedIds.size > 0) {
+    for (const [runId, labels] of computeRunRecords(await db.runs.toArray())) {
+      if (addedIds.has(runId)) labels.forEach((l) => newRecords.add(l));
+    }
+  }
+
+  return { added, updated, detailsPending: needDetails.length - fetched, newRecords: [...newRecords] };
 }
