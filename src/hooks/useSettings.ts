@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, SCHEMA_VERSION } from '../db';
-import type { SettingsMap } from '../types';
+import { STRAVA_SETTING_KEYS, type SettingsMap } from '../types';
 
 /**
  * Default settings values (also used by seed.ts on fresh installs)
@@ -12,7 +12,12 @@ export const defaultSettings: SettingsMap = {
   bodyweight: 0, // 0 = not set
   activeRoutineSetAt: null,
   lastAutoSkipCheckAt: null,
+  stravaAuth: null,
+  stravaPendingState: null,
+  stravaLastSyncAt: null,
 };
+
+const isStravaKey = (key: string) => (STRAVA_SETTING_KEYS as readonly string[]).includes(key);
 
 /**
  * Get a single setting value
@@ -68,17 +73,17 @@ export async function updateSetting<K extends keyof SettingsMap>(
 }
 
 /**
- * Reset all settings to defaults
+ * Reset all settings to defaults (the Strava connection is kept)
  */
 export async function resetSettings(): Promise<void> {
-  await db.settings.clear();
+  await db.settings.filter((s) => !isStravaKey(s.key)).delete();
 }
 
 /**
  * Export all data as JSON
  */
 export async function exportData(): Promise<string> {
-  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings, tasks] =
+  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings, tasks, runs] =
     await Promise.all([
       db.exercises.toArray(),
       db.templates.toArray(),
@@ -87,8 +92,10 @@ export async function exportData(): Promise<string> {
       db.sessionExercises.toArray(),
       db.sets.toArray(),
       db.prs.toArray(),
-      db.settings.toArray(),
+      // Strava tokens stay on this device — never in a backup file
+      db.settings.filter((s) => !isStravaKey(s.key)).toArray(),
       db.tasks.toArray(),
+      db.runs.toArray(),
     ]);
 
   const data = {
@@ -103,6 +110,7 @@ export async function exportData(): Promise<string> {
     prs,
     settings,
     tasks,
+    runs,
   };
 
   return JSON.stringify(data, null, 2);
@@ -143,6 +151,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
     validateArray('prs', data.prs);
     validateArray('settings', data.settings);
     validateArray('tasks', data.tasks);
+    validateArray('runs', data.runs);
 
     // Validate required fields on key entities
     if (Array.isArray(data.exercises)) {
@@ -171,7 +180,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
     // the whole transaction rolls back and the existing data is left untouched.
     await db.transaction(
       'rw',
-      [db.exercises, db.templates, db.routines, db.sessions, db.sessionExercises, db.sets, db.prs, db.settings, db.tasks],
+      [db.exercises, db.templates, db.routines, db.sessions, db.sessionExercises, db.sets, db.prs, db.settings, db.tasks, db.runs],
       async () => {
         await Promise.all([
           db.exercises.clear(),
@@ -181,9 +190,16 @@ export async function importData(json: string): Promise<{ success: boolean; mess
           db.sessionExercises.clear(),
           db.sets.clear(),
           db.prs.clear(),
-          db.settings.clear(),
+          // Keep this device's Strava connection, but re-sync from scratch so
+          // Strava runs missing from the backup come back on the next sync
+          db.settings.filter((s) => !isStravaKey(s.key) || s.key === 'stravaLastSyncAt').delete(),
           db.tasks.clear(),
+          db.runs.clear(),
         ]);
+
+        const importedSettings = Array.isArray(data.settings)
+          ? data.settings.filter((s: { key?: unknown }) => typeof s.key === 'string' && !isStravaKey(s.key))
+          : [];
 
         await Promise.all([
           data.exercises?.length > 0 && db.exercises.bulkAdd(data.exercises),
@@ -193,8 +209,9 @@ export async function importData(json: string): Promise<{ success: boolean; mess
           data.sessionExercises?.length > 0 && db.sessionExercises.bulkAdd(data.sessionExercises),
           data.sets?.length > 0 && db.sets.bulkAdd(data.sets),
           data.prs?.length > 0 && db.prs.bulkAdd(data.prs),
-          data.settings?.length > 0 && db.settings.bulkAdd(data.settings),
+          importedSettings.length > 0 && db.settings.bulkAdd(importedSettings),
           data.tasks?.length > 0 && db.tasks.bulkAdd(data.tasks),
+          data.runs?.length > 0 && db.runs.bulkAdd(data.runs),
         ]);
       }
     );
@@ -217,6 +234,8 @@ export async function clearAllData(): Promise<void> {
     db.sessionExercises.clear(),
     db.sets.clear(),
     db.prs.clear(),
+    db.runs.clear(),
+    db.settings.delete('stravaLastSyncAt'), // so Strava runs can be synced again
   ]);
 }
 
@@ -234,5 +253,6 @@ export async function factoryReset(): Promise<void> {
     db.prs.clear(),
     db.settings.clear(),
     db.tasks.clear(),
+    db.runs.clear(),
   ]);
 }

@@ -1,5 +1,20 @@
 import { db } from '../db';
-import type { Session, SessionExercise } from '../types';
+import type { Run, Session, SessionExercise } from '../types';
+
+/**
+ * A run viewed as a completed workout session, so day-based logic (streaks,
+ * the week strip) counts runs like gym workouts.
+ */
+export function runAsSession(run: Run): Session {
+  return {
+    id: run.id,
+    status: 'completed',
+    startedAt: run.startedAt,
+    completedAt: run.startedAt + (run.elapsedTime ?? run.movingTime) * 1000,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
+  };
+}
 
 /**
  * A "real" workout: a completed session that isn't a skipped or sick placeholder.

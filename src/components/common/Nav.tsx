@@ -5,7 +5,7 @@ import styles from './Nav.module.css';
 
 type IconName =
   | 'home' | 'workout' | 'history' | 'progress' | 'analytics' | 'more'
-  | 'exercises' | 'routines' | 'progressions' | 'templates' | 'tasks' | 'settings' | 'chevron';
+  | 'exercises' | 'routines' | 'progressions' | 'templates' | 'tasks' | 'running' | 'settings' | 'chevron';
 
 /** Simple 24px stroke icons (inline, no icon library) */
 const ICON_PATHS: Record<IconName, ReactNode> = {
@@ -71,6 +71,14 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
       <path d="M12.5 7h7.5M12.5 14h7.5M4.5 20h15.5" />
     </>
   ),
+  running: (
+    <>
+      <circle cx="14.5" cy="4.5" r="2" />
+      <path d="m9 21 2.5-5.5 3 2.5V22" />
+      <path d="M6 12.5 8.5 9l4-1 2.5 3.5 3 1" />
+      <path d="m12.5 8-1 7.5" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" />
@@ -101,6 +109,7 @@ function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
 
 /** Secondary links shown in the "More" sheet */
 const secondaryLinks: { to: string; label: string; icon: IconName }[] = [
+  { to: '/running', label: 'Running', icon: 'running' },
   { to: '/exercises', label: 'Exercises', icon: 'exercises' },
   { to: '/routines', label: 'Routines', icon: 'routines' },
   { to: '/progressions', label: 'Progressions', icon: 'progressions' },

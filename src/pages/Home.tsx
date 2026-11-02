@@ -14,7 +14,8 @@ import { useSetting } from '../hooks/useSettings';
 import { useStreaks } from '../hooks/useStreaks';
 import { useToday } from '../hooks/useToday';
 import { db } from '../db';
-import { isRealWorkout, startOfLocalDay } from '../utils/session';
+import { isRealWorkout, runAsSession, startOfLocalDay } from '../utils/session';
+import { formatDistance } from '../utils/run';
 import type { Routine, Session, Template, Set as WorkoutSet } from '../types';
 import { formatShortDate, formatTime } from '../components/common/format';
 import styles from './Home.module.css';
@@ -197,7 +198,11 @@ function useWeekStrip(weekStartDay: number, routine: Routine | undefined, today:
     const weekStart = days[0].getTime();
     const weekEnd = new Date(t.getFullYear(), t.getMonth(), t.getDate() - diff + 7).getTime();
 
-    const sessions = await db.sessions.where('startedAt').between(weekStart, weekEnd, true, false).toArray();
+    const [gymSessions, runs] = await Promise.all([
+      db.sessions.where('startedAt').between(weekStart, weekEnd, true, false).toArray(),
+      db.runs.where('startedAt').between(weekStart, weekEnd, true, false).toArray(),
+    ]);
+    const sessions = [...gymSessions, ...runs.map(runAsSession)];
     const byDay = new Map<number, Session[]>();
     for (const s of sessions) {
       const key = startOfLocalDay(s.startedAt);
@@ -231,15 +236,33 @@ function useWeekStrip(weekStartDay: number, routine: Routine | undefined, today:
 
 interface LastWorkoutInfo {
   id: string;
+  href: string;
   name: string;
   startedAt: number;
   duration: number | null;
   exerciseCount: number;
+  /** Runs: distance in meters (shown instead of the exercise count) */
+  distance?: number;
 }
 
+/** The most recent gym workout or run */
 function useLastWorkout(): LastWorkoutInfo | null | undefined {
   return useLiveQuery(async () => {
-    const last = await db.sessions.orderBy('startedAt').reverse().filter(isRealWorkout).first();
+    const [last, lastRun] = await Promise.all([
+      db.sessions.orderBy('startedAt').reverse().filter(isRealWorkout).first(),
+      db.runs.orderBy('startedAt').last(),
+    ]);
+    if (lastRun && (!last || lastRun.startedAt > last.startedAt)) {
+      return {
+        id: lastRun.id,
+        href: `/running/${lastRun.id}`,
+        name: lastRun.name,
+        startedAt: lastRun.startedAt,
+        duration: lastRun.movingTime * 1000,
+        exerciseCount: 0,
+        distance: lastRun.distance,
+      };
+    }
     if (!last) return null;
     const [template, exerciseCount] = await Promise.all([
       last.templateId ? db.templates.get(last.templateId) : Promise.resolve(undefined),
@@ -247,6 +270,7 @@ function useLastWorkout(): LastWorkoutInfo | null | undefined {
     ]);
     return {
       id: last.id,
+      href: `/history/${last.id}`,
       name: template?.name ?? 'Workout',
       startedAt: last.startedAt,
       duration: last.completedAt ? last.completedAt - last.startedAt : null,
@@ -640,11 +664,12 @@ export function Home() {
       {showLastWorkout && lastWorkout && (
         <section className={styles.section} aria-label="Last workout">
           <h2 className="section-title">Last workout</h2>
-          <Link to={`/history/${lastWorkout.id}`} className={`surface ${styles.lastCard}`}>
+          <Link to={lastWorkout.href} className={`surface ${styles.lastCard}`}>
             <div className={styles.lastMain}>
               <span className={styles.lastName}>{lastWorkout.name}</span>
               <span className={styles.lastMeta}>
                 {formatRelativeDay(lastWorkout.startedAt, today)}
+                {lastWorkout.distance != null && <> · <span className="num">{formatDistance(lastWorkout.distance)}</span></>}
                 {lastWorkout.duration != null && <> · <span className="num">{formatDurationMs(lastWorkout.duration)}</span></>}
                 {lastWorkout.exerciseCount > 0 && (
                   <> · <span className="num">{lastWorkout.exerciseCount}</span> exercise{lastWorkout.exerciseCount === 1 ? '' : 's'}</>

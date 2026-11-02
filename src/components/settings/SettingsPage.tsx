@@ -9,6 +9,7 @@ import {
   clearAllData,
   factoryReset,
 } from '../../hooks/useSettings';
+import { disconnectStrava, startStravaConnect } from '../../utils/strava';
 import styles from './Settings.module.css';
 
 /**
@@ -96,9 +97,22 @@ export function SettingsPage() {
   const settings = useSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmAction, setConfirmAction] = useState<
-    'resetSettings' | 'clearData' | 'factoryReset' | null
+    'resetSettings' | 'clearData' | 'factoryReset' | 'disconnectStrava' | null
   >(null);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [stravaBusy, setStravaBusy] = useState(false);
+  const [stravaError, setStravaError] = useState<string | null>(null);
+
+  const handleConnectStrava = async () => {
+    setStravaBusy(true);
+    setStravaError(null);
+    try {
+      await startStravaConnect(); // navigates to Strava
+    } catch (err) {
+      setStravaError(err instanceof Error ? err.message : 'Could not start Strava sign-in');
+      setStravaBusy(false);
+    }
+  };
 
   const handleExport = async () => {
     const data = await exportData();
@@ -139,6 +153,8 @@ export function SettingsPage() {
       await resetSettings();
     } else if (confirmAction === 'clearData') {
       await clearAllData();
+    } else if (confirmAction === 'disconnectStrava') {
+      await disconnectStrava();
     } else if (confirmAction === 'factoryReset') {
       await factoryReset();
       // Re-seed preset exercises (seed data loaded on demand, not in this chunk)
@@ -160,8 +176,15 @@ export function SettingsPage() {
         return {
           title: 'Clear Workout Data',
           message:
-            'Delete all workout sessions, sets, and PRs? Your exercises, templates, and routines will be kept.',
+            'Delete all workout sessions, runs, sets, and PRs? Your exercises, templates, and routines will be kept.',
           confirmLabel: 'Clear Data',
+          variant: 'danger' as const,
+        };
+      case 'disconnectStrava':
+        return {
+          title: 'Disconnect Strava',
+          message: 'Stop syncing runs from Strava? Runs already in the app are kept.',
+          confirmLabel: 'Disconnect',
           variant: 'danger' as const,
         };
       case 'factoryReset':
@@ -235,6 +258,32 @@ export function SettingsPage() {
         </div>
       </section>
 
+      <section className={styles.section} aria-labelledby="settings-running">
+        <h2 id="settings-running" className="eyebrow">Running</h2>
+        <div className={`surface ${styles.group}`}>
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.settingLabel}>Strava</span>
+              <span className={styles.settingDesc}>
+                {settings.stravaAuth
+                  ? `Connected${settings.stravaAuth.athlete?.name ? ` as ${settings.stravaAuth.athlete.name}` : ''}`
+                  : 'Sync runs from your watch via Strava'}
+              </span>
+              {stravaError && <span className={`${styles.settingDesc} ${styles.dangerTitle}`}>{stravaError}</span>}
+            </div>
+            {settings.stravaAuth ? (
+              <Button variant="secondary" size="sm" onClick={() => setConfirmAction('disconnectStrava')} className={styles.rowButton}>
+                Disconnect
+              </Button>
+            ) : (
+              <Button size="sm" onClick={handleConnectStrava} disabled={stravaBusy} className={styles.rowButton}>
+                {stravaBusy ? 'Opening…' : 'Connect'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
       <section className={styles.section} aria-labelledby="settings-data">
         <h2 id="settings-data" className="eyebrow">Backup</h2>
         <div className={`surface ${styles.group}`}>
@@ -294,7 +343,7 @@ export function SettingsPage() {
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
               <span className={styles.settingLabel}>Clear workout data</span>
-              <span className={styles.settingDesc}>Delete sessions, sets and PRs</span>
+              <span className={styles.settingDesc}>Delete sessions, runs, sets and PRs</span>
             </div>
             <Button variant="danger" size="sm" onClick={() => setConfirmAction('clearData')} className={styles.rowButton}>
               Clear

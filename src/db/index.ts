@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template, Task } from '../types';
+import type { Exercise, Routine, Session, SessionExercise, Set, PR, Setting, Template, Task, Run } from '../types';
 
 /**
  * GymTrackerDB - Dexie database instance with all tables
@@ -14,6 +14,7 @@ export class GymTrackerDB extends Dexie {
   prs!: Table<PR, string>;
   settings!: Table<Setting, string>;
   tasks!: Table<Task, string>;
+  runs!: Table<Run, string>;
 
   constructor() {
     super('GymTrackerDB');
@@ -149,11 +150,26 @@ export class GymTrackerDB extends Dexie {
       settings: 'key',
       tasks: 'id, createdAt, exerciseId, dueExerciseId',
     });
+
+    // Version 10 - Added runs table (synced from Strava or entered by hand).
+    // stravaId is unique so a re-sync never duplicates a run; manual runs have none.
+    this.version(10).stores({
+      exercises: 'id, name, parentId, *muscleGroups, equipment',
+      templates: 'id, name',
+      routines: 'id, name, type',
+      sessions: 'id, routineId, templateId, startedAt, completedAt',
+      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
+      sets: 'id, sessionExerciseId, order',
+      prs: 'id, exerciseId, type, achievedAt, setId',
+      settings: 'key',
+      tasks: 'id, createdAt, exerciseId, dueExerciseId',
+      runs: 'id, startedAt, &stravaId',
+    });
   }
 }
 
 /** Current Dexie schema version (keep in sync with the highest this.version() above) */
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 // Single database instance
 export const db = new GymTrackerDB();

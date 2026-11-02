@@ -22,6 +22,8 @@ const loadProgress = () => import('./pages/Progress');
 const loadAnalytics = () => import('./pages/Analytics');
 const loadSettings = () => import('./pages/Settings');
 const loadTasks = () => import('./pages/Tasks');
+const loadRunning = () => import('./pages/Running');
+const loadStravaCallback = () => import('./pages/StravaCallback');
 const loadNotFound = () => import('./pages/NotFound');
 
 const PAGE_LOADERS: Array<() => Promise<unknown>> = [
@@ -38,6 +40,7 @@ const PAGE_LOADERS: Array<() => Promise<unknown>> = [
   loadTemplateEdit,
   loadProgressions,
   loadTasks,
+  loadRunning,
   loadHome,
   loadNotFound,
 ];
@@ -51,6 +54,8 @@ const TemplateDetailPage = lazy(() => loadTemplateDetail().then(m => ({ default:
 const TemplateEditPage = lazy(() => loadTemplateEdit().then(m => ({ default: m.TemplateEditPage })));
 const Progressions = lazy(() => loadProgressions().then(m => ({ default: m.Progressions })));
 const Tasks = lazy(() => loadTasks().then(m => ({ default: m.Tasks })));
+const Running = lazy(() => loadRunning().then(m => ({ default: m.Running })));
+const StravaCallback = lazy(() => loadStravaCallback().then(m => ({ default: m.StravaCallback })));
 const Routines = lazy(() => loadRoutines().then(m => ({ default: m.Routines })));
 const Workout = lazy(() => loadWorkout().then(m => ({ default: m.Workout })));
 const History = lazy(() => loadHistory().then(m => ({ default: m.History })));
@@ -93,8 +98,25 @@ function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   return <ErrorBoundary key={location.pathname}>{children}</ErrorBoundary>;
 }
 
+/**
+ * A Strava sign-in can finish outside the installed app (e.g. in Safari); pick
+ * up its result when the app starts or comes back to the foreground.
+ */
+function useStravaHandoff() {
+  useEffect(() => {
+    const claim = () => {
+      if (document.visibilityState !== 'visible') return;
+      import('./utils/strava').then((m) => m.claimPendingStravaAuth()).catch(() => undefined);
+    };
+    claim();
+    document.addEventListener('visibilitychange', claim);
+    return () => document.removeEventListener('visibilitychange', claim);
+  }, []);
+}
+
 /** Root layout — wraps all routes with providers, nav, error boundary */
 function RootLayout() {
+  useStravaHandoff();
   return (
     <SessionProvider>
       <UndoProvider>
@@ -131,6 +153,9 @@ const router = createBrowserRouter([
       { path: '/progress/:exerciseId', element: <Progress /> },
       { path: '/analytics', element: <Analytics /> },
       { path: '/tasks', element: <Tasks /> },
+      { path: '/running', element: <Running /> },
+      { path: '/running/:runId', element: <Running /> },
+      { path: '/strava-callback', element: <StravaCallback /> },
       { path: '/settings', element: <Settings /> },
       { path: '*', element: <NotFound /> },
     ],

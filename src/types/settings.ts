@@ -18,4 +18,20 @@ export interface SettingsMap {
   bodyweight: number; // User's bodyweight in kg for strength standards
   activeRoutineSetAt: number | null; // When activeRoutineId was last changed — auto-skip never backfills before this
   lastAutoSkipCheckAt: number | null; // Start-of-day timestamp through which missed scheduled days have been auto-skipped
+  stravaAuth: StravaAuth | null; // Strava connection (device-only: never exported or reset)
+  stravaPendingState: string | null; // Random state of a sign-in in progress
+  stravaLastSyncAt: number | null; // Start time (ms) of the newest synced Strava run
 }
+
+/**
+ * Strava tokens for this device
+ */
+export interface StravaAuth {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number; // unix seconds
+  athlete?: { id: number; name: string };
+}
+
+/** Settings that belong to this device's Strava connection, not to the training data */
+export const STRAVA_SETTING_KEYS = ['stravaAuth', 'stravaPendingState', 'stravaLastSyncAt'] as const;

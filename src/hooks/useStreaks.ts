@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Routine, Session } from '../types';
 import { computeStreaks, type StreakResult } from '../utils/streak';
-import { isRealWorkout, startOfLocalDay } from '../utils/session';
+import { isRealWorkout, runAsSession, startOfLocalDay } from '../utils/session';
 import { useToday } from './useToday';
 
 interface StreakData {
@@ -10,7 +10,7 @@ interface StreakData {
   currentStreak: number;
   /** Longest streak ever, in workouts */
   longestStreak: number;
-  /** Total completed real workouts (excludes skipped/sick) */
+  /** Total completed real workouts, runs included (excludes skipped/sick) */
   totalWorkouts: number;
   /** Whether the user worked out today */
   workedOutToday: boolean;
@@ -32,14 +32,19 @@ export async function getActiveRoutineForStreaks(): Promise<{
 }
 
 /**
- * Load everything streaks need (all sessions + active routine) and compute them.
+ * Load everything streaks need (all sessions + runs + active routine) and compute them.
  * Shared by useStreaks and useOverallStats so both report the same streak.
+ * Runs count as workouts; the returned `sessions` includes them.
  */
 export async function loadStreaks(
   today: number,
   sessions?: Session[]
 ): Promise<StreakResult & { sessions: Session[] }> {
-  const allSessions = sessions ?? (await db.sessions.orderBy('startedAt').toArray());
+  const [gymSessions, runs] = await Promise.all([
+    sessions ?? db.sessions.orderBy('startedAt').toArray(),
+    db.runs.toArray(),
+  ]);
+  const allSessions = [...gymSessions, ...runs.map(runAsSession)];
   const { routine, activeSince } = await getActiveRoutineForStreaks();
   const result = computeStreaks(allSessions, routine, today, {
     fixedScheduleSince: activeSince ?? routine?.createdAt,

@@ -4,7 +4,7 @@ import { db } from '../../db';
 import { useRoutines } from '../../hooks/useRoutines';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { matchesAllWords } from '../../utils/search';
-import type { PR, PRType, Session } from '../../types';
+import type { PR, PRType, Run, Session } from '../../types';
 import { getDurationMinutes } from '../common/format';
 
 /** Convert a YYYY-MM-DD string to start-of-day timestamp in local timezone */
@@ -29,6 +29,25 @@ const PRESET_DAYS: Record<string, number> = {
 };
 
 export type SortBy = 'date-desc' | 'date-asc' | 'duration-desc' | 'duration-asc' | 'prs-desc';
+
+/** Effective [start, end] of the date filter (either bound may be undefined) */
+function dateRangeFor(dateFilter: string, dateFrom: string, dateTo: string) {
+  let startDate: number | undefined;
+  let endDate: number | undefined;
+  if (dateFilter && dateFilter !== 'custom') {
+    const days = PRESET_DAYS[dateFilter];
+    if (days) startDate = Date.now() - days * DAY;
+  } else if (dateFilter === 'custom') {
+    startDate = dateFrom ? dateStringToStart(dateFrom) : undefined;
+    endDate = dateTo ? dateStringToEnd(dateTo) : undefined;
+  }
+  return { startDate, endDate };
+}
+
+/** A run's length in whole minutes, comparable with getDurationMinutes for sessions */
+export function runDurationMinutes(run: Run): number {
+  return Math.floor((run.elapsedTime ?? run.movingTime) / 60);
+}
 
 /**
  * All History filter state (persisted per tab) plus the targeted queries behind it.
@@ -59,16 +78,7 @@ export function useHistoryFilters() {
 
   // Completed sessions in range — `undefined` while loading (so the UI can show a skeleton)
   const allSessions = useLiveQuery(async () => {
-    // Effective date range from either preset or custom inputs
-    let startDate: number | undefined;
-    let endDate: number | undefined;
-    if (dateFilter && dateFilter !== 'custom') {
-      const days = PRESET_DAYS[dateFilter];
-      if (days) startDate = Date.now() - days * DAY;
-    } else if (dateFilter === 'custom') {
-      startDate = dateFrom ? dateStringToStart(dateFrom) : undefined;
-      endDate = dateTo ? dateStringToEnd(dateTo) : undefined;
-    }
+    const { startDate, endDate } = dateRangeFor(dateFilter, dateFrom, dateTo);
     const collection =
       startDate !== undefined || endDate !== undefined
         ? db.sessions.where('startedAt').between(startDate ?? -Infinity, endDate ?? Infinity, true, true)
@@ -76,6 +86,12 @@ export function useHistoryFilters() {
     const results = await collection.filter((s) => s.completedAt != null).toArray();
     results.sort((a, b) => b.startedAt - a.startedAt);
     return results;
+  }, [dateFilter, dateFrom, dateTo]);
+
+  // Runs in the same date range (listed alongside sessions)
+  const allRuns = useLiveQuery(async () => {
+    const { startDate, endDate } = dateRangeFor(dateFilter, dateFrom, dateTo);
+    return db.runs.where('startedAt').between(startDate ?? -Infinity, endDate ?? Infinity, true, true).toArray();
   }, [dateFilter, dateFrom, dateTo]);
 
   const sessionIdsKey = useMemo(() => (allSessions ?? []).map((s) => s.id).join(','), [allSessions]);
@@ -269,6 +285,27 @@ export function useHistoryFilters() {
     return result;
   }, [allSessions, routineFilter, searchQuery, getSessionTitle, minDuration, maxDuration, minSets, maxSets, sessionSetCounts, prFilter, prSessionIds, exerciseFilters, exerciseFilterMode, sessionExerciseMap, sortBy, sessionPRCounts]);
 
+  // Runs: date range, search (name + notes) and duration apply; filters that only
+  // make sense for gym sessions (routine, sets, PRs, exercises) hide runs.
+  const gymOnlyFilter = !!routineFilter || !!minSets || !!maxSets || !!prFilter || exerciseFilters.length > 0;
+  const filteredRuns = useMemo(() => {
+    if (!allRuns) return undefined;
+    if (gymOnlyFilter) return [];
+    let result = allRuns;
+    if (searchQuery.trim()) {
+      result = result.filter((r) => matchesAllWords(`${r.name} Run ${r.notes ?? ''}`, searchQuery));
+    }
+    const minMins = minDuration ? parseInt(minDuration, 10) : 0;
+    const maxMins = maxDuration ? parseInt(maxDuration, 10) : Infinity;
+    if (minMins > 0 || maxMins < Infinity) {
+      result = result.filter((r) => {
+        const dur = runDurationMinutes(r);
+        return dur >= minMins && dur <= maxMins;
+      });
+    }
+    return result;
+  }, [allRuns, gymOnlyFilter, searchQuery, minDuration, maxDuration]);
+
   const clearFilters = () => {
     setRoutineFilter('');
     setDateFilter('');
@@ -334,6 +371,7 @@ export function useHistoryFilters() {
     exercisesWithPRs,
     filteredExerciseChips,
     filteredSessions,
+    filteredRuns,
     getSessionTitle,
     clearFilters,
     hasFilters,

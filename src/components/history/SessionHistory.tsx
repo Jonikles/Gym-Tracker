@@ -4,17 +4,24 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Select, Button, ConfirmDialog, SkeletonList } from '../common';
 import { deleteSession } from '../../hooks/useSessions';
 import { db } from '../../db';
-import type { Session } from '../../types';
+import type { Run, Session } from '../../types';
 import { getSetVolume } from '../../utils/volume';
+import { RunCard } from '../running';
 import { CalendarView } from './CalendarView';
 import { HistoryFilterPanel } from './HistoryFilterPanel';
 import { HistoryMoreMenu } from './HistoryMoreMenu';
-import { useHistoryFilters } from './useHistoryFilters';
-import { formatDuration, formatGroupDate, formatTime, formatVolume } from '../common/format';
+import { runDurationMinutes, useHistoryFilters } from './useHistoryFilters';
+import { formatDuration, formatGroupDate, formatTime, formatVolume, getDurationMinutes } from '../common/format';
 import { useSetting } from '../../hooks/useSettings';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useScrollRestore } from '../../hooks/useScrollRestore';
 import styles from './SessionHistory.module.css';
+
+/** One row of the history list: a gym session or a run */
+type HistoryItem = { id: string; startedAt: number; minutes: number; prs: number } & (
+  | { kind: 'session'; session: Session }
+  | { kind: 'run'; run: Run }
+);
 
 interface SessionStats {
   exercises: number;
@@ -180,8 +187,44 @@ export function SessionHistory() {
     observerRef.current.observe(node);
   }, []);
 
-  const visibleSessions = useMemo(() => sessions.slice(0, visibleCount), [sessions, visibleCount]);
-  const hasMore = visibleCount < sessions.length;
+  // Sessions and runs in one list, ordered by the chosen sort. Runs aren't
+  // selectable (bulk delete / compare are for gym sessions), so selection hides them.
+  const runs = useMemo(() => (selectionMode ? [] : f.filteredRuns ?? []), [selectionMode, f.filteredRuns]);
+  const { sortBy, sessionPRCounts } = f;
+  const items = useMemo<HistoryItem[]>(() => {
+    const sessionItems: HistoryItem[] = sessions.map((s) => ({
+      kind: 'session',
+      id: s.id,
+      startedAt: s.startedAt,
+      minutes: getDurationMinutes(s.startedAt, s.completedAt),
+      prs: sessionPRCounts.get(s.id) ?? 0,
+      session: s,
+    }));
+    if (runs.length === 0) return sessionItems; // already sorted by the filter hook
+    const runItems: HistoryItem[] = runs.map((r) => ({
+      kind: 'run',
+      id: r.id,
+      startedAt: r.startedAt,
+      minutes: runDurationMinutes(r),
+      prs: 0,
+      run: r,
+    }));
+    const compare: Record<string, (a: HistoryItem, b: HistoryItem) => number> = {
+      'date-asc': (a, b) => a.startedAt - b.startedAt,
+      'duration-desc': (a, b) => b.minutes - a.minutes,
+      'duration-asc': (a, b) => a.minutes - b.minutes,
+      'prs-desc': (a, b) => b.prs - a.prs || b.startedAt - a.startedAt,
+    };
+    const byDateDesc = (a: HistoryItem, b: HistoryItem) => b.startedAt - a.startedAt;
+    return [...sessionItems, ...runItems].sort(compare[sortBy] ?? byDateDesc);
+  }, [sessions, runs, sortBy, sessionPRCounts]);
+
+  const visibleItems = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
+  const visibleSessions = useMemo(
+    () => visibleItems.flatMap((i) => (i.kind === 'session' ? [i.session] : [])),
+    [visibleItems]
+  );
+  const hasMore = visibleCount < items.length;
 
   // Card stats (exercises · sets · volume) — computed for the visible sessions only
   const visibleIdsKey = viewMode === 'list' ? visibleSessions.map((s) => s.id).join(',') : '';
@@ -208,17 +251,17 @@ export function SessionHistory() {
     return stats;
   }, [visibleIdsKey]);
 
-  // Group visible sessions by local calendar day
-  const groupedSessions = useMemo(() => {
-    const groups = new Map<string, { label: string; sessions: Session[] }>();
-    for (const session of visibleSessions) {
-      const dateKey = new Date(session.startedAt).toDateString();
+  // Group visible sessions and runs by local calendar day
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, { label: string; items: HistoryItem[] }>();
+    for (const item of visibleItems) {
+      const dateKey = new Date(item.startedAt).toDateString();
       const existing = groups.get(dateKey);
-      if (existing) existing.sessions.push(session);
-      else groups.set(dateKey, { label: formatGroupDate(session.startedAt), sessions: [session] });
+      if (existing) existing.items.push(item);
+      else groups.set(dateKey, { label: formatGroupDate(item.startedAt), items: [item] });
     }
     return Array.from(groups.entries());
-  }, [visibleSessions]);
+  }, [visibleItems]);
 
   const clearAndReset = () => {
     f.clearFilters();
@@ -233,6 +276,7 @@ export function SessionHistory() {
           {!isLoading && (
             <span className={styles.count}>
               <span className="num">{sessions.length}</span> sessions
+              {runs.length > 0 && <> · <span className="num">{runs.length}</span> run{runs.length === 1 ? '' : 's'}</>}
             </span>
           )}
           <Select
@@ -310,26 +354,30 @@ export function SessionHistory() {
         />
       ) : (
         <div className={styles.list}>
-          {groupedSessions.map(([dateKey, group]) => (
+          {groupedItems.map(([dateKey, group]) => (
             <div key={dateKey} className={styles.dateGroup}>
               <h3 className={`eyebrow ${styles.dateHeader}`}>{group.label}</h3>
-              {group.sessions.map((session) => (
-                <SessionCard
-                  key={session.id}
-                  session={session}
-                  title={f.getSessionTitle(session)}
-                  prCount={f.sessionPRCounts.get(session.id) ?? 0}
-                  stats={sessionStats?.get(session.id)}
-                  selectionMode={selectionMode}
-                  isSelected={selectedIds.has(session.id)}
-                  onToggleSelect={() => toggleSelect(session.id)}
-                  onClick={() => navigate(`/history/${session.id}`)}
-                />
-              ))}
+              {group.items.map((item) =>
+                item.kind === 'run' ? (
+                  <RunCard key={item.id} run={item.run} onClick={() => navigate(`/running/${item.id}`)} />
+                ) : (
+                  <SessionCard
+                    key={item.id}
+                    session={item.session}
+                    title={f.getSessionTitle(item.session)}
+                    prCount={item.prs}
+                    stats={sessionStats?.get(item.id)}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(item.id)}
+                    onToggleSelect={() => toggleSelect(item.id)}
+                    onClick={() => navigate(`/history/${item.id}`)}
+                  />
+                )
+              )}
             </div>
           ))}
           {hasMore && <div ref={sentinelRef} className={styles.sentinel} />}
-          {sessions.length === 0 && (
+          {items.length === 0 && (
             <p className={styles.empty}>
               {f.hasFilters ? 'No sessions match your filters.' : 'No workout history yet.'}
             </p>

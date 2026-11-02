@@ -1,0 +1,396 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding-top: var(--space-xs);
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: var(--space-xl) var(--space-md);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Strava card ── */
+.stravaCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+}
+
+.stravaCardConnected {
+  gap: 6px;
+  padding: 12px var(--space-md) 10px;
+}
+
+.stravaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.stravaInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stravaTitle {
+  font-weight: 650;
+  color: var(--color-text);
+}
+
+.stravaDesc {
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.stravaConnectBtn {
+  align-self: stretch;
+  background: #fc4c02;
+  color: #fff;
+}
+
+.syncError {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger-text);
+}
+
+.poweredBy {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: #fc4c02;
+}
+
+/* ── Run list ── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.monthGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.monthHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.monthHeader h2 {
+  margin: 0;
+}
+
+.monthTotal {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.runCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 10px 12px var(--space-md);
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background-color: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), var(--highlight-top);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--transition-fast), transform 100ms ease;
+}
+
+.runCard:active {
+  background-color: var(--color-surface-2);
+  transform: scale(0.99);
+}
+
+.runIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.runBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.runTopRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.runName {
+  font-size: var(--text-base);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.runWhen {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.runStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 3px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.runStatValue {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.runChevron {
+  flex-shrink: 0;
+  font-size: 1.375rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+/* ── Run detail ── */
+.backLink {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 4px;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.detailHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detailHeader h1 {
+  margin: 0;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md) var(--space-sm);
+  padding: var(--space-md);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.statUnit {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.splits {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-sm) var(--space-md);
+}
+
+.splitRow {
+  display: grid;
+  grid-template-columns: 40px 52px 1fr 36px;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 30px;
+  font-size: var(--text-sm);
+}
+
+.splitRow > :last-child {
+  text-align: right;
+}
+
+.splitHead {
+  font-size: var(--text-xs);
+  font-weight: 650;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.splitBarTrack {
+  display: block;
+  height: 8px;
+}
+
+.splitBar {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-muted);
+}
+
+.splitBarBest {
+  background: var(--color-accent);
+}
+
+.effortList {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--space-md);
+}
+
+.effortRow {
+  display: grid;
+  grid-template-columns: 1fr auto 84px;
+  gap: var(--space-md);
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.effortRow:last-child {
+  border-bottom: none;
+}
+
+.effortName {
+  font-weight: 600;
+}
+
+.effortPace {
+  text-align: right;
+  color: var(--color-text-muted);
+}
+
+.notes {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  font: inherit;
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.detailFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+}
+
+.stravaLinkRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stravaLink {
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: #fc4c02;
+}
+
+/* ── Add run form ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.formHint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.formActions > * {
+  flex: 1;
+}
+
+/* ── Strava callback ── */
+.callback {
+  align-items: center;
+  text-align: center;
+  padding-top: var(--space-xl);
+}
