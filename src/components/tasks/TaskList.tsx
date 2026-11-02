@@ -57,7 +57,7 @@ export function TaskList() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const tasks = useTasks({ showCompleted });
-  const exercises = useExercises({ includeArchived: false }) ?? [];
+  const exercises = useExercises() ?? [];
 
   const handleAddTask = async () => {
     if (!newTaskText.trim()) return;

@@ -78,7 +78,7 @@ export async function resetSettings(): Promise<void> {
  * Export all data as JSON
  */
 export async function exportData(): Promise<string> {
-  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings] =
+  const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings, tasks] =
     await Promise.all([
       db.exercises.toArray(),
       db.templates.toArray(),
@@ -88,6 +88,7 @@ export async function exportData(): Promise<string> {
       db.sets.toArray(),
       db.prs.toArray(),
       db.settings.toArray(),
+      db.tasks.toArray(),
     ]);
 
   const data = {
@@ -101,6 +102,7 @@ export async function exportData(): Promise<string> {
     sets,
     prs,
     settings,
+    tasks,
   };
 
   return JSON.stringify(data, null, 2);
@@ -140,6 +142,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
     validateArray('sets', data.sets);
     validateArray('prs', data.prs);
     validateArray('settings', data.settings);
+    validateArray('tasks', data.tasks);
 
     // Validate required fields on key entities
     if (Array.isArray(data.exercises)) {
@@ -168,7 +171,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
     // the whole transaction rolls back and the existing data is left untouched.
     await db.transaction(
       'rw',
-      [db.exercises, db.templates, db.routines, db.sessions, db.sessionExercises, db.sets, db.prs, db.settings],
+      [db.exercises, db.templates, db.routines, db.sessions, db.sessionExercises, db.sets, db.prs, db.settings, db.tasks],
       async () => {
         await Promise.all([
           db.exercises.clear(),
@@ -179,6 +182,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
           db.sets.clear(),
           db.prs.clear(),
           db.settings.clear(),
+          db.tasks.clear(),
         ]);
 
         await Promise.all([
@@ -190,6 +194,7 @@ export async function importData(json: string): Promise<{ success: boolean; mess
           data.sets?.length > 0 && db.sets.bulkAdd(data.sets),
           data.prs?.length > 0 && db.prs.bulkAdd(data.prs),
           data.settings?.length > 0 && db.settings.bulkAdd(data.settings),
+          data.tasks?.length > 0 && db.tasks.bulkAdd(data.tasks),
         ]);
       }
     );
@@ -228,5 +233,6 @@ export async function factoryReset(): Promise<void> {
     db.sets.clear(),
     db.prs.clear(),
     db.settings.clear(),
+    db.tasks.clear(),
   ]);
 }

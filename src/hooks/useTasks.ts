@@ -52,13 +52,10 @@ export function useTasksDueForExercises(exerciseIds: string[]) {
   return useLiveQuery(async () => {
     if (exerciseIds.length === 0) return [];
 
-    const allTasks = await db.tasks
-      .where('isCompleted')
-      .equals(0) // Dexie stores booleans as 0/1
-      .toArray();
+    const dueTasks = await db.tasks.where('dueExerciseId').anyOf(exerciseIds).toArray();
 
-    // Filter to tasks that are incomplete AND have a dueExerciseId in our list
-    return allTasks.filter((t) =>
+    // Booleans aren't indexable in IndexedDB, so completion is filtered here
+    return dueTasks.filter((t) =>
       !t.isCompleted &&
       t.dueExerciseId &&
       exerciseIds.includes(t.dueExerciseId)

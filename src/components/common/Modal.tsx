@@ -22,6 +22,28 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     }
   }, [isOpen]);
 
+  // Mobile keyboards cover the bottom of the layout viewport without moving fixed
+  // elements, which hid the bottom sheet's content. Expose the keyboard height and
+  // the visible height so the sheet's CSS can sit on top of the keyboard instead.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const vv = window.visualViewport;
+    if (!isOpen || !dialog || !vv) return;
+
+    const update = () => {
+      const keyboardInset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      dialog.style.setProperty('--keyboard-inset', `${keyboardInset}px`);
+      dialog.style.setProperty('--visible-height', `${vv.height}px`);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;

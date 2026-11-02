@@ -203,6 +203,11 @@ function PickerContent({
           ref={searchRef}
           placeholder="Search exercises…"
           aria-label="Search exercises"
+          enterKeyHint="search"
+          onKeyDown={(e) => {
+            // The keyboard's Search key just hides the keyboard to reveal the results
+            if (e.key === 'Enter') e.currentTarget.blur();
+          }}
           value={searchInput}
           onChange={(e) => {
             setSearchInput(e.target.value);
@@ -230,7 +235,8 @@ function PickerContent({
         )}
       </div>
 
-      <div className={styles.list} ref={listRef}>
+      {/* Dragging the results hides the keyboard (taps still pick directly) */}
+      <div className={styles.list} ref={listRef} onTouchMove={() => searchRef.current?.blur()}>
         {concreteList
           ? concreteList.map((exercise) => (
               <PickerExerciseRow

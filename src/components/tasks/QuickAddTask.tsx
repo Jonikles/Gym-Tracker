@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button, Input, Modal, Select } from '../common';
 import { createTask } from '../../hooks/useTasks';
 import { useExercises } from '../../hooks/useExercises';
@@ -8,28 +8,18 @@ interface QuickAddTaskProps {
   isOpen: boolean;
   onClose: () => void;
   sessionId?: string;
-  currentExerciseId?: string;
 }
 
 export function QuickAddTask({
   isOpen,
   onClose,
   sessionId,
-  currentExerciseId,
 }: QuickAddTaskProps) {
   const [text, setText] = useState('');
   const [exerciseId, setExerciseId] = useState('');
   const [dueExerciseId, setDueExerciseId] = useState('');
 
-  const exercises = useExercises({ includeArchived: false }) ?? [];
-
-  // Pre-fill with current exercise when modal opens
-  useEffect(() => {
-    if (isOpen && currentExerciseId) {
-      setExerciseId(currentExerciseId);
-      setDueExerciseId(currentExerciseId);
-    }
-  }, [isOpen, currentExerciseId]);
+  const exercises = useExercises() ?? [];
 
   const handleSubmit = async () => {
     if (!text.trim()) return;

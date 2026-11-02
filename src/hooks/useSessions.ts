@@ -5,6 +5,7 @@ import { advanceRollingPosition } from './useRoutines';
 import { detectAndSaveExercisePRs } from '../utils/pr';
 import { detectAndSaveProgressionAdvancements } from '../utils/progression';
 import { getLastUsedExerciseForProgression } from './useProgressions';
+import { PROGRESSION_MAP } from '../data/progressions';
 import { useToday } from './useToday';
 import { startOfLocalDay, startOfNextLocalDay } from '../utils/session';
 
@@ -396,17 +397,24 @@ export async function addExerciseToSession(
   sessionId: string,
   exerciseId: string
 ): Promise<string> {
-  const existingExercises = await db.sessionExercises
-    .where('sessionId')
-    .equals(sessionId)
-    .toArray();
+  const [existingExercises, exercise] = await Promise.all([
+    db.sessionExercises.where('sessionId').equals(sessionId).toArray(),
+    db.exercises.get(exerciseId),
+  ]);
 
   const maxOrder = Math.max(0, ...existingExercises.map((e) => e.order));
+
+  // A progression exercise added mid-workout becomes a progression slot, like one
+  // from a template, so its level can be switched while logging
+  const progressionId = exercise?.progressionMemberships?.find(
+    (pm) => PROGRESSION_MAP[pm.progressionId]
+  )?.progressionId;
 
   const sessionExercise: SessionExercise = {
     id: crypto.randomUUID(),
     sessionId,
     exerciseId,
+    progressionId,
     order: maxOrder + 1,
     createdAt: Date.now(),
   };

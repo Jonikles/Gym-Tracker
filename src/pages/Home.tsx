@@ -1,6 +1,6 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, ConfirmDialog } from '../components/common';
 import { useRoutine, useTodaysTemplate } from '../hooks/useRoutines';
 import {
@@ -383,8 +383,18 @@ function ExercisePreview({ rows }: { rows: PreviewRow[] | undefined }) {
 
 export function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeSession, startBlank, isLoading } = useSessionContext();
   const today = useToday();
+
+  // The installed app always relaunches at "/" (e.g. after the phone unloads it in
+  // the background), so resume a workout in progress instead of showing Home.
+  // location.key is 'default' only for the entry the app was opened on, so
+  // navigating to Home on purpose (desktop nav) still works.
+  const isAppEntry = location.key === 'default';
+  useEffect(() => {
+    if (isAppEntry && activeSession) navigate('/workout', { replace: true });
+  }, [isAppEntry, activeSession, navigate]);
 
   // Get active routine from settings
   const activeRoutineId = useSetting('activeRoutineId');
