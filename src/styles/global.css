@@ -179,14 +179,11 @@ body::before {
   outline-offset: 2px;
 }
 
-/* Links */
+/* Links. No :hover colour: on a phone, hover sticks to the last tapped link and
+   overrode its own colour (e.g. the active bottom-nav tab stayed grey). */
 a {
   color: var(--color-text);
   text-decoration: none;
-}
-
-a:hover {
-  color: var(--color-text-secondary);
 }
 
 /* Headings */
@@ -356,7 +353,6 @@ h4 { font-size: var(--text-lg); font-weight: 600; }
   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.icon-btn:hover { background: var(--overlay-hover); color: var(--color-text); }
 .icon-btn:active { background: var(--overlay-pressed); }
 
 .sr-only {
