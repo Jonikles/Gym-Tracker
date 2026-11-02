@@ -35,7 +35,7 @@ export function StravaCallback() {
         <>
           <h1 className="page-title">Strava connected</h1>
           <p className={styles.stravaDesc}>
-            Go back to the Gym Tracker app. It finishes connecting when you open it.
+            Go back to the Trainlog app. It finishes connecting when you open it.
           </p>
         </>
       )}

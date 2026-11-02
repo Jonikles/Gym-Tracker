@@ -642,7 +642,7 @@ export function Home() {
             <ChevronIcon />
           </Link>
         ) : (
-          <span className="eyebrow">Gym Tracker</span>
+          <span className="eyebrow">Trainlog</span>
         )}
         <h1 className={`page-title ${styles.greeting}`}>{greetingFor(now)}</h1>
         <p className={styles.date}>

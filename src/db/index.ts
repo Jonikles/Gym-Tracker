@@ -17,6 +17,7 @@ export class GymTrackerDB extends Dexie {
   runs!: Table<Run, string>;
 
   constructor() {
+    // Keep this name across the Trainlog rename — changing it would start a new, empty database
     super('GymTrackerDB');
 
     // Version 1 - Initial schema

@@ -13,9 +13,9 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Gym Tracker',
-        short_name: 'GymTracker',
-        description: 'Track workouts, progressions, and PRs',
+        name: 'Trainlog',
+        short_name: 'Trainlog',
+        description: 'Log your gym workouts and runs',
         theme_color: '#0a0d10',
         background_color: '#0a0d10',
         display: 'standalone',
@@ -34,7 +34,7 @@ export default defineConfig({
             type: 'image/png',
           },
           {
-            src: 'icon-512.png',
+            src: 'icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

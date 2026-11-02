@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Trainlog app icon (full-bleed source for the PNG icons) -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121a24"/>
+      <stop offset="1" stop-color="#0a0d10"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.22" r="0.75">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mark" x1="140" y1="140" x2="372" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#bae6fd"/>
+      <stop offset="0.45" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <!-- T: crossbar + stem -->
+  <path fill="url(#mark)" d="M158 140h196a18 18 0 0 1 18 18v28a18 18 0 0 1-18 18h-66v150a18 18 0 0 1-18 18h-28a18 18 0 0 1-18-18V204h-66a18 18 0 0 1-18-18v-28a18 18 0 0 1 18-18z"/>
+</svg>

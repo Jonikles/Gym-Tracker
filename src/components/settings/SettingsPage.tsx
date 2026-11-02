@@ -120,7 +120,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gym-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `trainlog-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -363,7 +363,7 @@ export function SettingsPage() {
       </section>
 
       <p className={styles.version}>
-        Gym Tracker <span className="num">v{__APP_VERSION__}</span>
+        Trainlog <span className="num">v{__APP_VERSION__}</span>
       </p>
 
       <ConfirmDialog

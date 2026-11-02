@@ -80,7 +80,7 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
           try {
             const response = await fetch(dataUrl);
             const blob = await response.blob();
-            const file = new File([blob], 'gym-tracker-stats.png', { type: 'image/png' });
+            const file = new File([blob], 'trainlog-stats.png', { type: 'image/png' });
 
             if (navigator.canShare({ files: [file] })) {
               await navigator.share({
@@ -98,7 +98,7 @@ export const ExportCard = forwardRef<ExportCardHandle, ExportCardProps>(
 
         // Fallback: download
         const link = document.createElement('a');
-        link.download = `gym-tracker-${period.toLowerCase()}.png`;
+        link.download = `trainlog-${period.toLowerCase()}.png`;
         link.href = dataUrl;
         link.click();
       } catch (err) {
@@ -162,7 +162,7 @@ function ExportCardContent({ days, period, onReady }: ExportCardContentProps) {
     <div ref={cardRef} className={styles.card}>
       {/* Header */}
       <div className={styles.cardHeader}>
-        <span className={styles.appName}>GymTracker</span>
+        <span className={styles.appName}>Trainlog</span>
         <span className={styles.periodLabel}>{PERIOD_LABELS[period]}</span>
       </div>
 

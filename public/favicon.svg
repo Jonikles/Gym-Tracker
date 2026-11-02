@@ -1,11 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
-  <!-- Barbell icon -->
-  <rect x="96" y="224" width="320" height="64" rx="8" fill="#e5e5e5"/>
-  <!-- Left plates -->
-  <rect x="64" y="176" width="48" height="160" rx="8" fill="#e5e5e5"/>
-  <rect x="32" y="200" width="40" height="112" rx="6" fill="#a3a3a3"/>
-  <!-- Right plates -->
-  <rect x="400" y="176" width="48" height="160" rx="8" fill="#e5e5e5"/>
-  <rect x="440" y="200" width="40" height="112" rx="6" fill="#a3a3a3"/>
+  <!-- Trainlog favicon -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121a24"/>
+      <stop offset="1" stop-color="#0a0d10"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="120" y1="120" x2="392" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#bae6fd"/>
+      <stop offset="0.45" stop-color="#38bdf8"/>
+      <stop offset="1" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Slightly larger T so it reads at 16px -->
+  <path fill="url(#mark)" d="M140 112h232a20 20 0 0 1 20 20v40a20 20 0 0 1-20 20h-76v188a20 20 0 0 1-20 20h-40a20 20 0 0 1-20-20V192h-76a20 20 0 0 1-20-20v-40a20 20 0 0 1 20-20z"/>
 </svg>
