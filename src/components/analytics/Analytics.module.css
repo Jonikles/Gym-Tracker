@@ -157,14 +157,8 @@
 /* ── Chart cards ── */
 .chartsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: 1fr;
   gap: var(--space-md);
-}
-
-@media (max-width: 768px) {
-  .chartsGrid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .chart {

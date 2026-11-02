@@ -390,7 +390,7 @@ export function Home() {
   // The installed app always relaunches at "/" (e.g. after the phone unloads it in
   // the background), so resume a workout in progress instead of showing Home.
   // location.key is 'default' only for the entry the app was opened on, so
-  // navigating to Home on purpose (desktop nav) still works.
+  // navigating to Home on purpose still works.
   const isAppEntry = location.key === 'default';
   useEffect(() => {
     if (isAppEntry && activeSession) navigate('/workout', { replace: true });

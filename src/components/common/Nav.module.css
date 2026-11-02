@@ -1,136 +1,19 @@
 /* ════════════════════════════════════════
-   Desktop top bar (hidden on mobile)
-   ════════════════════════════════════════ */
-.desktopNav {
-  display: flex;
-  align-items: center;
-  padding: var(--space-sm) var(--space-lg);
-  min-height: 60px;
-  background-color: var(--glass-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
-  border-bottom: 1px solid var(--color-border);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  gap: var(--space-lg);
-}
-
-.brandLink:hover {
-  color: inherit;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  font-weight: 750;
-  font-size: var(--text-lg);
-  letter-spacing: -0.02em;
-  color: var(--color-text);
-  white-space: nowrap;
-}
-
-.brandMark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-md);
-  background: var(--gradient-accent);
-  color: var(--color-on-accent);
-  box-shadow: var(--shadow-accent);
-}
-
-.desktopLinks {
-  display: flex;
-  flex: 1;
-  gap: 2px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  overflow-x: auto;
-  min-width: 0;
-  align-items: center;
-}
-
-.desktopLink {
-  display: block;
-  padding: 6px var(--space-md);
-  font-size: var(--text-sm);
-  font-weight: 550;
-  color: var(--color-text-secondary);
-  border-radius: var(--radius-full);
-  transition: color var(--transition-fast), background-color var(--transition-fast);
-  white-space: nowrap;
-}
-
-.desktopLink:hover {
-  color: var(--color-text);
-  background-color: var(--overlay-hover);
-}
-
-.desktopLink.active {
-  color: var(--color-accent);
-  background-color: var(--color-accent-soft);
-}
-
-.desktopWorkoutBtn {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--color-on-accent);
-  background-color: var(--color-accent);
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-accent);
-  white-space: nowrap;
-  text-align: center;
-  flex-shrink: 0;
-  transition: background-color var(--transition-fast);
-}
-
-.desktopWorkoutBtn:hover {
-  color: var(--color-on-accent);
-  background-color: #52c7fa;
-}
-
-.liveDot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: var(--color-on-accent);
-}
-
-/* ════════════════════════════════════════
-   Mobile bottom tab bar (hidden on desktop)
+   Bottom tab bar
    ════════════════════════════════════════ */
 .mobileNav {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .desktopNav {
-    display: none;
-  }
-
-  .mobileNav {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 200;
-    padding: 0 var(--space-xs) env(safe-area-inset-bottom, 0);
-    background-color: var(--glass-bg);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    backdrop-filter: blur(20px) saturate(160%);
-    border-top: 1px solid var(--color-border);
-    box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, 0.6);
-  }
+  display: flex;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  padding: 0 var(--space-xs) env(safe-area-inset-bottom, 0);
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-top: 1px solid var(--color-border);
+  box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, 0.6);
 }
 
 .mobileTab {
@@ -154,10 +37,6 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.mobileTab:hover {
-  color: var(--color-text-secondary);
-}
-
 /* Icon sits in a pill that fills with accent-soft when active */
 .mobileTabIcon {
   position: relative;
@@ -174,8 +53,7 @@
   background-color: var(--overlay-pressed);
 }
 
-.mobileTabActive,
-.mobileTabActive:hover {
+.mobileTabActive {
   color: var(--color-accent);
 }
 
@@ -216,117 +94,104 @@
 }
 
 /* ════════════════════════════════════════
-   More sheet (slides up from bottom on mobile)
+   More sheet (slides up from the bottom)
    ════════════════════════════════════════ */
 .moreBackdrop {
-  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-backdrop);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  z-index: 190;
+  animation: fadeIn 0.15s ease;
 }
 
 .moreSheet {
-  display: none;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 195;
+  background: var(--color-surface-1);
+  border-top: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-lg);
+  max-height: calc(70vh + var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-sm) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  animation: slideUp 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-@media (max-width: 768px) {
-  .moreBackdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: var(--overlay-backdrop);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    z-index: 190;
-    animation: fadeIn 0.15s ease;
-  }
+.moreHandle {
+  flex-shrink: 0;
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  margin: var(--space-sm) 0 var(--space-sm);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-3);
+}
 
-  .moreSheet {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 195;
-    background: var(--color-surface-1);
-    border-top: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    box-shadow: var(--shadow-lg);
-    max-height: calc(70vh + var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: calc(var(--bottom-nav-height) + var(--space-sm) + env(safe-area-inset-bottom, 0px));
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    animation: slideUp 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
+.moreList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--space-sm);
+}
 
-  .moreHandle {
-    flex-shrink: 0;
-    align-self: center;
-    width: 36px;
-    height: 4px;
-    margin: var(--space-sm) 0 var(--space-sm);
-    border-radius: var(--radius-full);
-    background: var(--color-surface-3);
-  }
+.moreLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 52px;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: 550;
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
 
-  .moreList {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 0 var(--space-sm);
-  }
+.moreLink:active {
+  color: var(--color-text);
+  background-color: var(--overlay-hover);
+}
 
-  .moreLink {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    min-height: 52px;
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-md);
-    color: var(--color-text);
-    font-size: var(--text-base);
-    font-weight: 550;
-    text-decoration: none;
-    transition: background-color var(--transition-fast);
-    -webkit-tap-highlight-color: transparent;
-  }
+.moreIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}
 
-  .moreLink:hover,
-  .moreLink:active {
-    color: var(--color-text);
-    background-color: var(--overlay-hover);
-  }
+.moreLabel {
+  flex: 1;
+  min-width: 0;
+}
 
-  .moreIcon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    flex-shrink: 0;
-    border-radius: var(--radius-md);
-    background: var(--color-surface-2);
-    color: var(--color-text-secondary);
-  }
+.moreChevron {
+  display: flex;
+  color: var(--color-text-muted);
+}
 
-  .moreLabel {
-    flex: 1;
-    min-width: 0;
-  }
+.moreLinkActive {
+  color: var(--color-accent);
+}
 
-  .moreChevron {
-    display: flex;
-    color: var(--color-text-muted);
-  }
-
-  .moreLinkActive,
-  .moreLinkActive:hover {
-    color: var(--color-accent);
-  }
-
-  .moreLinkActive .moreIcon {
-    background: var(--color-accent-soft);
-    color: var(--color-accent);
-  }
+.moreLinkActive .moreIcon {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 /* ════════════════════════════════════════

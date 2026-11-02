@@ -44,16 +44,6 @@
   min-height: 44px;
 }
 
-@media (min-width: 769px) {
-  .filters > *:first-child {
-    flex: 0 1 360px;
-  }
-
-  .filters > *:not(:first-child) {
-    flex: 0 1 160px;
-  }
-}
-
 .toggleRow {
   display: flex;
   justify-content: space-between;

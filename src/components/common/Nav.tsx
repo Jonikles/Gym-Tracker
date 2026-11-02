@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useActiveSession } from '../../hooks/useSessions';
 import styles from './Nav.module.css';
 
@@ -99,7 +99,7 @@ function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
   );
 }
 
-/** Secondary links shown in the "More" sheet on mobile, and inline on desktop */
+/** Secondary links shown in the "More" sheet */
 const secondaryLinks: { to: string; label: string; icon: IconName }[] = [
   { to: '/exercises', label: 'Exercises', icon: 'exercises' },
   { to: '/routines', label: 'Routines', icon: 'routines' },
@@ -107,19 +107,6 @@ const secondaryLinks: { to: string; label: string; icon: IconName }[] = [
   { to: '/templates', label: 'Templates', icon: 'templates' },
   { to: '/tasks', label: 'Tasks', icon: 'tasks' },
   { to: '/settings', label: 'Settings', icon: 'settings' },
-];
-
-const allLinks = [
-  { to: '/', label: 'Home' },
-  { to: '/exercises', label: 'Exercises' },
-  { to: '/progressions', label: 'Progressions' },
-  { to: '/templates', label: 'Templates' },
-  { to: '/routines', label: 'Routines' },
-  { to: '/history', label: 'History' },
-  { to: '/progress', label: 'Progress' },
-  { to: '/analytics', label: 'Analytics' },
-  { to: '/tasks', label: 'Tasks' },
-  { to: '/settings', label: 'Settings' },
 ];
 
 export function Nav() {
@@ -144,9 +131,6 @@ export function Nav() {
     return () => { document.body.style.overflow = ''; };
   }, [moreOpen]);
 
-  const hiddenPaths = ['/', '/workout'];
-  const showWorkoutButton = !!activeSession && !hiddenPaths.includes(location.pathname);
-
   // Check if current path is a secondary link (to highlight "More" tab)
   const isOnSecondaryPage = secondaryLinks.some(
     (l) => location.pathname === l.to || location.pathname.startsWith(l.to + '/')
@@ -162,40 +146,7 @@ export function Nav() {
 
   return (
     <>
-      {/* ── Desktop top bar ── */}
-      <nav className={styles.desktopNav}>
-        <Link to="/" className={styles.brandLink}>
-          <div className={styles.brand}>
-            <span className={styles.brandMark} aria-hidden="true">
-              <Icon name="exercises" size={18} />
-            </span>
-            GymTracker
-          </div>
-        </Link>
-        <ul className={styles.desktopLinks}>
-          {allLinks.map((link) => (
-            <li key={link.to}>
-              <NavLink
-                to={link.to}
-                className={({ isActive }) =>
-                  `${styles.desktopLink} ${isActive ? styles.active : ''}`
-                }
-                end={link.to === '/'}
-              >
-                {link.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-        {showWorkoutButton && (
-          <Link to="/workout" className={styles.desktopWorkoutBtn}>
-            <span className={styles.liveDot} aria-hidden="true" />
-            Workout
-          </Link>
-        )}
-      </nav>
-
-      {/* ── Mobile bottom tab bar ── */}
+      {/* ── Bottom tab bar ── */}
       <nav className={styles.mobileNav}>
         <NavLink
           to={homeWorkoutLink.to}

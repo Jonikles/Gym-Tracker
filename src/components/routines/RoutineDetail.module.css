@@ -106,12 +106,6 @@
   box-shadow: var(--shadow-sm), var(--highlight-top);
 }
 
-@media (min-width: 769px) {
-  .tabs {
-    width: 320px;
-  }
-}
-
 .calendarSection {
   display: flex;
   flex-direction: column;

@@ -159,14 +159,6 @@
   background-color: var(--color-danger-soft);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .deleteBtn:hover,
-  .iconBtn:hover {
-    color: var(--color-danger-text);
-    background-color: var(--color-danger-soft);
-  }
-}
-
 /* Technique-specific UI */
 .techniqueUI {
   display: flex;
@@ -295,13 +287,6 @@
   transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .typeSwapButton:hover {
-    background: var(--color-surface-active);
-    color: var(--color-text);
-  }
-}
-
 .typeSwapIcon {
   font-size: 9px;
   color: var(--color-text-muted);
@@ -345,12 +330,6 @@
 
 .typePickerOption:active {
   background-color: var(--color-surface-3);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .typePickerOption:hover {
-    background-color: var(--color-surface-3);
-  }
 }
 
 .typePickerOption.typePickerOptionActive {

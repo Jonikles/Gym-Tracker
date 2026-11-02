@@ -99,13 +99,6 @@
   cursor: default;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .iconBtn:hover:not(:disabled) {
-    color: var(--color-text);
-    background-color: var(--overlay-hover);
-  }
-}
-
 .removeBtn {
   width: 44px;
   font-size: var(--text-xl);

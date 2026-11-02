@@ -456,22 +456,3 @@
 /* ════════════════════════════════════════
    Desktop: keep it a comfortable column
    ════════════════════════════════════════ */
-@media (min-width: 769px) {
-  .header,
-  .hero,
-  .stats,
-  .section,
-  .blankLink {
-    max-width: 560px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .header {
-    margin-bottom: var(--space-lg);
-  }
-
-  .blankLink {
-    display: block;
-  }
-}

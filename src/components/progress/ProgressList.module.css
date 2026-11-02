@@ -55,14 +55,6 @@
   text-overflow: ellipsis;
 }
 
-@media (min-width: 769px) {
-  .filters {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: center;
-  }
-}
-
 .clearFilters {
   justify-self: start;
   align-self: flex-start;

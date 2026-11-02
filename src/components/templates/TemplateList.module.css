@@ -37,16 +37,6 @@
   flex: 0 0 128px;
 }
 
-@media (min-width: 769px) {
-  .filters > *:first-child {
-    flex: 0 1 360px;
-  }
-
-  .filters > *:last-child {
-    flex-basis: 160px;
-  }
-}
-
 .list {
   display: flex;
   flex-direction: column;

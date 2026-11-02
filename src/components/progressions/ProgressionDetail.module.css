@@ -162,12 +162,6 @@
   background: var(--color-surface-2);
 }
 
-@media (hover: hover) and (pointer: fine) {
-  .exerciseCard:hover {
-    border-color: var(--color-border-strong);
-  }
-}
-
 .exerciseAchieved {
   border-color: var(--color-accent-muted);
 }

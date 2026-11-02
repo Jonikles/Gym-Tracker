@@ -40,15 +40,9 @@ html {
 
 .addTaskOptions {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr;
   gap: var(--space-sm);
   align-items: end;
-}
-
-@media (max-width: 768px) {
-  .addTaskOptions {
-    grid-template-columns: 1fr;
-  }
 }
 
 .list {

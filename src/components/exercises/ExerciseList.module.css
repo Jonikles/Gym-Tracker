@@ -138,12 +138,6 @@
   text-overflow: ellipsis;
 }
 
-@media (min-width: 769px) {
-  .selectGrid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
 .disclosure {
   display: flex;
   flex-direction: column;

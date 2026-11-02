@@ -1,20 +1,27 @@
+/* Bottom sheet */
 .modal {
   position: fixed;
-  max-width: 90vw;
-  width: 500px;
+  top: auto;
+  /* Lifted above the on-screen keyboard (set by Modal.tsx from visualViewport) */
+  bottom: var(--keyboard-inset, 0px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 90vh;
+  max-height: min(90dvh, calc(var(--visible-height, 100dvh) - 12px));
   padding: 0;
+  margin: 0;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-xl);
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background-color: var(--color-surface-1);
   color: var(--color-text);
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  max-height: 80vh;
-  margin: 0;
   overflow: hidden;
   box-shadow: var(--shadow-lg), var(--highlight-top);
-  animation: modalIn 0.18s ease-out;
+  animation: sheetIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .modal::backdrop {
@@ -27,7 +34,20 @@
 .content {
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
+  max-height: 90vh;
+  max-height: min(90dvh, calc(var(--visible-height, 100dvh) - 12px));
+}
+
+/* Grab-handle hint */
+.content::before {
+  content: '';
+  align-self: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 4px;
+  margin-top: var(--space-sm);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-3);
 }
 
 .header {
@@ -35,7 +55,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-sm);
-  padding: var(--space-md) var(--space-md) var(--space-sm) var(--space-lg);
+  padding: var(--space-xs) var(--space-md) var(--space-sm) var(--space-lg);
 }
 
 .title {
@@ -75,75 +95,22 @@
   transition: background-color var(--transition-fast);
 }
 
-.closeButton:hover,
 .closeButton:active {
   color: var(--color-text);
 }
 
-.closeButton:hover .closeIcon,
 .closeButton:active .closeIcon {
   background-color: var(--color-surface-3);
 }
 
 .body {
-  padding: var(--space-sm) var(--space-lg) var(--space-lg);
+  padding: var(--space-sm) var(--space-lg) calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-/* Mobile: bottom sheet */
-@media (max-width: 768px) {
-  .modal {
-    top: auto;
-    /* Lifted above the on-screen keyboard (set by Modal.tsx from visualViewport) */
-    bottom: var(--keyboard-inset, 0px);
-    left: 0;
-    right: 0;
-    transform: none;
-    width: 100%;
-    max-width: 100%;
-    max-height: 90vh;
-    max-height: min(90dvh, calc(var(--visible-height, 100dvh) - 12px));
-    border-bottom: none;
-    border-left: none;
-    border-right: none;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    animation: sheetIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-
-  .content {
-    max-height: 90vh;
-    max-height: min(90dvh, calc(var(--visible-height, 100dvh) - 12px));
-  }
-
-  /* Grab-handle hint */
-  .content::before {
-    content: '';
-    align-self: center;
-    flex-shrink: 0;
-    width: 36px;
-    height: 4px;
-    margin-top: var(--space-sm);
-    border-radius: var(--radius-full);
-    background: var(--color-surface-3);
-  }
-
-  .header {
-    padding-top: var(--space-xs);
-  }
-
-  .body {
-    padding-bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-@keyframes modalIn {
-  from { opacity: 0; transform: translate(-50%, -48%) scale(0.98); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 @keyframes sheetIn {

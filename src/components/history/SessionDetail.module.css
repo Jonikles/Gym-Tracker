@@ -277,9 +277,3 @@
   color: var(--color-text-muted);
   padding: var(--space-lg);
 }
-
-@media (min-width: 769px) {
-  .summary {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
