@@ -109,8 +109,16 @@ async function call(key: string, init: RequestInit & { query?: Record<string, st
     throw new BackupError("Couldn't reach the server. Check your connection.");
   }
   if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    const message = (data && typeof data.error === 'string' && data.error) || `Request failed (${res.status})`;
+    const text = await res.text().catch(() => '');
+    let message = `Request failed (${res.status})`;
+    try {
+      const data = JSON.parse(text);
+      if (typeof data?.error === 'string') message = data.error;
+    } catch {
+      // Not JSON, e.g. a platform error page: show its first line(s)
+      const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 140);
+      if (snippet) message += `: ${snippet}`;
+    }
     throw new BackupError(message, res.status);
   }
   return res;

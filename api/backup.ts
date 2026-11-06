@@ -81,7 +81,7 @@ function parseSummary(raw: string | null): BackupSummary | null {
 const isEmpty = (s: BackupSummary) => s.sessions === 0 && s.runs === 0;
 const isSnapshotId = (id: string) => /^\d{4}-\d{2}-\d{2}$/.test(id);
 
-export async function GET(req: Request): Promise<Response> {
+async function handleGet(req: Request): Promise<Response> {
   const denied = checkAuth(req);
   if (denied) return denied;
 
@@ -96,7 +96,7 @@ export async function GET(req: Request): Promise<Response> {
   });
 }
 
-export async function PUT(req: Request): Promise<Response> {
+async function handlePut(req: Request): Promise<Response> {
   const denied = checkAuth(req);
   if (denied) return denied;
 
@@ -133,3 +133,19 @@ export async function PUT(req: Request): Promise<Response> {
 
   return json({ ok: true, snapshot: meta });
 }
+
+/** Report storage/setup failures as a readable message instead of a bare 500 */
+function withErrors(handler: (req: Request) => Promise<Response>) {
+  return async (req: Request): Promise<Response> => {
+    try {
+      return await handler(req);
+    } catch (err) {
+      console.error('Backup failed:', err);
+      const detail = err instanceof Error ? err.message : String(err);
+      return json({ error: `Server storage error: ${detail}` }, 500);
+    }
+  };
+}
+
+export const GET = withErrors(handleGet);
+export const PUT = withErrors(handlePut);
