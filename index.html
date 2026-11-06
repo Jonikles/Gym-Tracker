@@ -15,5 +15,33 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Safety net: if the app never renders (e.g. a stuck update), offer a
+      // reload that drops the cached app files. Workout data (IndexedDB) is untouched.
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (!root || root.childNodes.length > 0) return;
+        root.innerHTML =
+          '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:system-ui,sans-serif;color:#e6edf3;background:#0a0d10">' +
+          '<p style="margin:0;font-size:17px;font-weight:600">Trainlog didn’t load</p>' +
+          '<p style="margin:0;font-size:14px;color:#8b98a5">Your data is safe. Reload to fetch the latest version.</p>' +
+          '<button id="app-repair" style="padding:12px 28px;border:0;border-radius:12px;background:#38bdf8;color:#04121c;font-size:16px;font-weight:700">Reload</button>' +
+          '</div>';
+        document.getElementById('app-repair').onclick = function () {
+          var tasks = [];
+          if (navigator.serviceWorker) {
+            tasks.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            }));
+          }
+          if (window.caches) {
+            tasks.push(caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            }));
+          }
+          Promise.all(tasks).catch(function () {}).then(function () { location.reload(); });
+        };
+      }, 6000);
+    </script>
   </body>
 </html>
