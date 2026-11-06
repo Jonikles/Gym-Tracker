@@ -10,6 +10,7 @@ import {
   factoryReset,
 } from '../../hooks/useSettings';
 import { disconnectStrava, startStravaConnect } from '../../utils/strava';
+import { CloudBackupRows } from './CloudBackupRows';
 import styles from './Settings.module.css';
 
 /**
@@ -287,6 +288,7 @@ export function SettingsPage() {
       <section className={styles.section} aria-labelledby="settings-data">
         <h2 id="settings-data" className="eyebrow">Backup</h2>
         <div className={`surface ${styles.group}`}>
+          <CloudBackupRows />
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
               <span className={styles.settingLabel}>Export data</span>

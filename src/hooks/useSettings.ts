@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, SCHEMA_VERSION } from '../db';
-import { STRAVA_SETTING_KEYS, type SettingsMap } from '../types';
+import { DEVICE_SETTING_KEYS, type SettingsMap } from '../types';
 
 /**
  * Default settings values (also used by seed.ts on fresh installs)
@@ -16,9 +16,13 @@ export const defaultSettings: SettingsMap = {
   stravaPendingState: null,
   stravaLastSyncAt: null,
   runPlan: null,
+  backupKey: null,
+  lastCloudBackupAt: null,
+  lastCloudBackupHash: null,
 };
 
-const isStravaKey = (key: string) => (STRAVA_SETTING_KEYS as readonly string[]).includes(key);
+// Device-only settings (Strava connection, cloud backup setup) are never exported, imported or reset
+const isDeviceKey = (key: string) => (DEVICE_SETTING_KEYS as readonly string[]).includes(key);
 
 /**
  * Get a single setting value
@@ -77,31 +81,36 @@ export async function updateSetting<K extends keyof SettingsMap>(
  * Reset all settings to defaults (the Strava connection is kept)
  */
 export async function resetSettings(): Promise<void> {
-  await db.settings.filter((s) => !isStravaKey(s.key)).delete();
+  await db.settings.filter((s) => !isDeviceKey(s.key)).delete();
 }
 
 /**
- * Export all data as JSON
+ * Snapshot all data, without the export timestamp (so unchanged data compares
+ * equal). Read in one transaction so a write mid-export can't tear it.
  */
-export async function exportData(): Promise<string> {
+export async function collectExportData() {
   const [exercises, templates, routines, sessions, sessionExercises, sets, prs, settings, tasks, runs] =
-    await Promise.all([
-      db.exercises.toArray(),
-      db.templates.toArray(),
-      db.routines.toArray(),
-      db.sessions.toArray(),
-      db.sessionExercises.toArray(),
-      db.sets.toArray(),
-      db.prs.toArray(),
-      // Strava tokens stay on this device — never in a backup file
-      db.settings.filter((s) => !isStravaKey(s.key)).toArray(),
-      db.tasks.toArray(),
-      db.runs.toArray(),
-    ]);
+    await db.transaction(
+      'r',
+      [db.exercises, db.templates, db.routines, db.sessions, db.sessionExercises, db.sets, db.prs, db.settings, db.tasks, db.runs],
+      () =>
+        Promise.all([
+          db.exercises.toArray(),
+          db.templates.toArray(),
+          db.routines.toArray(),
+          db.sessions.toArray(),
+          db.sessionExercises.toArray(),
+          db.sets.toArray(),
+          db.prs.toArray(),
+          // Strava tokens and the backup key stay on this device — never in a backup file
+          db.settings.filter((s) => !isDeviceKey(s.key)).toArray(),
+          db.tasks.toArray(),
+          db.runs.toArray(),
+        ])
+    );
 
-  const data = {
+  return {
     version: SCHEMA_VERSION,
-    exportedAt: new Date().toISOString(),
     exercises,
     templates,
     routines,
@@ -112,6 +121,18 @@ export async function exportData(): Promise<string> {
     settings,
     tasks,
     runs,
+  };
+}
+
+/**
+ * Export all data as JSON
+ */
+export async function exportData(): Promise<string> {
+  const { version, ...rest } = await collectExportData();
+  const data = {
+    version,
+    exportedAt: new Date().toISOString(),
+    ...rest,
   };
 
   return JSON.stringify(data, null, 2);
@@ -193,13 +214,13 @@ export async function importData(json: string): Promise<{ success: boolean; mess
           db.prs.clear(),
           // Keep this device's Strava connection, but re-sync from scratch so
           // Strava runs missing from the backup come back on the next sync
-          db.settings.filter((s) => !isStravaKey(s.key) || s.key === 'stravaLastSyncAt').delete(),
+          db.settings.filter((s) => !isDeviceKey(s.key) || s.key === 'stravaLastSyncAt').delete(),
           db.tasks.clear(),
           db.runs.clear(),
         ]);
 
         const importedSettings = Array.isArray(data.settings)
-          ? data.settings.filter((s: { key?: unknown }) => typeof s.key === 'string' && !isStravaKey(s.key))
+          ? data.settings.filter((s: { key?: unknown }) => typeof s.key === 'string' && !isDeviceKey(s.key))
           : [];
 
         await Promise.all([

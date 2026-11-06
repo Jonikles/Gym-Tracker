@@ -22,6 +22,9 @@ export interface SettingsMap {
   stravaPendingState: string | null; // Random state of a sign-in in progress
   stravaLastSyncAt: number | null; // Start time (ms) of the newest synced Strava run
   runPlan: RunPlanState | null; // Active running plan, if any
+  backupKey: string | null; // Cloud backup key (device-only: never exported or reset)
+  lastCloudBackupAt: number | null; // When this device last uploaded a cloud backup
+  lastCloudBackupHash: string | null; // Hash of the data in that upload (skips unchanged uploads)
 }
 
 /**
@@ -47,3 +50,9 @@ export interface StravaAuth {
 
 /** Settings that belong to this device's Strava connection, not to the training data */
 export const STRAVA_SETTING_KEYS = ['stravaAuth', 'stravaPendingState', 'stravaLastSyncAt'] as const;
+
+/** Settings that belong to this device's cloud backup setup */
+export const BACKUP_SETTING_KEYS = ['backupKey', 'lastCloudBackupAt', 'lastCloudBackupHash'] as const;
+
+/** Device-only settings: never exported, imported or reset */
+export const DEVICE_SETTING_KEYS = [...STRAVA_SETTING_KEYS, ...BACKUP_SETTING_KEYS] as const;

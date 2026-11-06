@@ -116,9 +116,31 @@ function useStravaHandoff() {
   }, []);
 }
 
+/**
+ * Keep a cloud copy of the data (if set up) — removing the home-screen app
+ * deletes its local storage on iOS.
+ */
+function useCloudBackup() {
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    import('./utils/cloudBackup')
+      .then((m) => {
+        m.requestPersistentStorage();
+        if (!cancelled) stop = m.startAutoBackup();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, []);
+}
+
 /** Root layout — wraps all routes with providers, nav, error boundary */
 function RootLayout() {
   useStravaHandoff();
+  useCloudBackup();
   return (
     <SessionProvider>
       <UndoProvider>
