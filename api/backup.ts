@@ -142,6 +142,10 @@ function withErrors(handler: (req: Request) => Promise<Response>) {
     } catch (err) {
       console.error('Backup failed:', err);
       const detail = err instanceof Error ? err.message : String(err);
+      // Private reads go to <store>.private.blob…; a public store answers 400 there
+      if (/Failed to fetch blob: 400|access/i.test(detail)) {
+        return json({ error: 'The Vercel Blob store must be Private (it looks Public). Create a Private store and connect it instead.' }, 500);
+      }
       return json({ error: `Server storage error: ${detail}` }, 500);
     }
   };
