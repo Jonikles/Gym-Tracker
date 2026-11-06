@@ -12,16 +12,15 @@ export const defaultSettings: SettingsMap = {
   bodyweight: 0, // 0 = not set
   activeRoutineSetAt: null,
   lastAutoSkipCheckAt: null,
-  stravaAuth: null,
-  stravaPendingState: null,
-  stravaLastSyncAt: null,
+  garminApiKey: null,
+  garminLastSyncAt: null,
   runPlan: null,
   backupKey: null,
   lastCloudBackupAt: null,
   lastCloudBackupHash: null,
 };
 
-// Device-only settings (Strava connection, cloud backup setup) are never exported, imported or reset
+// Device-only settings (Garmin connection, cloud backup setup) are never exported, imported or reset
 const isDeviceKey = (key: string) => (DEVICE_SETTING_KEYS as readonly string[]).includes(key);
 
 /**
@@ -78,7 +77,7 @@ export async function updateSetting<K extends keyof SettingsMap>(
 }
 
 /**
- * Reset all settings to defaults (the Strava connection is kept)
+ * Reset all settings to defaults (the Garmin connection is kept)
  */
 export async function resetSettings(): Promise<void> {
   await db.settings.filter((s) => !isDeviceKey(s.key)).delete();
@@ -102,7 +101,7 @@ export async function collectExportData() {
           db.sessionExercises.toArray(),
           db.sets.toArray(),
           db.prs.toArray(),
-          // Strava tokens and the backup key stay on this device — never in a backup file
+          // The Garmin and backup keys stay on this device — never in a backup file
           db.settings.filter((s) => !isDeviceKey(s.key)).toArray(),
           db.tasks.toArray(),
           db.runs.toArray(),
@@ -212,9 +211,9 @@ export async function importData(json: string): Promise<{ success: boolean; mess
           db.sessionExercises.clear(),
           db.sets.clear(),
           db.prs.clear(),
-          // Keep this device's Strava connection, but re-sync from scratch so
-          // Strava runs missing from the backup come back on the next sync
-          db.settings.filter((s) => !isDeviceKey(s.key) || s.key === 'stravaLastSyncAt').delete(),
+          // Keep this device's Garmin connection, but re-sync from scratch so
+          // Garmin runs missing from the backup come back on the next sync
+          db.settings.filter((s) => !isDeviceKey(s.key) || s.key === 'garminLastSyncAt').delete(),
           db.tasks.clear(),
           db.runs.clear(),
         ]);
@@ -257,7 +256,7 @@ export async function clearAllData(): Promise<void> {
     db.sets.clear(),
     db.prs.clear(),
     db.runs.clear(),
-    db.settings.delete('stravaLastSyncAt'), // so Strava runs can be synced again
+    db.settings.delete('garminLastSyncAt'), // so Garmin runs can be synced again
   ]);
 }
 

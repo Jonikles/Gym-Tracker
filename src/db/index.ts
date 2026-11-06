@@ -166,11 +166,25 @@ export class GymTrackerDB extends Dexie {
       tasks: 'id, createdAt, exerciseId, dueExerciseId',
       runs: 'id, startedAt, &stravaId',
     });
+
+    // Version 11 - Runs sync from Garmin; garminId is unique so a re-sync never duplicates a run
+    this.version(11).stores({
+      exercises: 'id, name, parentId, *muscleGroups, equipment',
+      templates: 'id, name',
+      routines: 'id, name, type',
+      sessions: 'id, routineId, templateId, startedAt, completedAt',
+      sessionExercises: 'id, sessionId, exerciseId, groupId, progressionId',
+      sets: 'id, sessionExerciseId, order',
+      prs: 'id, exerciseId, type, achievedAt, setId',
+      settings: 'key',
+      tasks: 'id, createdAt, exerciseId, dueExerciseId',
+      runs: 'id, startedAt, &stravaId, &garminId',
+    });
   }
 }
 
 /** Current Dexie schema version (keep in sync with the highest this.version() above) */
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 // Single database instance
 export const db = new GymTrackerDB();

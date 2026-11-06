@@ -9,7 +9,7 @@ import { RunPlanSection } from './RunPlan';
 import type { Run } from '../../types';
 import { AddRunModal } from './AddRunModal';
 import { RunCard } from './RunCard';
-import { StravaSync } from './StravaSync';
+import { GarminSync } from './GarminSync';
 import styles from './Running.module.css';
 
 /** Runs grouped by calendar month, newest first */
@@ -54,13 +54,13 @@ export function RunList() {
         </div>
       </header>
 
-      <StravaSync />
+      <GarminSync />
       <RunPlanSection />
 
       {runs === undefined ? (
         <SkeletonList count={4} lines={2} />
       ) : runs.length === 0 ? (
-        <p className={styles.empty}>No runs yet. Sync from Strava or add one by hand.</p>
+        <p className={styles.empty}>No runs yet. Sync from Garmin or add one by hand.</p>
       ) : (
         <div className={styles.list}>
           <RunningStats runs={runs} />

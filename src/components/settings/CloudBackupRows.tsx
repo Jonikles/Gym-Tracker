@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Input, Button, Modal, ConfirmDialog } from '../common';
+import { Button, Modal, ConfirmDialog } from '../common';
+import { SecretInput } from '../common/SecretInput';
 import { useSettings } from '../../hooks/useSettings';
 import { db } from '../../db';
 import {
@@ -55,7 +56,6 @@ export function CloudBackupRows() {
 
   const [setupOpen, setSetupOpen] = useState(false);
   const [keyInput, setKeyInput] = useState('');
-  const [showKey, setShowKey] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [setupBusy, setSetupBusy] = useState(false);
 
@@ -165,48 +165,22 @@ export function CloudBackupRows() {
         </div>
       )}
 
-      <Modal
-        isOpen={setupOpen}
-        onClose={() => {
-          setSetupOpen(false);
-          setShowKey(false);
-        }}
-        title="Cloud backup"
-      >
+      <Modal isOpen={setupOpen} onClose={() => setSetupOpen(false)} title="Cloud backup">
         <div className={styles.modalStack}>
           <p className={styles.modalText}>
             Enter the backup key — the <code>BACKUP_SECRET</code> value set in the Vercel project. After that, the
             app backs itself up whenever your data changes.
           </p>
-          <div className={styles.keyField}>
-            <Input
-              type={showKey ? 'text' : 'password'}
-              autoComplete="off"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label="Backup key"
+          {setupOpen && (
+            <SecretInput
+              name="backup key"
               placeholder="Backup key"
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
               error={setupError ?? undefined}
-              className={styles.keyInput}
             />
-            <button
-              type="button"
-              className={styles.revealButton}
-              onClick={() => setShowKey((v) => !v)}
-              aria-label={showKey ? 'Hide backup key' : 'Show backup key'}
-              aria-pressed={showKey}
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-                <circle cx="12" cy="12" r="3" />
-                {showKey && <path d="M4 4l16 16" />}
-              </svg>
-            </button>
-          </div>
+          )}
           <Button onClick={handleConnect} disabled={setupBusy || !keyInput.trim()}>
             {setupBusy ? 'Checking…' : 'Connect'}
           </Button>

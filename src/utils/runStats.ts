@@ -1,12 +1,12 @@
 import type { Run } from '../types';
 import { runPace } from './run';
 
-/** Distances we track best times for. `strava` is Strava's best-effort name. */
+/** Distances we track best times for. `effortName` is the RunBestEffort name (also what Strava used). */
 export const BEST_TIME_DISTANCES = [
-  { key: '1k', label: '1 km', meters: 1000, strava: '1k' },
-  { key: '5k', label: '5 km', meters: 5000, strava: '5k' },
-  { key: '10k', label: '10 km', meters: 10000, strava: '10k' },
-  { key: 'half', label: 'Half marathon', meters: 21097.5, strava: 'Half-Marathon' },
+  { key: '1k', label: '1 km', meters: 1000, effortName: '1k' },
+  { key: '5k', label: '5 km', meters: 5000, effortName: '5k' },
+  { key: '10k', label: '10 km', meters: 10000, effortName: '10k' },
+  { key: 'half', label: 'Half marathon', meters: 21097.5, effortName: 'Half-Marathon' },
 ] as const;
 
 export type BestTimeKey = (typeof BEST_TIME_DISTANCES)[number]['key'];
@@ -20,14 +20,14 @@ export interface BestTime {
 }
 
 /**
- * A run's time for a target distance: Strava's best effort when available,
+ * A run's time for a target distance: its synced best effort when available,
  * otherwise (hand-entered runs) the whole run when it's within a few percent
  * of the distance, scaled to exactly that distance.
  */
 export function effortSeconds(run: Run, target: (typeof BEST_TIME_DISTANCES)[number]): number | undefined {
-  const effort = run.bestEfforts?.find((e) => e.name === target.strava);
+  const effort = run.bestEfforts?.find((e) => e.name === target.effortName);
   if (effort) return effort.movingTime;
-  if (run.bestEfforts && run.bestEfforts.length > 0) return undefined; // Strava found no such effort
+  if (run.bestEfforts && run.bestEfforts.length > 0) return undefined; // the run has no such effort
   if (run.distance >= target.meters * 0.98 && run.distance <= target.meters * 1.05) {
     return (run.movingTime * target.meters) / run.distance;
   }

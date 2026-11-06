@@ -23,7 +23,6 @@ const loadAnalytics = () => import('./pages/Analytics');
 const loadSettings = () => import('./pages/Settings');
 const loadTasks = () => import('./pages/Tasks');
 const loadRunning = () => import('./pages/Running');
-const loadStravaCallback = () => import('./pages/StravaCallback');
 const loadRunTimer = () => import('./pages/RunTimer');
 const loadNotFound = () => import('./pages/NotFound');
 
@@ -56,7 +55,6 @@ const TemplateEditPage = lazy(() => loadTemplateEdit().then(m => ({ default: m.T
 const Progressions = lazy(() => loadProgressions().then(m => ({ default: m.Progressions })));
 const Tasks = lazy(() => loadTasks().then(m => ({ default: m.Tasks })));
 const Running = lazy(() => loadRunning().then(m => ({ default: m.Running })));
-const StravaCallback = lazy(() => loadStravaCallback().then(m => ({ default: m.StravaCallback })));
 const RunTimer = lazy(() => loadRunTimer().then(m => ({ default: m.RunTimer })));
 const Routines = lazy(() => loadRoutines().then(m => ({ default: m.Routines })));
 const Workout = lazy(() => loadWorkout().then(m => ({ default: m.Workout })));
@@ -101,22 +99,6 @@ function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A Strava sign-in can finish outside the installed app (e.g. in Safari); pick
- * up its result when the app starts or comes back to the foreground.
- */
-function useStravaHandoff() {
-  useEffect(() => {
-    const claim = () => {
-      if (document.visibilityState !== 'visible') return;
-      import('./utils/strava').then((m) => m.claimPendingStravaAuth()).catch(() => undefined);
-    };
-    claim();
-    document.addEventListener('visibilitychange', claim);
-    return () => document.removeEventListener('visibilitychange', claim);
-  }, []);
-}
-
-/**
  * Keep a cloud copy of the data (if set up) — removing the home-screen app
  * deletes its local storage on iOS.
  */
@@ -139,7 +121,6 @@ function useCloudBackup() {
 
 /** Root layout — wraps all routes with providers, nav, error boundary */
 function RootLayout() {
-  useStravaHandoff();
   useCloudBackup();
   return (
     <SessionProvider>
@@ -180,7 +161,6 @@ const router = createBrowserRouter([
       { path: '/running', element: <Running /> },
       { path: '/running/timer', element: <RunTimer /> },
       { path: '/running/:runId', element: <Running /> },
-      { path: '/strava-callback', element: <StravaCallback /> },
       { path: '/settings', element: <Settings /> },
       { path: '*', element: <NotFound /> },
     ],

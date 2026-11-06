@@ -55,7 +55,7 @@ export async function deleteRun(id: string): Promise<void> {
   await db.runs.delete(id);
 }
 
-/** "Morning Run" / "Evening Run", like Strava names them */
+/** "Morning Run" / "Evening Run", like Garmin names them */
 export function defaultRunName(startedAt: number): string {
   const h = new Date(startedAt).getHours();
   const part = h < 5 ? 'Night' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 21 ? 'Evening' : 'Night';

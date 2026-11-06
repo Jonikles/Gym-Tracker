@@ -1,7 +1,7 @@
 export { RunList } from './RunList';
 export { RunDetail } from './RunDetail';
 export { RunCard, RunIcon } from './RunCard';
-export { StravaSync, PoweredByStrava } from './StravaSync';
-export { StravaCallback } from './StravaCallback';
+export { GarminSync } from './GarminSync';
+export { GarminConnectModal } from './GarminConnectModal';
 export { AddRunModal } from './AddRunModal';
 export { HomePlanCard } from './RunPlan';

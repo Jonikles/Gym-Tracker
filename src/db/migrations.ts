@@ -16,6 +16,9 @@
  * - v6: Added body measurements table (dropped again in v8)
  * - v7: Removed archive feature (isArchived) from exercises, templates, routines
  * - v8: Added setId index to prs (PR lookup/cleanup by set), dropped measurements table
+ * - v9: Added tasks table
+ * - v10: Added runs table (Strava sync / manual entry)
+ * - v11: Added garminId index to runs (Garmin sync replaced Strava)
  */
 
 import { db } from './index';

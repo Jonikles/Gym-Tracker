@@ -34,26 +34,26 @@
   flex-direction: column;
 }
 
-/* ── Strava card ── */
-.stravaCard {
+/* ── Garmin sync card ── */
+.syncCard {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-md);
 }
 
-.stravaCardConnected {
+.syncCardConnected {
   gap: 6px;
   padding: 12px var(--space-md) 10px;
 }
 
-.stravaRow {
+.syncRow {
   display: flex;
   align-items: center;
   gap: var(--space-md);
 }
 
-.stravaInfo {
+.syncInfo {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -61,18 +61,18 @@
   min-width: 0;
 }
 
-.stravaTitle {
+.syncTitle {
   font-weight: 650;
   color: var(--color-text);
 }
 
-.stravaDesc {
+.syncDesc {
   font-size: var(--text-sm);
   line-height: 1.45;
   color: var(--color-text-muted);
 }
 
-.stravaConnectBtn {
+.syncConnectBtn {
   align-self: stretch;
   background: #fc4c02;
   color: #fff;
@@ -82,13 +82,6 @@
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-danger-text);
-}
-
-.poweredBy {
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: #fc4c02;
 }
 
 /* ── Run list ── */
@@ -354,13 +347,13 @@
   padding-top: var(--space-sm);
 }
 
-.stravaLinkRow {
+.sourceLinkRow {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.stravaLink {
+.sourceLink {
   font-size: var(--text-sm);
   font-weight: 650;
   color: #fc4c02;
@@ -716,9 +709,32 @@
   flex: 1;
 }
 
-/* ── Strava callback ── */
-.callback {
-  align-items: center;
-  text-align: center;
-  padding-top: var(--space-xl);
+/* ── Garmin connect sheet ── */
+.connectStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.connectSteps {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.connectSteps a {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.connectNote {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--color-text-muted);
 }

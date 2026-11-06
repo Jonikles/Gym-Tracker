@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@garmin/fitsdk": "^21.221.0",
     "@vercel/blob": "^2.8.2",
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",
+    "fflate": "^0.8.3",
     "html-to-image": "^1.11.13",
     "react": "^19.2.0",
     "react-body-highlighter": "^2.0.5",

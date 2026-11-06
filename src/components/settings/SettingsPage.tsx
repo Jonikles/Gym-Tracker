@@ -9,7 +9,8 @@ import {
   clearAllData,
   factoryReset,
 } from '../../hooks/useSettings';
-import { disconnectStrava, startStravaConnect } from '../../utils/strava';
+import { disconnectGarmin } from '../../utils/garmin';
+import { GarminConnectModal } from '../running/GarminConnectModal';
 import { CloudBackupRows } from './CloudBackupRows';
 import styles from './Settings.module.css';
 
@@ -98,22 +99,10 @@ export function SettingsPage() {
   const settings = useSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmAction, setConfirmAction] = useState<
-    'resetSettings' | 'clearData' | 'factoryReset' | 'disconnectStrava' | null
+    'resetSettings' | 'clearData' | 'factoryReset' | 'disconnectGarmin' | null
   >(null);
   const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [stravaBusy, setStravaBusy] = useState(false);
-  const [stravaError, setStravaError] = useState<string | null>(null);
-
-  const handleConnectStrava = async () => {
-    setStravaBusy(true);
-    setStravaError(null);
-    try {
-      await startStravaConnect(); // navigates to Strava
-    } catch (err) {
-      setStravaError(err instanceof Error ? err.message : 'Could not start Strava sign-in');
-      setStravaBusy(false);
-    }
-  };
+  const [garminConnectOpen, setGarminConnectOpen] = useState(false);
 
   const handleExport = async () => {
     const data = await exportData();
@@ -154,8 +143,8 @@ export function SettingsPage() {
       await resetSettings();
     } else if (confirmAction === 'clearData') {
       await clearAllData();
-    } else if (confirmAction === 'disconnectStrava') {
-      await disconnectStrava();
+    } else if (confirmAction === 'disconnectGarmin') {
+      await disconnectGarmin();
     } else if (confirmAction === 'factoryReset') {
       await factoryReset();
       // Re-seed preset exercises (seed data loaded on demand, not in this chunk)
@@ -181,10 +170,10 @@ export function SettingsPage() {
           confirmLabel: 'Clear Data',
           variant: 'danger' as const,
         };
-      case 'disconnectStrava':
+      case 'disconnectGarmin':
         return {
-          title: 'Disconnect Strava',
-          message: 'Stop syncing runs from Strava? Runs already in the app are kept.',
+          title: 'Disconnect Garmin',
+          message: 'Stop syncing runs from Garmin? Runs already in the app are kept.',
           confirmLabel: 'Disconnect',
           variant: 'danger' as const,
         };
@@ -264,25 +253,23 @@ export function SettingsPage() {
         <div className={`surface ${styles.group}`}>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Strava</span>
+              <span className={styles.settingLabel}>Garmin</span>
               <span className={styles.settingDesc}>
-                {settings.stravaAuth
-                  ? `Connected${settings.stravaAuth.athlete?.name ? ` as ${settings.stravaAuth.athlete.name}` : ''}`
-                  : 'Sync runs from your watch via Strava'}
+                {settings.garminApiKey ? 'Connected · runs sync on the Running page' : 'Sync runs from your Garmin watch'}
               </span>
-              {stravaError && <span className={`${styles.settingDesc} ${styles.dangerTitle}`}>{stravaError}</span>}
             </div>
-            {settings.stravaAuth ? (
-              <Button variant="secondary" size="sm" onClick={() => setConfirmAction('disconnectStrava')} className={styles.rowButton}>
+            {settings.garminApiKey ? (
+              <Button variant="secondary" size="sm" onClick={() => setConfirmAction('disconnectGarmin')} className={styles.rowButton}>
                 Disconnect
               </Button>
             ) : (
-              <Button size="sm" onClick={handleConnectStrava} disabled={stravaBusy} className={styles.rowButton}>
-                {stravaBusy ? 'Opening…' : 'Connect'}
+              <Button size="sm" onClick={() => setGarminConnectOpen(true)} className={styles.rowButton}>
+                Connect
               </Button>
             )}
           </div>
         </div>
+        <GarminConnectModal isOpen={garminConnectOpen} onClose={() => setGarminConnectOpen(false)} />
       </section>
 
       <section className={styles.section} aria-labelledby="settings-data">

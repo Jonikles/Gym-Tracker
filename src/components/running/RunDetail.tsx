@@ -5,7 +5,6 @@ import { formatLongDate, formatTime } from '../common/format';
 import { deleteRun, updateRunNotes, useRun, useRunRecords } from '../../hooks/useRuns';
 import { RUN_KIND_LABELS, formatDistance, formatPace, formatRunTime, paceSecondsPerKm, runPace } from '../../utils/run';
 import type { Run } from '../../types';
-import { PoweredByStrava } from './StravaSync';
 import styles from './Running.module.css';
 
 function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
@@ -149,7 +148,7 @@ export function RunDetail({ runId }: { runId: string }) {
         {stats.map((s) => <Stat key={s.label} {...s} />)}
       </div>
 
-      {run.source === 'strava' && !run.detailsFetched && (
+      {run.source === 'garmin' && !run.detailsFetched && (
         <p className={styles.formHint}>Splits load on the next sync.</p>
       )}
 
@@ -158,17 +157,16 @@ export function RunDetail({ runId }: { runId: string }) {
       <NotesEditor key={run.id} run={run} />
 
       <div className={styles.detailFooter}>
-        {run.source === 'strava' && run.stravaId != null && (
-          <div className={styles.stravaLinkRow}>
+        {run.source === 'garmin' && run.garminId != null && (
+          <div className={styles.sourceLinkRow}>
             <a
-              className={styles.stravaLink}
-              href={`https://www.strava.com/activities/${run.stravaId}`}
+              className={styles.sourceLink}
+              href={`https://connect.garmin.com/modern/activity/${run.garminId}`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              View on Strava
+              View in Garmin Connect
             </a>
-            <PoweredByStrava />
           </div>
         )}
         <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>Delete run</Button>
@@ -183,8 +181,8 @@ export function RunDetail({ runId }: { runId: string }) {
         }}
         title="Delete Run"
         message={
-          run.source === 'strava'
-            ? 'Remove this run from the app? It stays on Strava.'
+          run.source === 'garmin'
+            ? 'Remove this run from the app? It stays in Garmin Connect.'
             : 'Delete this run? This cannot be undone.'
         }
         confirmLabel="Delete"
