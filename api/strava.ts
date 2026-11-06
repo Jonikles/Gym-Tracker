@@ -1,17 +1,20 @@
 /**
- * Strava proxy — runs on Netlify at /.netlify/functions/strava
+ * Strava proxy — Vercel function at /api/strava
  *
  * Keeps the Strava client secret off the device and relays the few API calls
- * the app makes. Configure in Netlify → Site configuration → Environment variables:
+ * the app makes. Configure in Vercel → Settings → Environment Variables:
  *   STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET
  *
  * Sign-in handoff: Strava's sign-in can finish in a different browser context
  * than the installed app (e.g. the Strava app opens the callback in Safari,
  * whose storage an iOS home-screen app doesn't share). So the callback page
- * "exchange"s the code here, the tokens are parked in Netlify Blobs under the
- * app's random `state`, and the app "claim"s them once (then they're deleted).
+ * "exchange"s the code here, the tokens are parked in the private Blob store
+ * (see api/backup.ts for its setup) under the app's random `state`, and the
+ * app "claim"s them once (then they're deleted).
  */
-import { getStore } from '@netlify/blobs';
+import { del, get, put } from '@vercel/blob';
+
+const handoffPath = (state: string) => `strava-handoff/${state}.json`;
 
 const STRAVA_OAUTH = 'https://www.strava.com/oauth';
 const STRAVA_API = 'https://www.strava.com/api/v3';
@@ -66,9 +69,7 @@ async function tokenRequest(params: Record<string, string>): Promise<Response> {
 
 const isState = (s: unknown): s is string => typeof s === 'string' && /^[A-Za-z0-9-]{16,64}$/.test(s);
 
-export default async (req: Request): Promise<Response> => {
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-
+export async function POST(req: Request): Promise<Response> {
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -87,19 +88,21 @@ export default async (req: Request): Promise<Response> => {
       const res = await tokenRequest({ code: body.code, grant_type: 'authorization_code' });
       if (res.ok && isState(body.state)) {
         const tokens = await res.clone().json();
-        await getStore('strava-handoff').setJSON(body.state, { tokens, createdAt: Date.now() });
+        await put(handoffPath(body.state), JSON.stringify({ tokens, createdAt: Date.now() }), {
+          access: 'private',
+          allowOverwrite: true,
+          contentType: 'application/json',
+        });
       }
       return res;
     }
 
     case 'claim': {
       if (!isState(body.state)) return json({ error: 'Invalid state' }, 400);
-      const store = getStore('strava-handoff');
-      const entry = (await store.get(body.state, { type: 'json' })) as
-        | { tokens: unknown; createdAt: number }
-        | null;
-      if (!entry) return json({ error: 'Not found' }, 404);
-      await store.delete(body.state);
+      const found = await get(handoffPath(body.state), { access: 'private', useCache: false });
+      if (!found || found.statusCode !== 200) return json({ error: 'Not found' }, 404);
+      const entry = (await new Response(found.stream).json()) as { tokens: unknown; createdAt: number };
+      await del(handoffPath(body.state));
       if (Date.now() - entry.createdAt > HANDOFF_TTL_MS) return json({ error: 'Expired' }, 410);
       return json(entry.tokens);
     }
@@ -136,4 +139,4 @@ export default async (req: Request): Promise<Response> => {
     default:
       return json({ error: 'Unknown action' }, 400);
   }
-};
+}

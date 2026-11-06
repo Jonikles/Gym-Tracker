@@ -167,7 +167,7 @@ export function CloudBackupRows() {
       <Modal isOpen={setupOpen} onClose={() => setSetupOpen(false)} title="Cloud backup">
         <div className={styles.modalStack}>
           <p className={styles.modalText}>
-            Enter the backup key — the <code>BACKUP_SECRET</code> value set on the Netlify site. After that, the
+            Enter the backup key — the <code>BACKUP_SECRET</code> value set in the Vercel project. After that, the
             app backs itself up whenever your data changes.
           </p>
           <Input

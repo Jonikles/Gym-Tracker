@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@netlify/blobs": "^11.1.7",
+    "@vercel/blob": "^2.8.2",
     "dexie": "^4.2.1",
     "dexie-react-hooks": "^4.2.0",
     "html-to-image": "^1.11.13",

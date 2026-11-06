@@ -4,10 +4,10 @@ import { computeRunRecords } from './runStats';
 
 /**
  * Strava connection + run sync. All Strava traffic goes through the app's
- * Netlify function (netlify/functions/strava.mts), which holds the client secret.
+ * Vercel function (api/strava.ts), which holds the client secret.
  */
 
-const FUNCTION_URL = '/.netlify/functions/strava';
+const FUNCTION_URL = '/api/strava';
 const CALLBACK_PATH = '/strava-callback';
 /** First sync looks back this far; later syncs only fetch newer runs */
 const INITIAL_SYNC_DAYS = 365;

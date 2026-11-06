@@ -5,12 +5,12 @@ import type { SettingsMap } from '../types';
 
 /**
  * Automatic cloud backup. Gzipped snapshots of the full export go to the app's
- * Netlify function (netlify/functions/backup.mts), which keeps one per day.
+ * Vercel function (api/backup.ts), which keeps one per day.
  * Removing the home-screen app wipes its local storage on iOS — this is what
  * makes that recoverable.
  */
 
-const FUNCTION_URL = '/.netlify/functions/backup';
+const FUNCTION_URL = '/api/backup';
 /** While the app is open, check for changes this often */
 const AUTO_INTERVAL_MS = 2 * 60 * 1000;
 
