@@ -185,3 +185,31 @@
 .snapshotItem:active {
   background: var(--color-surface-2);
 }
+
+/* Backup key field with show/hide toggle */
+.keyField {
+  position: relative;
+}
+
+.keyInput {
+  padding-right: 52px;
+}
+
+.revealButton {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 46px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.revealButton[aria-pressed='true'] {
+  color: var(--color-accent);
+}
